@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import type { QuestionBank, QuestionType, PracticeFilter } from '@exameow/shared'
 import { ArrowRightIcon } from '@heroicons/vue/24/outline'
+import { matchPracticeFilter } from '@/utils/practiceFilter'
 
 const props = defineProps<{
   bank: QuestionBank
@@ -69,12 +70,7 @@ const matchedCount = computed(() => {
   if (subjects.length === 0 && chapters.length === 0 && types.length === 0) {
     return props.bank.questions.length
   }
-  return props.bank.questions.filter(q => {
-    if (types.length && !types.includes(q.type)) return false
-    if (subjects.length && q.subject && !subjects.includes(q.subject)) return false
-    if (chapters.length && (!q.chapter || !chapters.includes(q.chapter))) return false
-    return true
-  }).length
+  return props.bank.questions.filter(q => matchPracticeFilter(q, props.modelValue)).length
 })
 
 const canConfirm = computed(() => matchedCount.value > 0)

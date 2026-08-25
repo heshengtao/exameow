@@ -6,6 +6,7 @@ import { useWrongQuestionsStore } from '@/stores/wrongQuestions'
 import { useConfigStore } from '@/stores/config'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
+import { matchPracticeFilter } from '@/utils/practiceFilter'
 import type { JudgeResult, ExplainResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter } from '@exameow/shared'
@@ -245,12 +246,7 @@ const filteredQuestions = computed(() => {
   const chapters = practiceFilter.value.chapters ?? []
   const types = practiceFilter.value.types ?? []
   if (subjects.length === 0 && chapters.length === 0 && types.length === 0) return bank.questions
-  return bank.questions.filter(q => {
-    if (types.length && !types.includes(q.type)) return false
-    if (subjects.length && q.subject && !subjects.includes(q.subject)) return false
-    if (chapters.length && (!q.chapter || !chapters.includes(q.chapter))) return false
-    return true
-  })
+  return bank.questions.filter(q => matchPracticeFilter(q, practiceFilter.value))
 })
 
 const availableTypes = computed(() => {
@@ -553,7 +549,7 @@ function handleRetry() {
     return
   }
   practiceStore.clearSession()
-  practiceStore.startSession(s.bankId, s.mode, s.mockConfig)
+  practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, practiceFilter.value)
   viewState.value = 'practice'
   autoAdvancing.value = false
 }

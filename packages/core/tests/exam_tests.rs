@@ -114,4 +114,7 @@ fn test_parse_questions_without_subject_chapter() {
     let questions = parse_questions(json).unwrap();
     assert_eq!(questions[0].subject, None);
     assert_eq!(questions[0].chapter, None);
+    let serialized = serde_json::to_string(&questions[0]).unwrap();
+    assert!(!serialized.contains("\"subject\""));
+    assert!(!serialized.contains("\"chapter\""));
 }

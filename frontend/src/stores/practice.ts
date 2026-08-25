@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Question, QuestionType, PracticeFilter } from '@exameow/shared'
+import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Question, PracticeFilter } from '@exameow/shared'
 import { analyzeCSV, analyzeExcel, parseWithMapping } from '@/utils/importParser'
 import type { ColumnMapping, ImportAnalysis } from '@/utils/importParser'
 import { usePracticeHistoryStore } from '@/stores/practiceHistory'
+import { matchPracticeFilter } from '@/utils/practiceFilter'
 
 const STORAGE_KEY = 'exameow-banks'
 const SESSION_KEY = 'exameow-practice-session'
@@ -90,13 +91,7 @@ function applyPracticeFilter(questions: Question[], filter?: PracticeFilter): Qu
   const chapters = filter.chapters?.filter(Boolean)
   const types = filter.types?.filter(Boolean)
   if (!subjects?.length && !chapters?.length && !types?.length) return questions
-  return questions.filter(q => {
-    if (types?.length && !types.includes(q.type)) return false
-    // 学科：带学科的题必须命中选中学科；无学科的题（孤儿）始终通过（对应「∪ 无学科」）
-    if (subjects?.length && q.subject && !subjects.includes(q.subject)) return false
-    if (chapters?.length && (!q.chapter || !chapters.includes(q.chapter))) return false
-    return true
-  })
+  return questions.filter(q => matchPracticeFilter(q, filter))
 }
 
 function generateMockQuestions(bank: QuestionBank, config: MockExamConfig): Question[] {
