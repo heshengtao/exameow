@@ -112,6 +112,15 @@ function toggleType(type: QuestionType) {
       </div>
 
       <div class="col-span-2">
+        <label class="text-label-md font-semibold tracking-wide block mb-2" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('genSubject') }}</label>
+        <input
+          v-model="store.subject"
+          :placeholder="i18n.t('genSubjectPlaceholder')"
+          class="input-outlined text-sm !py-3 !rounded-xl"
+        />
+      </div>
+
+      <div class="col-span-2">
         <label class="text-label-md font-semibold tracking-wide block mb-2" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('genTopic') }}</label>
         <input
           v-model="store.topicFilter"
