@@ -3,7 +3,7 @@ services:
     build: .
     container_name: exameow-server
     ports:
-      - "3000:3000"
+      - "3434:3000"
     environment:
       - AI_ENDPOINT=${AI_ENDPOINT:-https://api.openai.com/v1}
       - AI_API_KEY=${AI_API_KEY:-sk-your-ai-key}
