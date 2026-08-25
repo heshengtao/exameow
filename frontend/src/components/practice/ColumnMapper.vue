@@ -22,6 +22,8 @@ const stem = ref<number | null>(m.stem)
 const type = ref<number | null>(m.type)
 const answer = ref<number | null>(m.answer)
 const analysisCol = ref<number | null>(m.analysis)
+const subjectCol = ref<number | null>(m.subject)
+const chapterCol = ref<number | null>(m.chapter)
 const optionCols = ref<number[]>([...m.options])
 const combinedCol = ref<number | null>(m.combinedOptions)
 const delimiter = ref(m.optionsDelimiter)
@@ -81,8 +83,8 @@ function handleApply() {
     optionsDelimiter: mode.value === 'combined' ? delimiter.value : '',
     answer: answer.value,
     analysis: analysisCol.value,
-    subject: null,
-    chapter: null,
+    subject: subjectCol.value,
+    chapter: chapterCol.value,
   })
 }
 
@@ -136,6 +138,20 @@ const selectStyle = {
           {{ i18n.t('practiceImportColAnalysis') }}
         </span>
         <BaseSelect v-model="analysisCol" :options="colSelectOptions" :placeholder="i18n.t('practiceMapNone')" />
+      </label>
+
+      <label class="block">
+        <span class="block text-body-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          {{ i18n.t('practiceImportColSubject') }}
+        </span>
+        <BaseSelect v-model="subjectCol" :options="colSelectOptions" :placeholder="i18n.t('practiceMapNone')" />
+      </label>
+
+      <label class="block">
+        <span class="block text-body-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          {{ i18n.t('practiceImportColChapter') }}
+        </span>
+        <BaseSelect v-model="chapterCol" :options="colSelectOptions" :placeholder="i18n.t('practiceMapNone')" />
       </label>
     </div>
 

@@ -205,6 +205,8 @@ export interface LocaleMessages {
   practiceImportColStem: string
   practiceImportColAnswer: string
   practiceImportColAnalysis: string
+  practiceImportColSubject: string
+  practiceImportColChapter: string
   practiceDownloadTemplate: string
   practiceExportBank: string
   practiceMapTitle: string
@@ -656,6 +658,8 @@ export const zh: LocaleMessages = {
   practiceImportColStem: '题干',
   practiceImportColAnswer: '答案',
   practiceImportColAnalysis: '解析',
+  practiceImportColSubject: '学科',
+  practiceImportColChapter: '章节',
   practiceDownloadTemplate: '下载题库模板',
   practiceExportBank: '导出题库',
   practiceMapTitle: '匹配表格列',
@@ -1107,6 +1111,8 @@ export const zhTW: LocaleMessages = {
   practiceImportColStem: '题干',
   practiceImportColAnswer: '答案',
   practiceImportColAnalysis: '解析',
+  practiceImportColSubject: '學科',
+  practiceImportColChapter: '章節',
   practiceDownloadTemplate: '下载題庫模板',
   practiceExportBank: '導出題庫',
   practiceMapTitle: '匹配表格列',
@@ -1558,6 +1564,8 @@ export const en: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: 'Subject',
+  practiceImportColChapter: 'Chapter',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: 'Export Question Bank',
   practiceMapTitle: 'Map Columns',
@@ -2009,6 +2017,8 @@ export const ja: LocaleMessages = {
   practiceImportColStem: '問題文列',
   practiceImportColAnswer: '正解列',
   practiceImportColAnalysis: '解説列',
+  practiceImportColSubject: '科目',
+  practiceImportColChapter: '章',
   practiceDownloadTemplate: 'テンプレートをダウンロード',
   practiceExportBank: '問題集をエクスポート',
   practiceMapTitle: '列のマッピング',
@@ -2460,6 +2470,8 @@ export const ko: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: '과목',
+  practiceImportColChapter: '단원',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: '문제집 내보내기',
   practiceMapTitle: 'Map Columns',
@@ -2911,6 +2923,8 @@ export const es: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: 'Asignatura',
+  practiceImportColChapter: 'Capítulo',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: 'Exportar banco',
   practiceMapTitle: 'Map Columns',
@@ -3362,6 +3376,8 @@ export const fr: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: 'Matière',
+  practiceImportColChapter: 'Chapitre',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: 'Exporter la banque',
   practiceMapTitle: 'Map Columns',
@@ -3813,6 +3829,8 @@ export const de: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: 'Fach',
+  practiceImportColChapter: 'Kapitel',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: 'Fragenbank exportieren',
   practiceMapTitle: 'Map Columns',
@@ -4264,6 +4282,8 @@ export const ru: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: 'Предмет',
+  practiceImportColChapter: 'Глава',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: 'Экспорт банка',
   practiceMapTitle: 'Map Columns',
@@ -4715,6 +4735,8 @@ export const ar: LocaleMessages = {
   practiceImportColStem: 'Stem',
   practiceImportColAnswer: 'Answer',
   practiceImportColAnalysis: 'Analysis',
+  practiceImportColSubject: 'المادة',
+  practiceImportColChapter: 'الفصل',
   practiceDownloadTemplate: 'Download Template',
   practiceExportBank: 'تصدير بنك الأسئلة',
   practiceMapTitle: 'Map Columns',
