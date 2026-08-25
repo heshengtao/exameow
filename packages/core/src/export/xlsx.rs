@@ -138,7 +138,7 @@ impl SheetDataWriter {
     fn new_row(&mut self) {
         self.current_row = self.rows.len();
         let row_num = self.current_row + 1;
-        self.rows.push(format!(r#"<row r="{}" spans="1:14">"#, row_num));
+        self.rows.push(format!(r#"<row r="{}" spans="1:15">"#, row_num));
     }
 
     fn finish_row(&mut self) {
@@ -197,8 +197,9 @@ fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
     }
     writer.add_string_cell(10, "正确答案\n（必填）");
     writer.add_string_cell(11, "解析\n（勿删）");
-    writer.add_string_cell(12, "章节\n（勿删）");
-    writer.add_string_cell(13, "难度");
+    writer.add_string_cell(12, "学科");
+    writer.add_string_cell(13, "章节\n（勿删）");
+    writer.add_string_cell(14, "难度");
     writer.finish_row();
 
     for q in questions {
@@ -242,8 +243,9 @@ fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
 
         writer.add_string_cell(10, &k_answer);
         writer.add_string_cell(11, if analysis.is_empty() { "" } else { analysis });
-        writer.add_string_cell(12, "");
-        writer.add_string_cell(13, "");
+        writer.add_string_cell(12, q.subject.clone().unwrap_or_default().as_str());
+        writer.add_string_cell(13, q.chapter.clone().unwrap_or_default().as_str());
+        writer.add_string_cell(14, "");
 
         writer.finish_row();
     }

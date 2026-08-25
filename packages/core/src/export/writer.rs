@@ -25,7 +25,7 @@ pub fn export_csv_to_writer<W: Write>(questions: &[Question], writer: W) -> Resu
 }
 
 fn write_csv_records<W: Write>(questions: &[Question], wtr: &mut csv::Writer<W>) -> Result<(), CoreError> {
-    wtr.write_record(["题干", "题型", "选项A", "选项B", "选项C", "选项D", "选项E", "选项F", "选项G", "选项H", "正确答案", "解析", "章节", "难度"])
+    wtr.write_record(["题干", "题型", "选项A", "选项B", "选项C", "选项D", "选项E", "选项F", "选项G", "选项H", "正确答案", "解析", "学科", "章节", "难度"])
         .map_err(|e| CoreError::Export(format!("write error: {e}")))?;
 
     for q in questions {
@@ -40,7 +40,8 @@ fn write_csv_records<W: Write>(questions: &[Question], wtr: &mut csv::Writer<W>)
         }
         row.push(q.answer.clone());
         row.push(q.analysis.clone());
-        row.push(String::new());
+        row.push(q.subject.clone().unwrap_or_default());
+        row.push(q.chapter.clone().unwrap_or_default());
         row.push(String::new());
 
         wtr.write_record(&row)

@@ -12,8 +12,8 @@ fn make_questions() -> Vec<Question> {
             analysis: "Basic arithmetic".to_string(),
             ai_analysis: None,
             score: None,
-            subject: None,
-            chapter: None,
+            subject: Some("计算机".to_string()),
+            chapter: Some("第一章".to_string()),
         },
         Question {
             id: "q2".to_string(),
@@ -39,7 +39,7 @@ fn test_export_csv() {
     export_csv(&questions, path_str).unwrap();
 
     let content = std::fs::read_to_string(path_str).unwrap();
-    assert!(content.contains("题干,题型,选项A,选项B,选项C,选项D,选项E,选项F,选项G,选项H,正确答案,解析,章节,难度"));
+    assert!(content.contains("题干,题型,选项A,选项B,选项C,选项D,选项E,选项F,选项G,选项H,正确答案,解析,学科,章节,难度"));
     assert!(content.contains("What is 2+2?"));
     assert!(content.contains("单选题"));
     assert!(content.contains("3,4,5,6"));
@@ -63,6 +63,21 @@ fn test_export_empty_csv() {
     assert_eq!(lines.len(), 1);
     assert!(lines[0].contains("题干"));
     assert!(lines[0].contains("正确答案"));
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn test_export_csv_includes_subject_chapter() {
+    let questions = make_questions();
+    let dir = std::env::temp_dir();
+    let path = dir.join("test_subject_chapter.csv");
+    let path_str = path.to_str().unwrap();
+    export_csv(&questions, path_str).unwrap();
+
+    let content = std::fs::read_to_string(path_str).unwrap();
+    assert!(content.contains("解析,学科,章节,难度"));
+    assert!(content.contains("计算机,第一章"));
 
     std::fs::remove_file(&path).ok();
 }
