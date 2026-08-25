@@ -74,6 +74,8 @@ export interface LocaleMessages {
   genLanguage: string
   genTopic: string
   genTopicPlaceholder: string
+  genSubject: string
+  genSubjectPlaceholder: string
   genGenerateBtn: string
   genGenerating: string
   genFileSelected: string
@@ -534,6 +536,8 @@ export const zh: LocaleMessages = {
   genLanguage: '语言',
   genTopic: '知识点 / 章节',
   genTopicPlaceholder: '如：机器学习基础',
+  genSubject: '学科',
+  genSubjectPlaceholder: '输入本次出题的学科，不填则留空',
   genGenerateBtn: '生成试题',
   genGenerating: '生成中...',
   genFileSelected: '已选择',
@@ -994,6 +998,8 @@ export const zhTW: LocaleMessages = {
   genLanguage: '語言',
   genTopic: '知识点 / 章节',
   genTopicPlaceholder: '如：机器学习基础',
+  genSubject: '學科',
+  genSubjectPlaceholder: '輸入本次出題的學科，不填則留空',
   genGenerateBtn: '生成試題',
   genGenerating: '生成中...',
   genFileSelected: '已選擇',
@@ -1454,6 +1460,8 @@ export const en: LocaleMessages = {
   genLanguage: 'Language',
   genTopic: 'Topic / Chapter',
   genTopicPlaceholder: 'e.g. Machine Learning Basics',
+  genSubject: 'Subject',
+  genSubjectPlaceholder: 'Enter the subject for this batch, leave empty to omit',
   genGenerateBtn: 'Generate Questions',
   genGenerating: 'Generating...',
   genFileSelected: 'Selected',
@@ -1914,6 +1922,8 @@ export const ja: LocaleMessages = {
   genLanguage: '出力言語',
   genTopic: 'トピック・範囲（任意）',
   genTopicPlaceholder: '例: 第1章 確率論、二分木...',
+  genSubject: '科目',
+  genSubjectPlaceholder: 'この出題の科目を入力（空欄可）',
   genGenerateBtn: '問題を生成する',
   genGenerating: '問題生成中...',
   genFileSelected: '選択済み',
@@ -2374,6 +2384,8 @@ export const ko: LocaleMessages = {
   genLanguage: '출력 언어',
   genTopic: '주제 및 범위 (선택)',
   genTopicPlaceholder: '예: 1장 확률론, 이진 트리...',
+  genSubject: '과목',
+  genSubjectPlaceholder: '이번 출제 과목 입력 (비워도 됨)',
   genGenerateBtn: '문제 생성하기',
   genGenerating: '생성 중...',
   genFileSelected: '선택됨',
@@ -2834,6 +2846,8 @@ export const es: LocaleMessages = {
   genLanguage: 'Idioma del Examen',
   genTopic: 'Tema o Filtro (Opcional)',
   genTopicPlaceholder: 'Ej: Cap 1 Probabilidades...',
+  genSubject: 'Asignatura',
+  genSubjectPlaceholder: 'Introduce la asignatura (opcional)',
   genGenerateBtn: 'Generar Examen',
   genGenerating: 'Generando...',
   genFileSelected: 'Seleccionado',
@@ -3294,6 +3308,8 @@ export const fr: LocaleMessages = {
   genLanguage: 'Langue de Sortie',
   genTopic: 'Thème ou Filtre (Optionnel)',
   genTopicPlaceholder: 'Ex: Chap 1 Probabilités...',
+  genSubject: 'Matière',
+  genSubjectPlaceholder: 'Saisissez la matière (facultatif)',
   genGenerateBtn: 'Générer l\\\\\\\\\\\\\\\'Examen',
   genGenerating: 'Génération en cours...',
   genFileSelected: 'Sélectionné',
@@ -3754,6 +3770,8 @@ export const de: LocaleMessages = {
   genLanguage: 'Sprache der Fragen',
   genTopic: 'Thema / Filter (Optional)',
   genTopicPlaceholder: 'Z.B. Kap 1 Wahrscheinlichkeit...',
+  genSubject: 'Fach',
+  genSubjectPlaceholder: 'Fach eingeben (optional)',
   genGenerateBtn: 'Prüfung Generieren',
   genGenerating: 'Wird generiert...',
   genFileSelected: 'Ausgewählt',
@@ -4214,6 +4232,8 @@ export const ru: LocaleMessages = {
   genLanguage: 'Язык вопросов',
   genTopic: 'Тема или Фильтр (Опционально)',
   genTopicPlaceholder: 'Пример: Гл 1 Теория вероятностей...',
+  genSubject: 'Предмет',
+  genSubjectPlaceholder: 'Введите предмет (необязательно)',
   genGenerateBtn: 'Сгенерировать Тест',
   genGenerating: 'Генерация...',
   genFileSelected: 'Выбрано',
@@ -4674,6 +4694,8 @@ export const ar: LocaleMessages = {
   genLanguage: 'لغة الإخراج',
   genTopic: 'الموضوع أو التصفية (اختياري)',
   genTopicPlaceholder: 'مثال: الفصل 1 نظرية الاحتمالات...',
+  genSubject: 'المادة',
+  genSubjectPlaceholder: 'أدخل المادة (اختياري)',
   genGenerateBtn: 'توليد الامتحان',
   genGenerating: 'جاري التوليد...',
   genFileSelected: 'محدد',
