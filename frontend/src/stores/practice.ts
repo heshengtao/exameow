@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Question } from '@exameow/shared'
+import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Question, QuestionType, PracticeFilter } from '@exameow/shared'
 import { analyzeCSV, analyzeExcel, parseWithMapping } from '@/utils/importParser'
 import type { ColumnMapping, ImportAnalysis } from '@/utils/importParser'
 import { usePracticeHistoryStore } from '@/stores/practiceHistory'
@@ -81,6 +81,21 @@ function shuffleOptions(questions: Question[]): Question[] {
       return { ...q, options: newOptions, answer: newAnswer }
     }
     return q
+  })
+}
+
+function applyPracticeFilter(questions: Question[], filter?: PracticeFilter): Question[] {
+  if (!filter) return questions
+  const subjects = filter.subjects?.filter(Boolean)
+  const chapters = filter.chapters?.filter(Boolean)
+  const types = filter.types?.filter(Boolean)
+  if (!subjects?.length && !chapters?.length && !types?.length) return questions
+  return questions.filter(q => {
+    if (types?.length && !types.includes(q.type)) return false
+    // 学科：带学科的题必须命中选中学科；无学科的题（孤儿）始终通过（对应「∪ 无学科」）
+    if (subjects?.length && q.subject && !subjects.includes(q.subject)) return false
+    if (chapters?.length && (!q.chapter || !chapters.includes(q.chapter))) return false
+    return true
   })
 }
 
@@ -167,19 +182,20 @@ export const usePracticeStore = defineStore('practice', () => {
     addBank(bank)
   }
 
-  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[]) {
+  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[], filter?: PracticeFilter) {
     const bank = getBank(bankId)
     if (!bank) return
 
+    const baseQuestions = customQuestions ?? applyPracticeFilter(bank.questions, filter)
     let questions: Question[]
     if (customQuestions) {
       questions = customQuestions
     } else if (mode === 'mock' && mockConfig) {
-      questions = generateMockQuestions(bank, mockConfig)
+      questions = generateMockQuestions({ ...bank, questions: baseQuestions }, mockConfig)
     } else if (mode === 'sequential') {
-      questions = [...bank.questions]
+      questions = [...baseQuestions]
     } else {
-      questions = shuffleArray([...bank.questions])
+      questions = shuffleArray([...baseQuestions])
     }
 
     if (mode === 'random') {
