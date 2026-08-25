@@ -4,11 +4,11 @@ export interface SwipeNavOptions {
   threshold?: number
 }
 
-function isInteractiveEl(target: EventTarget | null): boolean {
+function isGestureBlockedEl(target: EventTarget | null): boolean {
   if (!target || !(target instanceof HTMLElement)) return false
   const tag = target.tagName
-  if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  return target.closest('button, input, textarea, select, a') !== null
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  return target.closest('input, textarea, select, a') !== null
 }
 
 export function useSwipeNavigation(
@@ -25,6 +25,7 @@ export function useSwipeNavigation(
   let startX = 0
   let startY = 0
   let elWidth = 0
+  let suppressClick = false
 
   function commit(direction: 'next' | 'prev', offset: number) {
     if (animating.value) return
@@ -50,10 +51,11 @@ export function useSwipeNavigation(
 
   // ── Touch ──
   function handleTouchStart(e: TouchEvent) {
-    if (animating.value || isInteractiveEl(e.target) || e.touches.length !== 1) return
+    if (animating.value || isGestureBlockedEl(e.target) || e.touches.length !== 1) return
     startX = e.touches[0]!.clientX
     startY = e.touches[0]!.clientY
     isDragging = true
+    suppressClick = false
     slideOffset.value = 0
   }
 
@@ -63,6 +65,7 @@ export function useSwipeNavigation(
     const totalDy = Math.abs(e.touches[0]!.clientY - startY)
     if (Math.abs(totalDx) > Math.abs(totalDy) && Math.abs(totalDx) > 10) {
       e.preventDefault()
+      suppressClick = true
     }
     slideOffset.value = totalDx
   }
@@ -82,16 +85,27 @@ export function useSwipeNavigation(
         commit('prev', totalDx)
       }
     } else {
+      suppressClick = false
       slideOffset.value = 0
     }
   }
 
+  // Suppress the click fired after a swipe on interactive elements (option buttons).
+  // Registered in capture phase so it intercepts before the button's own click handler.
+  function handleClickCapture(e: MouseEvent) {
+    if (!suppressClick) return
+    e.preventDefault()
+    e.stopPropagation()
+    suppressClick = false
+  }
+
   // ── Mouse drag ──
   function handleMouseDown(e: MouseEvent) {
-    if (animating.value || isInteractiveEl(e.target)) return
+    if (animating.value || isGestureBlockedEl(e.target)) return
     startX = e.clientX
     startY = e.clientY
     isDragging = true
+    suppressClick = false
     slideOffset.value = 0
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
@@ -99,7 +113,12 @@ export function useSwipeNavigation(
 
   function handleMouseMove(e: MouseEvent) {
     if (!isDragging) return
-    slideOffset.value = e.clientX - startX
+    const totalDx = e.clientX - startX
+    const totalDy = Math.abs(e.clientY - startY)
+    if (Math.abs(totalDx) > Math.abs(totalDy) && Math.abs(totalDx) > 10) {
+      suppressClick = true
+    }
+    slideOffset.value = totalDx
   }
 
   function handleMouseUp(e: MouseEvent) {
@@ -119,6 +138,7 @@ export function useSwipeNavigation(
         commit('prev', totalDx)
       }
     } else {
+      suppressClick = false
       slideOffset.value = 0
     }
   }
@@ -131,6 +151,7 @@ export function useSwipeNavigation(
     el.addEventListener('touchmove', handleTouchMove, { passive: false })
     el.addEventListener('touchend', handleTouchEnd)
     el.addEventListener('mousedown', handleMouseDown)
+    el.addEventListener('click', handleClickCapture, true)
   }
 
   function detach(el: HTMLElement) {
@@ -139,9 +160,11 @@ export function useSwipeNavigation(
     el.removeEventListener('touchmove', handleTouchMove)
     el.removeEventListener('touchend', handleTouchEnd)
     el.removeEventListener('mousedown', handleMouseDown)
+    el.removeEventListener('click', handleClickCapture, true)
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
     isDragging = false
+    suppressClick = false
     slideOffset.value = 0
   }
 
