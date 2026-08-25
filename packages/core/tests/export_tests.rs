@@ -12,6 +12,8 @@ fn make_questions() -> Vec<Question> {
             analysis: "Basic arithmetic".to_string(),
             ai_analysis: None,
             score: None,
+            subject: None,
+            chapter: None,
         },
         Question {
             id: "q2".to_string(),
@@ -22,6 +24,8 @@ fn make_questions() -> Vec<Question> {
             analysis: "".to_string(),
             ai_analysis: None,
             score: None,
+            subject: None,
+            chapter: None,
         },
     ]
 }

@@ -88,3 +88,30 @@ fn test_question_type_labels() {
     assert_eq!(QuestionType::TrueFalse.to_label_cn(), "判断题");
     assert_eq!(QuestionType::FillBlank.to_label_cn(), "填空题");
 }
+
+#[test]
+fn test_parse_questions_with_subject_chapter() {
+    let json = r#"[
+        {"id": "q1", "type": "single_choice", "stem": "What is AI?", "options": ["A", "B", "C", "D"], "answer": "A", "analysis": "", "subject": "计算机", "chapter": "第一章 绪论"},
+        {"id": "q2", "type": "true_false", "stem": "Is Earth round?", "options": ["True", "False"], "answer": "True", "analysis": "", "subject": "地理", "chapter": "第二章 大气"}
+    ]"#;
+    let questions = parse_questions(json).unwrap();
+    assert_eq!(questions[0].subject.as_deref(), Some("计算机"));
+    assert_eq!(questions[0].chapter.as_deref(), Some("第一章 绪论"));
+    assert_eq!(questions[1].subject.as_deref(), Some("地理"));
+    assert_eq!(questions[1].chapter.as_deref(), Some("第二章 大气"));
+
+    let serialized = serde_json::to_string(&questions[0]).unwrap();
+    assert!(serialized.contains("\"subject\":\"计算机\""));
+    assert!(serialized.contains("\"chapter\":\"第一章 绪论\""));
+}
+
+#[test]
+fn test_parse_questions_without_subject_chapter() {
+    let json = r#"[
+        {"id": "q1", "type": "single_choice", "stem": "What is AI?", "options": ["A", "B", "C", "D"], "answer": "A", "analysis": ""}
+    ]"#;
+    let questions = parse_questions(json).unwrap();
+    assert_eq!(questions[0].subject, None);
+    assert_eq!(questions[0].chapter, None);
+}

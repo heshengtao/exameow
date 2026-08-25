@@ -21,6 +21,14 @@ export interface Question {
   analysis: string
   aiAnalysis?: string
   score?: number
+  subject?: string
+  chapter?: string
+}
+
+export interface PracticeFilter {
+  subjects?: string[]
+  chapters?: string[]
+  types?: QuestionType[]
 }
 
 export interface QuestionBank {

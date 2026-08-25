@@ -20,6 +20,8 @@ export interface Question {
   answer: string
   analysis: string
   score?: number
+  subject?: string
+  chapter?: string
 }
 
 export interface ExamParams {
