@@ -18,6 +18,8 @@ export interface ColumnMapping {
   optionsDelimiter: string
   answer: number | null
   analysis: number | null
+  subject: number | null
+  chapter: number | null
 }
 
 export type MissingField = 'stem' | 'answer' | 'options'
@@ -96,7 +98,7 @@ function isCombinedOptionsHeader(n: string): boolean {
 function buildColumnMap(headers: string[]): ColumnMapping {
   const map: ColumnMapping = {
     stem: null, type: null, options: [], combinedOptions: null,
-    optionsDelimiter: '', answer: null, analysis: null,
+    optionsDelimiter: '', answer: null, analysis: null, subject: null, chapter: null,
   }
 
   for (let i = 0; i < headers.length; i++) {
@@ -129,6 +131,20 @@ function buildColumnMap(headers: string[]): ColumnMapping {
       n.includes('解析') || n.includes('分析') || n.includes('analysis') || n.includes('explanation') || n.includes('详解') || n.includes('解释')
     )) {
       map.analysis = i
+      continue
+    }
+
+    if (map.subject === null && (
+      n.includes('学科') || n.includes('科目') || n.includes('课程') || n.includes('subject') || n.includes('course') || n.includes('discipline')
+    )) {
+      map.subject = i
+      continue
+    }
+
+    if (map.chapter === null && (
+      n.includes('章节') || n.includes('chapter') || n.includes('unit') || n.includes('模块')
+    )) {
+      map.chapter = i
       continue
     }
 
@@ -170,6 +186,8 @@ function buildXlsxColumnMap(): ColumnMapping {
     optionsDelimiter: '',
     answer: 10,
     analysis: 11,
+    subject: 12,
+    chapter: 13,
   }
 }
 
@@ -376,6 +394,8 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
       options,
       answer,
       analysis,
+      subject: mapping.subject !== null ? (row[mapping.subject] ?? '').trim() || undefined : undefined,
+      chapter: mapping.chapter !== null ? (row[mapping.chapter] ?? '').trim() || undefined : undefined,
     })
   }
 

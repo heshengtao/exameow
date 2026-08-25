@@ -81,6 +81,8 @@ function handleApply() {
     optionsDelimiter: mode.value === 'combined' ? delimiter.value : '',
     answer: answer.value,
     analysis: analysisCol.value,
+    subject: null,
+    chapter: null,
   })
 }
 
