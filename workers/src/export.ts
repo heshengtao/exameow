@@ -73,7 +73,7 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
         return `<c r="${colLetter(c.col)}${rowNum}" t="s"><v>${si}</v></c>`
       })
       .join('')
-    sheetRows += `<row r="${rowNum}" spans="1:14">${cellsXml}</row>`
+    sheetRows += `<row r="${rowNum}" spans="1:15">${cellsXml}</row>`
   }
 
   const headers = [
@@ -85,8 +85,9 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
     })),
     { col: 10, value: '正确答案\n（必填）' },
     { col: 11, value: '解析\n（勿删）' },
-    { col: 12, value: '章节\n（勿删）' },
-    { col: 13, value: '难度' },
+    { col: 12, value: '学科' },
+    { col: 13, value: '章节\n（勿删）' },
+    { col: 14, value: '难度' },
   ]
   addRow(headers)
 
@@ -129,8 +130,9 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
 
     cells.push({ col: 10, value: finalAnswer })
     cells.push({ col: 11, value: analysis || '' })
-    cells.push({ col: 12, value: '' })
-    cells.push({ col: 13, value: '' })
+    cells.push({ col: 12, value: q.subject || '' })
+    cells.push({ col: 13, value: q.chapter || '' })
+    cells.push({ col: 14, value: '' })
 
     addRow(cells)
   }
@@ -193,7 +195,7 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
 }
 
 export function generateCsvContent(questions: import('./types').Question[]): string {
-  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '章节', '难度']
+  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
 
   const rows = questions.map((q) => [
     q.stem,
@@ -208,7 +210,8 @@ export function generateCsvContent(questions: import('./types').Question[]): str
     q.options[7] || '',
     q.answer,
     q.analysis,
-    '',
+    q.subject || '',
+    q.chapter || '',
     '',
   ])
 

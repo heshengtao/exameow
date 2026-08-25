@@ -130,6 +130,7 @@ async function handleDownloadTemplate() {
           '选项 H': '',
           '正确答案': 'A',
           '解析': 'Exameow 兼容所有 OpenAI 格式的 API，支持对接任何 OpenAI 兼容的服务商。',
+          '学科': '',
           '章节': '',
           '难度': '',
         }
@@ -146,6 +147,7 @@ async function handleDownloadTemplate() {
           'Option H': '',
           'Answer': 'A',
           'Analysis': 'Exameow works with any OpenAI-compatible API provider.',
+          'Subject': '',
           'Chapter': '',
           'Difficulty': '',
         }

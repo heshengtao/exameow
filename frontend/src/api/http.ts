@@ -178,7 +178,7 @@ export function generateCsvContent(questions: Question[]): string {
     true_false: '判断题', fill_blank: '填空题',
     short_answer: '简答题',
   }
-  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '章节', '难度']
+  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
   const rows = questions.map((q) => [
     q.stem,
     typeLabels[q.type] || q.type,
@@ -192,7 +192,8 @@ export function generateCsvContent(questions: Question[]): string {
     q.options[7] || '',
     q.answer,
     q.analysis,
-    '',
+    q.subject || '',
+    q.chapter || '',
     '',
   ])
   const csvRows = [headers, ...rows].map((r) =>
