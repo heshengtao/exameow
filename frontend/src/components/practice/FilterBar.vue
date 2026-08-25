@@ -95,9 +95,11 @@ function toggleType(value: QuestionType) {
 }
 
 function toggleSubject(value: string) {
+  const subjects = toggle(props.modelValue.subjects, value) as string[] | undefined
   emit('update:modelValue', {
     ...props.modelValue,
-    subjects: toggle(props.modelValue.subjects, value) as string[] | undefined,
+    subjects,
+    chapters: undefined,
   })
 }
 

@@ -8,8 +8,9 @@ import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
 import type { JudgeResult, ExplainResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
-import type { PracticeMode, MockExamConfig, WrongSort } from '@exameow/shared'
+import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter } from '@exameow/shared'
 import BankListCard from '@/components/practice/BankListCard.vue'
+import FilterBar from '@/components/practice/FilterBar.vue'
 import ImportDialog from '@/components/practice/ImportDialog.vue'
 import ModeSelector from '@/components/practice/ModeSelector.vue'
 import MockExamConfigComponent from '@/components/practice/MockExamConfig.vue'
@@ -36,10 +37,11 @@ const practiceStore = usePracticeStore()
 const wrongStore = useWrongQuestionsStore()
 const configStore = useConfigStore()
 
-type ViewState = 'browse' | 'select-mode' | 'mock-config' | 'practice' | 'result'
+type ViewState = 'browse' | 'filter' | 'select-mode' | 'mock-config' | 'practice' | 'result'
 
 const viewState = ref<ViewState>('browse')
 const selectedBankId = ref<string | null>(null)
+const practiceFilter = ref<PracticeFilter>({})
 const selectedMode = ref<PracticeMode | null>(null)
 const mockConfig = ref<MockExamConfig>({ typeCounts: {} })
 const showImportDialog = ref(false)
@@ -235,12 +237,25 @@ const sortedBanks = computed(() => {
   return [...practiceStore.banks].sort((a, b) => b.createdAt - a.createdAt)
 })
 
-const availableTypes = computed(() => {
+const filteredQuestions = computed(() => {
   if (!selectedBankId.value) return []
   const bank = practiceStore.getBank(selectedBankId.value)
   if (!bank) return []
+  const subjects = practiceFilter.value.subjects ?? []
+  const chapters = practiceFilter.value.chapters ?? []
+  const types = practiceFilter.value.types ?? []
+  if (subjects.length === 0 && chapters.length === 0 && types.length === 0) return bank.questions
+  return bank.questions.filter(q => {
+    if (types.length && !types.includes(q.type)) return false
+    if (subjects.length && q.subject && !subjects.includes(q.subject)) return false
+    if (chapters.length && (!q.chapter || !chapters.includes(q.chapter))) return false
+    return true
+  })
+})
+
+const availableTypes = computed(() => {
   const counts: Record<string, number> = {}
-  for (const q of bank.questions) {
+  for (const q of filteredQuestions.value) {
     counts[q.type] = (counts[q.type] || 0) + 1
   }
   const typeKeys: Record<string, string> = {
@@ -263,6 +278,11 @@ const canStartMockExam = computed(() => {
 
 function selectBank(id: string) {
   selectedBankId.value = id
+  practiceFilter.value = {}
+  viewState.value = 'filter'
+}
+
+function handleFilterConfirm() {
   viewState.value = 'select-mode'
 }
 
@@ -285,7 +305,7 @@ function generateMockExam() {
 
 function startPractice(mode: PracticeMode) {
   if (!selectedBankId.value) return
-  practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? mockConfig.value : undefined)
+  practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? mockConfig.value : undefined, undefined, practiceFilter.value)
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -548,6 +568,7 @@ function handleHome() {
   selectedBankId.value = null
   selectedMode.value = null
   mockConfig.value = { typeCounts: {} }
+  practiceFilter.value = {}
   showWrongSortDialog.value = false
   viewState.value = 'browse'
 }
@@ -569,6 +590,12 @@ function confirmDelete() {
 }
 
 function handleBack() {
+  if (viewState.value === 'filter') {
+    viewState.value = 'browse'
+    selectedBankId.value = null
+    practiceFilter.value = {}
+    return
+  }
   if (viewState.value === 'select-mode') {
     viewState.value = 'browse'
     selectedMode.value = null
@@ -690,6 +717,15 @@ function handleBack() {
         @delete="handleDelete"
         @import="showImportDialog = true"
         @manage-wrong="handleManageWrong"
+      />
+    </template>
+
+    <!-- Filter View -->
+    <template v-if="isView('filter') && selectedBankId">
+      <FilterBar
+        :bank="practiceStore.getBank(selectedBankId)!"
+        v-model="practiceFilter"
+        @confirm="handleFilterConfirm"
       />
     </template>
 
