@@ -59,24 +59,24 @@ function extractBatchFileLabel(text: string): string {
 if (useDirectAI && batch.text) {
   const { callCustomAI } = await import('@/utils/aiClient')
   const questions_ = await callCustomAI(batch.text, batch, config, signal)
-  questions.value.push(...tagQuestions(questions_, batch.text))
+  questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value))
 } else {
   const result = await api.generateExam(fileRef, batch, config, signal)
-  questions.value.push(...tagQuestions(result.questions, batch.text))
+  questions.value.push(...tagQuestions(result.questions, batch.text, sourceFileName.value, subject.value))
 }
 ```
 
-模块级辅助（subject 作为参数传入，避免在模块级调用 store）：
+模块级辅助（subject / sourceFileName 作为参数传入，避免在模块级调用 store）：
 
 ```ts
-function tagQuestions(qs: Question[], batchText: string, subject: string): Question[] {
-  const chapter = extractBatchFileLabel(batchText) || undefined
+function tagQuestions(qs: Question[], batchText: string, sourceFileName: string, subject: string): Question[] {
+  const chapter = extractBatchFileLabel(batchText) || sourceFileName.trim() || undefined
   const subj = subject.trim() || undefined
   return qs.map(q => ({ ...q, subject: subj, chapter }))
 }
 ```
 
-调用处传 `subject.value`。
+说明：`extractBatchFileLabel(batchText)` 多文件时返回 `## 文件名`；单文件/无标记时返回空串，回退到 `sourceFileName`（单文件时它就是该文件名）。
 
 4. `reset()` 清空 subject（第 580-584 行）。
 
