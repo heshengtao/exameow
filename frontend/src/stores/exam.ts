@@ -16,6 +16,18 @@ const ALL_TYPES: QuestionType[] = [
   'short_answer' as QuestionType,
 ]
 
+function extractBatchFileLabel(text: string): string {
+  const firstLine = text.trimStart().split('\n')[0] ?? ''
+  if (firstLine.startsWith('## ')) return firstLine.slice(3).trim()
+  return ''
+}
+
+function tagQuestions(qs: Question[], batchText: string, sourceFileName: string, subject: string): Question[] {
+  const chapter = extractBatchFileLabel(batchText) || sourceFileName.trim() || undefined
+  const subj = subject.trim() || undefined
+  return qs.map(q => ({ ...q, subject: subj, chapter }))
+}
+
 export const useExamStore = defineStore('exam', () => {
   const questionTypes = ref<QuestionType[]>([])
   const typeCounts = reactive<Record<string, number>>(
@@ -24,6 +36,7 @@ export const useExamStore = defineStore('exam', () => {
   const difficulty = ref<Difficulty>('medium' as Difficulty)
   const language = ref('zh-CN')
   const topicFilter = ref('')
+  const subject = ref('')
   const questions = ref<Question[]>(loadCachedQuestions())
   const sourceFileName = ref(loadCachedSourceFile())
   const generating = ref(false)
@@ -545,10 +558,10 @@ export const useExamStore = defineStore('exam', () => {
         if (useDirectAI && batch.text) {
           const { callCustomAI } = await import('@/utils/aiClient')
           const questions_ = await callCustomAI(batch.text, batch, config, signal)
-          questions.value.push(...questions_)
+          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value))
         } else {
           const result = await api.generateExam(fileRef, batch, config, signal)
-          questions.value.push(...result.questions)
+          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value))
         }
         console.log(`[Exameow] Batch ${batch.batch_index} done: ${questions.value.length} questions total`)
       }
@@ -580,12 +593,13 @@ export const useExamStore = defineStore('exam', () => {
   function reset() {
     questions.value = []
     sourceFileName.value = ''
+    subject.value = ''
     try { localStorage.removeItem('exameow-questions'); localStorage.removeItem('exameow-sourcefile') } catch {}
   }
 
   return {
     questionTypes, typeCounts, totalCount,
-    difficulty, language, topicFilter, questions, generating, generated,
+    difficulty, language, topicFilter, subject, questions, generating, generated,
     sourceFileName, error, progress, getParams, generate, cancelGeneration, reset,
   }
 })
