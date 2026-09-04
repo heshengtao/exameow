@@ -1,12 +1,24 @@
-import type { Question, PracticeFilter } from '@exameow/shared'
+import type { Difficulty, Question, PracticeFilter } from '@exameow/shared'
 
-export function matchPracticeFilter(q: Question, filter?: PracticeFilter): boolean {
+export const UNMARKED_DIFFICULTY = '__unmarked__' as const
+
+export type PracticeDifficulty = Difficulty | typeof UNMARKED_DIFFICULTY
+
+export type PracticeFilterComparison = Omit<PracticeFilter, 'difficulties'> & {
+  difficulties?: PracticeDifficulty[]
+}
+
+export function matchPracticeFilter(q: Question, filter?: PracticeFilterComparison): boolean {
   const subjects = filter?.subjects?.filter(Boolean) ?? []
   const chapters = filter?.chapters?.filter(Boolean) ?? []
-  const types = filter?.types?.filter(Boolean) ?? []
-  if (subjects.length === 0 && chapters.length === 0 && types.length === 0) return true
-  if (types.length && !types.includes(q.type)) return false
+  const difficulties = filter?.difficulties?.filter(Boolean) ?? []
+  const types = filter?.types?.filter(Boolean)
+  if (types && !types.includes(q.type)) return false
   if (subjects.length && q.subject && !subjects.includes(q.subject)) return false
   if (chapters.length && (!q.chapter || !chapters.includes(q.chapter))) return false
+  if (difficulties.length) {
+    const difficulty = q.difficulty ?? UNMARKED_DIFFICULTY
+    if (!difficulties.includes(difficulty)) return false
+  }
   return true
 }
