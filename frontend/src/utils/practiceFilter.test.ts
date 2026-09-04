@@ -19,6 +19,7 @@ assertEqual(matchPracticeFilter({ ...q, difficulty: Difficulty.Easy }, { difficu
 assertEqual(matchPracticeFilter({ ...q, difficulty: Difficulty.Easy }, { difficulties: [Difficulty.Hard] }), false)
 assertEqual(matchPracticeFilter({ ...q, difficulty: undefined }, { difficulties: [Difficulty.Medium] }), false)
 assertEqual(matchPracticeFilter({ ...q, difficulty: undefined }, { difficulties: [UNMARKED_DIFFICULTY] }), true)
+assertEqual(matchPracticeFilter({ ...q, subject: undefined }, { subjects: ['Physics'] }), false)
 assertEqual(
   matchPracticeFilter(
     { ...q, chapter: 'A', difficulty: Difficulty.Hard },
