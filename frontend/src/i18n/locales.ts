@@ -139,6 +139,8 @@ export interface LocaleMessages {
   practiceMockGenerate: string
   practiceMockConfigAdjusted: string
   practiceQuestions: string
+  practiceConfiguredQuestions: string
+  practiceAvailableQuestions: string
   practiceFilterTitle: string
   practiceFilterSubject: string
   practiceFilterChapter: string
@@ -605,6 +607,8 @@ export const zh: LocaleMessages = {
   practiceMockGenerate: '生成试卷',
   practiceMockConfigAdjusted: '筛选条件变化后，部分模拟考试题型数量已调整。',
   practiceQuestions: '{n} 道题',
+  practiceConfiguredQuestions: '已配置题数',
+  practiceAvailableQuestions: '可用题数',
   practiceFilterTitle: '筛选题目',
   practiceFilterSubject: '学科',
   practiceFilterChapter: '章节',
@@ -1071,6 +1075,8 @@ export const zhTW: LocaleMessages = {
   practiceMockGenerate: '生成试卷',
   practiceMockConfigAdjusted: '筛选条件变化后，部分模拟考试题型数量已调整。',
   practiceQuestions: '{n} 道題',
+  practiceConfiguredQuestions: '已設定題數',
+  practiceAvailableQuestions: '可用題數',
   practiceFilterTitle: '篩選題目',
   practiceFilterSubject: '學科',
   practiceFilterChapter: '章節',
@@ -1537,6 +1543,8 @@ export const en: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: 'Some mock exam counts were adjusted after the filters changed.',
   practiceQuestions: '{n} Questions',
+  practiceConfiguredQuestions: 'Configured questions',
+  practiceAvailableQuestions: 'Available questions',
   practiceFilterTitle: 'Filter Questions',
   practiceFilterSubject: 'Subject',
   practiceFilterChapter: 'Chapter',
@@ -2003,6 +2011,8 @@ export const ja: LocaleMessages = {
   practiceMockGenerate: '試験を開始',
   practiceMockConfigAdjusted: '条件の変更により、模擬試験の一部の出題数が調整されました。',
   practiceQuestions: '{n} 問',
+  practiceConfiguredQuestions: '設定済み問題数',
+  practiceAvailableQuestions: '利用可能な問題数',
   practiceFilterTitle: '問題を絞り込む',
   practiceFilterSubject: '科目',
   practiceFilterChapter: '章',
@@ -2469,6 +2479,8 @@ export const ko: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: '필터 변경 후 모의고사 문항 수가 일부 조정되었습니다.',
   practiceQuestions: '{n} 문제',
+  practiceConfiguredQuestions: '설정된 문항 수',
+  practiceAvailableQuestions: '사용 가능한 문항 수',
   practiceFilterTitle: '문제 필터',
   practiceFilterSubject: '과목',
   practiceFilterChapter: '단원',
@@ -2935,6 +2947,8 @@ export const es: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: 'Algunos conteos del examen simulado se ajustaron después de cambiar los filtros.',
   practiceQuestions: '{n} preguntas',
+  practiceConfiguredQuestions: 'Preguntas configuradas',
+  practiceAvailableQuestions: 'Preguntas disponibles',
   practiceFilterTitle: 'Filtrar Preguntas',
   practiceFilterSubject: 'Asignatura',
   practiceFilterChapter: 'Capítulo',
@@ -3401,6 +3415,8 @@ export const fr: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: 'Certains nombres de questions ont été ajustés après la modification des filtres.',
   practiceQuestions: '{n} questions',
+  practiceConfiguredQuestions: 'Questions configurées',
+  practiceAvailableQuestions: 'Questions disponibles',
   practiceFilterTitle: 'Filtrer les Questions',
   practiceFilterSubject: 'Matière',
   practiceFilterChapter: 'Chapitre',
@@ -3867,6 +3883,8 @@ export const de: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: 'Einige Anzahlen wurden nach der Filteränderung angepasst.',
   practiceQuestions: '{n} Fragen',
+  practiceConfiguredQuestions: 'Konfigurierte Fragen',
+  practiceAvailableQuestions: 'Verfügbare Fragen',
   practiceFilterTitle: 'Fragen Filtern',
   practiceFilterSubject: 'Fach',
   practiceFilterChapter: 'Kapitel',
@@ -4333,6 +4351,8 @@ export const ru: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: 'Некоторые количества вопросов были скорректированы после изменения фильтров.',
   practiceQuestions: '{n} вопросов',
+  practiceConfiguredQuestions: 'Настроено вопросов',
+  practiceAvailableQuestions: 'Доступно вопросов',
   practiceFilterTitle: 'Фильтр Вопросов',
   practiceFilterSubject: 'Предмет',
   practiceFilterChapter: 'Глава',
@@ -4799,6 +4819,8 @@ export const ar: LocaleMessages = {
   practiceMockGenerate: 'Generate Exam',
   practiceMockConfigAdjusted: 'تم تعديل بعض أعداد أسئلة الاختبار التجريبي بعد تغيير عوامل التصفية.',
   practiceQuestions: '{n} سؤالاً',
+  practiceConfiguredQuestions: 'الأسئلة المُعدّة',
+  practiceAvailableQuestions: 'الأسئلة المتاحة',
   practiceFilterTitle: 'تصفية الأسئلة',
   practiceFilterSubject: 'المادة',
   practiceFilterChapter: 'الفصل',
