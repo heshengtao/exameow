@@ -180,9 +180,9 @@ export const usePracticeStore = defineStore('practice', () => {
     addBank(bank)
   }
 
-  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[], filter?: PracticeFilter) {
+  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[], filter?: PracticeFilter): boolean {
     const bank = getBank(bankId)
-    if (!bank) return
+    if (!bank) return false
 
     const baseQuestions = customQuestions ?? applyPracticeFilter(bank.questions, filter)
     let questions: Question[]
@@ -199,6 +199,8 @@ export const usePracticeStore = defineStore('practice', () => {
     if (mode === 'random') {
       questions = shuffleOptions(questions)
     }
+
+    if (questions.length === 0) return false
 
     const sessionQuestions = questions.map((q, i) => ({
       question: { ...q, id: `${q.id}-s${i}` },
@@ -217,6 +219,7 @@ export const usePracticeStore = defineStore('practice', () => {
       mockConfig: mode === 'mock' ? mockConfig : undefined,
     }
     saveSession(session.value)
+    return true
   }
 
   const currentSubmitted = computed(() => {

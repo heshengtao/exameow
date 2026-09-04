@@ -269,6 +269,12 @@ const canStartMockExam = computed(() => {
   return Object.values(mockConfig.value.typeCounts).some(c => c > 0)
 })
 
+const canStartSelectedMode = computed(() => {
+  if (!selectedMode.value) return false
+  if (selectedMode.value === 'wrong') return selectedBankId.value !== null && wrongStore.hasWrongQuestions(selectedBankId.value)
+  return filteredQuestions.value.length > 0 && (selectedMode.value !== 'mock' || canStartMockExam.value)
+})
+
 function selectBank(id: string) {
   selectedBankId.value = id
   const bank = practiceStore.getBank(id)
@@ -299,7 +305,8 @@ function startSettingsPractice() {
 
 function startPractice(mode: PracticeMode) {
   if (!selectedBankId.value) return
-  practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? mockConfig.value : undefined, undefined, practiceFilter.value as PracticeFilter)
+  const started = practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? mockConfig.value : undefined, undefined, practiceFilter.value as PracticeFilter)
+  if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -547,7 +554,8 @@ function handleRetry() {
     return
   }
   practiceStore.clearSession()
-  practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, practiceFilter.value as PracticeFilter)
+  const started = practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, practiceFilter.value as PracticeFilter)
+  if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -737,7 +745,7 @@ function handleBack() {
       </div>
       <button
         class="btn-filled w-full mt-4 !h-12 !text-base !font-semibold"
-        :disabled="!selectedMode || filteredQuestions.length === 0 || (selectedMode === 'mock' && !canStartMockExam)"
+        :disabled="!canStartSelectedMode"
         @click="startSettingsPractice"
       >
         <PlayIcon class="w-5 h-5" />
