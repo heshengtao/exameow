@@ -1,8 +1,15 @@
-import assert from 'node:assert/strict'
 import { Difficulty, QuestionType } from './types'
 import { generateExam, normalizeQuestionDifficulty } from './exam'
 import type { Ai } from '@cloudflare/workers-types'
 import type { Question } from './types'
+
+function assertEqual<T>(actual: T, expected: T, message: string): void {
+  if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`)
+}
+
+function assertOk(value: boolean, message: string): void {
+  if (!value) throw new Error(message)
+}
 
 const questions: Question[] = [
   {
@@ -15,7 +22,7 @@ const questions: Question[] = [
 ]
 
 const normalized = normalizeQuestionDifficulty(questions, Difficulty.Hard)
-assert.ok(normalized.every((question) => question.difficulty === Difficulty.Hard))
+assertOk(normalized.every((question) => question.difficulty === Difficulty.Hard), 'normalized questions should have the requested difficulty')
 
 const aiResponse = [
   {
@@ -37,5 +44,5 @@ const generated = await generateExam(mockAi, 'Boundary test content', {
   language: 'en-US',
 }, 'mock-model')
 
-assert.equal(generated.length, 2)
-assert.ok(generated.every((question) => question.difficulty === Difficulty.Hard))
+assertEqual(generated.length, 2, 'generated question count')
+assertOk(generated.every((question) => question.difficulty === Difficulty.Hard), 'generated questions should have the requested difficulty')
