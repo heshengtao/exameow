@@ -71,6 +71,7 @@ function updateInput(qtype: string, event: Event) {
         <button
           type="button"
           class="ripple flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--md-primary))] active:scale-[0.99]"
+          :aria-pressed="Boolean(props.config.typeCounts[item.type])"
           @click="toggleType(item.type)"
         >
           <span
@@ -97,12 +98,12 @@ function updateInput(qtype: string, event: Event) {
             min="1"
             :max="item.count"
             :disabled="!props.config.typeCounts[item.type]"
-            :aria-label="`${item.label} ${i18n.t('practiceQuestions')}`"
+            :aria-label="`${item.label} ${i18n.t('practiceQuestions', { n: props.config.typeCounts[item.type] ?? 0 })}`"
             class="input-outlined !w-16 !px-2 !py-2 text-center text-sm disabled:cursor-not-allowed disabled:opacity-45"
             @input="updateInput(item.type, $event)"
           />
           <span class="hidden text-body-sm text-[rgb(var(--md-on-surface-variant))] sm:inline">
-            {{ i18n.t('practiceQuestions') }}
+            {{ i18n.t('practiceQuestions', { n: props.config.typeCounts[item.type] ?? 0 }) }}
           </span>
         </div>
       </div>
