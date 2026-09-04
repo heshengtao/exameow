@@ -21,3 +21,9 @@ for (const [label, expected] of labels) {
   if (!analysis) throw new Error('expected CSV analysis')
   assertEqual(parseWithMapping(analysis, analysis.mapping, 'test')[0]?.difficulty, expected, `difficulty ${label}`)
 }
+
+for (const header of ['難易度', '難易度']) {
+  const analysis = analyzeCSV(`题干,答案,${header}\nQ,A,hard`)
+  if (!analysis) throw new Error(`expected CSV analysis for ${header}`)
+  assertEqual(parseWithMapping(analysis, analysis.mapping, 'test')[0]?.difficulty, Difficulty.Hard, `header ${header}`)
+}

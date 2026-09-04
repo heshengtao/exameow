@@ -59,7 +59,7 @@ function looksLikeHeader(cell: string): boolean {
     '题型', '类型', 'type',
     '选项', 'option', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
     '答案', '正确答案', 'answer',
-    '解析', '分析', 'analysis', '章节', '难度', '難度', '难易度', 'difficulty',
+    '解析', '分析', 'analysis', '章节', '难度', '難度', '难易度', '難易度', 'difficulty',
     'dificultad', 'difficulté', 'schwierigkeit', 'сложность', 'مستوى الصعوبة', '난이도',
     'questiontype', 'singlechoice', 'multichoice', 'truefalse',
     '单选题', '多选题', '判断题', '填空题', '简答题', '判断',
@@ -163,7 +163,7 @@ function buildColumnMap(headers: string[]): ColumnMapping {
     }
 
     if (map.difficulty === null && (
-      n.includes('难度') || n.includes('難度') || n.includes('难易度') || n.includes('difficulty')
+      n.includes('难度') || n.includes('難度') || n.includes('難易度') || n.includes('难易度') || n.includes('difficulty')
       || n.includes('dificultad') || n.includes('difficulté') || n.includes('schwierigkeit')
       || n.includes('сложность') || n.includes('مستوىالصعوبة') || n.includes('난이도')
     )) {
