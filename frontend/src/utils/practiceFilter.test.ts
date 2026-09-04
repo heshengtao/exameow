@@ -1,6 +1,6 @@
 import { Difficulty, QuestionType } from '@exameow/shared'
-import type { PracticeSession, Question } from '@exameow/shared'
-import { matchPracticeFilter, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
+import type { MockExamConfig, PracticeSession, Question } from '@exameow/shared'
+import { matchPracticeFilter, reconcileMockTypeCounts, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
 
 function assertEqual(actual: boolean, expected: boolean) {
   if (actual !== expected) throw new Error(`Expected ${expected}, received ${actual}`)
@@ -50,4 +50,26 @@ const persistedFilteredSession: PracticeSession = {
 
 if (persistedFilteredSession.filter?.difficulties?.[0] !== Difficulty.Hard) {
   throw new Error('Expected PracticeSession to preserve its filter')
+}
+
+const availableTypes = [
+  { type: QuestionType.SingleChoice, label: 'Single choice', count: 2 },
+]
+const selectedAfterFilterChange: MockExamConfig = {
+  typeCounts: {
+    [QuestionType.SingleChoice]: 5,
+    [QuestionType.ShortAnswer]: 2,
+  },
+}
+const reconciled = reconcileMockTypeCounts(selectedAfterFilterChange, availableTypes)
+if (JSON.stringify(reconciled.typeCounts) !== JSON.stringify({ [QuestionType.SingleChoice]: 2 })) {
+  throw new Error('Expected filter changes to prune stale mock types and clamp available counts')
+}
+
+const staleOnly = reconcileMockTypeCounts(
+  { typeCounts: { [QuestionType.ShortAnswer]: 1 } },
+  availableTypes,
+)
+if (Object.keys(staleOnly.typeCounts).length !== 0) {
+  throw new Error('Expected stale-only mock configuration to become empty')
 }

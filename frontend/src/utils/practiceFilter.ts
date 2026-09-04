@@ -1,4 +1,4 @@
-import type { Difficulty, Question, PracticeFilter } from '@exameow/shared'
+import type { Difficulty, MockExamConfig, Question, PracticeFilter, QuestionType } from '@exameow/shared'
 
 export const UNMARKED_DIFFICULTY = '__unmarked__' as const
 
@@ -6,6 +6,23 @@ export type PracticeDifficulty = Difficulty | typeof UNMARKED_DIFFICULTY
 
 export type PracticeFilterComparison = Omit<PracticeFilter, 'difficulties'> & {
   difficulties?: PracticeDifficulty[]
+}
+
+export type AvailablePracticeType = { type: QuestionType; label: string; count: number }
+
+export function reconcileMockTypeCounts(
+  config: MockExamConfig,
+  availableTypes: AvailablePracticeType[],
+): MockExamConfig {
+  const availableCounts = new Map(availableTypes.map(({ type, count }) => [type, count]))
+  const typeCounts: Record<string, number> = {}
+  for (const [type, count] of Object.entries(config.typeCounts)) {
+    const availableCount = availableCounts.get(type as QuestionType)
+    if (availableCount && count > 0) {
+      typeCounts[type] = Math.min(count, availableCount)
+    }
+  }
+  return { ...config, typeCounts }
 }
 
 export function matchPracticeFilter(q: Question, filter?: PracticeFilterComparison): boolean {

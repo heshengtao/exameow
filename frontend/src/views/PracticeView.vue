@@ -6,7 +6,7 @@ import { useWrongQuestionsStore } from '@/stores/wrongQuestions'
 import { useConfigStore } from '@/stores/config'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
-import { matchPracticeFilter } from '@/utils/practiceFilter'
+import { matchPracticeFilter, reconcileMockTypeCounts } from '@/utils/practiceFilter'
 import type { JudgeResult, ExplainResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter, QuestionType } from '@exameow/shared'
@@ -268,8 +268,17 @@ const availableTypes = computed(() => {
   }))
 })
 
+watch(availableTypes, (types) => {
+  const reconciled = reconcileMockTypeCounts(mockConfig.value, types)
+  if (JSON.stringify(reconciled.typeCounts) !== JSON.stringify(mockConfig.value.typeCounts)) {
+    mockConfig.value = reconciled
+  }
+})
+
+const effectiveMockConfig = computed(() => reconcileMockTypeCounts(mockConfig.value, availableTypes.value))
+
 const canStartMockExam = computed(() => {
-  return Object.values(mockConfig.value.typeCounts).some(c => c > 0)
+  return Object.values(effectiveMockConfig.value.typeCounts).some(c => c > 0)
 })
 
 const canStartSelectedMode = computed(() => {
@@ -308,7 +317,7 @@ function startSettingsPractice() {
 
 function startPractice(mode: PracticeMode) {
   if (!selectedBankId.value) return
-  const started = practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? mockConfig.value : undefined, undefined, practiceFilter.value as PracticeFilter)
+  const started = practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? effectiveMockConfig.value : undefined, undefined, practiceFilter.value as PracticeFilter)
   if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
