@@ -34,3 +34,4 @@ assertEqual(
   false,
 )
 assertEqual(matchPracticeFilter(q, { types: [] }), false)
+assertEqual(matchPracticeFilter(q, { difficulties: [] }), false)

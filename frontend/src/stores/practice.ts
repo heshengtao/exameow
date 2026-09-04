@@ -89,8 +89,11 @@ function applyPracticeFilter(questions: Question[], filter?: PracticeFilter): Qu
   if (!filter) return questions
   const subjects = filter.subjects?.filter(Boolean)
   const chapters = filter.chapters?.filter(Boolean)
+  const difficulties = filter.difficulties?.filter(Boolean)
   const types = filter.types?.filter(Boolean)
-  if (!subjects?.length && !chapters?.length && !types?.length) return questions
+  if ((filter.difficulties !== undefined && difficulties?.length === 0)
+    || (filter.types !== undefined && types?.length === 0)) return []
+  if (!subjects?.length && !chapters?.length && !difficulties?.length && !types?.length) return questions
   return questions.filter(q => matchPracticeFilter(q, filter))
 }
 

@@ -10,14 +10,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:config', v: MockExamConfig): void
-  (e: 'generate'): void
 }>()
 
 const i18n = useI18nStore()
-
-const canGenerate = computed(() => {
-  return Object.values(props.config.typeCounts).some(c => c > 0)
-})
 
 function setCount(qtype: string, count: number) {
   const newConfig = { ...props.config, typeCounts: { ...props.config.typeCounts } }
@@ -73,8 +68,5 @@ function toggleType(qtype: string) {
       </Transition>
     </div>
 
-    <button class="btn-filled w-full" :disabled="!canGenerate" @click="emit('generate')">
-      {{ i18n.t('practiceMockGenerate') }}
-    </button>
   </div>
 </template>

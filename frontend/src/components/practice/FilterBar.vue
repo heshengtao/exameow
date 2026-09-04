@@ -1,180 +1,113 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
-import type { QuestionBank, QuestionType, PracticeFilter } from '@exameow/shared'
-import { ArrowRightIcon } from '@heroicons/vue/24/outline'
-import { matchPracticeFilter } from '@/utils/practiceFilter'
+import type { QuestionBank, QuestionType } from '@exameow/shared'
+import type { PracticeFilterComparison } from '@/utils/practiceFilter'
+import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
+import { matchPracticeFilter, UNMARKED_DIFFICULTY, type PracticeDifficulty } from '@/utils/practiceFilter'
 
 const props = defineProps<{
   bank: QuestionBank
-  modelValue: PracticeFilter
+  modelValue: PracticeFilterComparison
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', v: PracticeFilter): void
-  (e: 'confirm'): void
+  (e: 'update:modelValue', v: PracticeFilterComparison): void
 }>()
 
 const i18n = useI18nStore()
 
+const typeKeys: Record<string, string> = {
+  single_choice: 'typeSingle',
+  multi_choice: 'typeMulti',
+  true_false: 'typeTrueFalse',
+  fill_blank: 'typeFillBlank',
+  short_answer: 'typeShortAnswer',
+}
+
 const typeOptions = computed(() => {
   const counts: Record<string, number> = {}
-  for (const q of props.bank.questions) {
-    counts[q.type] = (counts[q.type] || 0) + 1
-  }
-  const typeKeys: Record<string, string> = {
-    single_choice: 'typeSingle',
-    multi_choice: 'typeMulti',
-    true_false: 'typeTrueFalse',
-    fill_blank: 'typeFillBlank',
-    short_answer: 'typeShortAnswer',
-  }
+  for (const q of props.bank.questions) counts[q.type] = (counts[q.type] || 0) + 1
   return Object.entries(counts).map(([type, count]) => ({
-    type: type as QuestionType,
+    value: type as QuestionType,
     label: i18n.t(typeKeys[type] as any),
-    count,
+    hint: String(count),
   }))
 })
 
-const subjectOptions = computed(() => {
-  const set = new Set<string>()
-  for (const q of props.bank.questions) {
-    if (q.subject) set.add(q.subject)
-  }
-  return [...set]
-})
+const subjectOptions = computed(() => [...new Set(props.bank.questions.flatMap(q => q.subject ? [q.subject] : []))]
+  .map(value => ({ value, label: value })))
 
 const chapterOptions = computed(() => {
-  const set = new Set<string>()
-  const selSubjects = props.modelValue.subjects ?? []
+  const subjects = props.modelValue.subjects ?? []
+  const chapters = new Set<string>()
   for (const q of props.bank.questions) {
     if (!q.chapter) continue
-    if (selSubjects.length === 0) {
-      set.add(q.chapter)
-    } else if (!q.subject) {
-      set.add(q.chapter)
-    } else if (selSubjects.includes(q.subject)) {
-      set.add(q.chapter)
-    }
+    if (subjects.length === 0 || !q.subject || subjects.includes(q.subject)) chapters.add(q.chapter)
   }
-  return [...set]
+  return [...chapters].map(value => ({ value, label: value }))
 })
 
-const subjectVisible = computed(() => subjectOptions.value.length > 0)
-const chapterVisible = computed(() => chapterOptions.value.length > 0)
+const difficultyOptions = computed(() => [
+  { value: 'easy' as PracticeDifficulty, label: i18n.t('diffEasy') },
+  { value: 'medium' as PracticeDifficulty, label: i18n.t('diffMedium') },
+  { value: 'hard' as PracticeDifficulty, label: i18n.t('diffHard') },
+  { value: UNMARKED_DIFFICULTY, label: i18n.t('practiceFilterUnmarked') },
+])
 
-const matchedCount = computed(() => {
-  const subjects = props.modelValue.subjects ?? []
-  const chapters = props.modelValue.chapters ?? []
-  const types = props.modelValue.types ?? []
-  if (subjects.length === 0 && chapters.length === 0 && types.length === 0) {
-    return props.bank.questions.length
-  }
-  return props.bank.questions.filter(q => matchPracticeFilter(q, props.modelValue)).length
-})
-
-const canConfirm = computed(() => matchedCount.value > 0)
-
-function toggle(list: string[] | QuestionType[] | undefined, value: string | QuestionType): string[] | QuestionType[] | undefined {
-  const arr = list ? [...list] : []
-  const idx = arr.indexOf(value as any)
-  if (idx >= 0) arr.splice(idx, 1)
-  else arr.push(value as any)
-  return arr.length > 0 ? arr : undefined
-}
-
-function toggleType(value: QuestionType) {
-  emit('update:modelValue', {
-    ...props.modelValue,
-    types: toggle(props.modelValue.types, value) as QuestionType[] | undefined,
-  })
-}
-
-function toggleSubject(value: string) {
-  const subjects = toggle(props.modelValue.subjects, value) as string[] | undefined
-  emit('update:modelValue', {
-    ...props.modelValue,
-    subjects,
-    chapters: undefined,
-  })
-}
-
-function toggleChapter(value: string) {
-  emit('update:modelValue', {
-    ...props.modelValue,
-    chapters: toggle(props.modelValue.chapters, value) as string[] | undefined,
-  })
-}
-
-const selectedTypes = computed(() => props.modelValue.types ?? [])
 const selectedSubjects = computed(() => props.modelValue.subjects ?? [])
 const selectedChapters = computed(() => props.modelValue.chapters ?? [])
+const selectedDifficulties = computed(() => (props.modelValue.difficulties ?? []) as PracticeDifficulty[])
+const selectedTypes = computed(() => props.modelValue.types ?? [])
+
+const matchedCount = computed(() => props.bank.questions.filter(q => matchPracticeFilter(q, {
+  ...props.modelValue,
+  difficulties: selectedDifficulties.value,
+})).length)
+
+function update(key: keyof PracticeFilterComparison, value: any[]) {
+  emit('update:modelValue', { ...props.modelValue, [key]: value })
+}
+
+watch(chapterOptions, (options) => {
+  const valid = new Set(options.map(o => o.value))
+  const chapters = selectedChapters.value.filter(chapter => valid.has(chapter))
+  if (chapters.length !== selectedChapters.value.length) update('chapters', chapters)
+})
 </script>
 
 <template>
-  <div class="space-y-5">
+  <section class="card-outlined p-4 sm:p-5 space-y-4">
     <div>
-      <h3 class="text-title-md font-bold tracking-tight mb-1" :style="{ color: 'rgb(var(--md-on-surface))' }">
+      <h2 class="text-title-md font-bold tracking-tight" :style="{ color: 'rgb(var(--md-on-surface))' }">
         {{ i18n.t('practiceFilterTitle') }}
-      </h3>
-      <p class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-        {{ props.bank.name }} · {{ i18n.t('practiceQuestionUnit', { n: props.bank.questions.length }) }}
+      </h2>
+      <p class="text-body-sm mt-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+        {{ i18n.t('practiceSettingsSummary', { n: matchedCount }) }}
       </p>
     </div>
 
-    <div v-if="typeOptions.length">
-      <div class="text-body-sm mb-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterTypes') }}</div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="opt in typeOptions"
-          :key="opt.type"
-          class="chip-filter"
-          :class="{ 'chip-filter-active': selectedTypes.includes(opt.type) }"
-          @click="toggleType(opt.type)"
-        >
-          {{ opt.label }} ({{ opt.count }})
-        </button>
-      </div>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label v-if="subjectOptions.length" class="space-y-1.5">
+        <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterSubject') }}</span>
+        <BaseMultiSelect :model-value="selectedSubjects" :options="subjectOptions" :placeholder="i18n.t('practiceFilterAll')" @update:model-value="update('subjects', $event)" />
+      </label>
+      <label v-if="chapterOptions.length" class="space-y-1.5">
+        <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterChapter') }}</span>
+        <BaseMultiSelect :model-value="selectedChapters" :options="chapterOptions" :placeholder="i18n.t('practiceFilterAll')" @update:model-value="update('chapters', $event)" />
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterDifficulty') }}</span>
+        <BaseMultiSelect :model-value="selectedDifficulties" :options="difficultyOptions" :placeholder="i18n.t('practiceFilterAll')" @update:model-value="update('difficulties', $event)" />
+      </label>
+      <label v-if="typeOptions.length" class="space-y-1.5">
+        <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterTypes') }}</span>
+        <BaseMultiSelect :model-value="selectedTypes" :options="typeOptions" :placeholder="i18n.t('practiceFilterAll')" @update:model-value="update('types', $event)" />
+      </label>
     </div>
 
-    <div v-if="subjectVisible">
-      <div class="text-body-sm mb-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterSubject') }}</div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="s in subjectOptions"
-          :key="s"
-          class="chip-filter"
-          :class="{ 'chip-filter-active': selectedSubjects.includes(s) }"
-          @click="toggleSubject(s)"
-        >
-          {{ s }}
-        </button>
-      </div>
+    <div class="text-body-sm" :style="{ color: matchedCount ? 'rgb(var(--md-primary))' : 'rgb(var(--md-error))' }">
+      {{ matchedCount ? i18n.t('practiceFilterCount', { n: matchedCount }) : i18n.t('practiceFilterEmpty') }}
     </div>
-
-    <div v-if="chapterVisible">
-      <div class="text-body-sm mb-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterChapter') }}</div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="c in chapterOptions"
-          :key="c"
-          class="chip-filter"
-          :class="{ 'chip-filter-active': selectedChapters.includes(c) }"
-          @click="toggleChapter(c)"
-        >
-          {{ c }}
-        </button>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-3 pt-2">
-      <div class="flex-1 text-body-sm" :style="{ color: canConfirm ? 'rgb(var(--md-primary))' : 'rgb(var(--md-error))' }">
-        {{ canConfirm ? i18n.t('practiceFilterCount', { n: matchedCount }) : i18n.t('practiceFilterEmpty') }}
-      </div>
-      <button class="btn-filled" :disabled="!canConfirm" @click="emit('confirm')">
-        <ArrowRightIcon class="w-4 h-4 rtl:rotate-180" />
-        {{ i18n.t('practiceNextBtn') }}
-      </button>
-    </div>
-  </div>
+  </section>
 </template>
