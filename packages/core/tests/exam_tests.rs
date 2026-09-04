@@ -118,3 +118,35 @@ fn test_parse_questions_without_subject_chapter() {
     assert!(!serialized.contains("\"subject\""));
     assert!(!serialized.contains("\"chapter\""));
 }
+
+#[test]
+fn test_question_difficulty_round_trip_and_omission() {
+    let hard_json = r#"{
+        "id": "q1",
+        "type": "single_choice",
+        "stem": "What is AI?",
+        "options": ["A", "B"],
+        "answer": "A",
+        "analysis": "",
+        "difficulty": "hard"
+    }"#;
+    let hard_question: Question = serde_json::from_str(hard_json).unwrap();
+    assert_eq!(hard_question.difficulty, Some(Difficulty::Hard));
+
+    let hard_serialized = serde_json::to_string(&hard_question).unwrap();
+    assert!(hard_serialized.contains("\"difficulty\":\"hard\""));
+
+    let default_json = r#"{
+        "id": "q2",
+        "type": "true_false",
+        "stem": "Is Earth round?",
+        "options": ["True", "False"],
+        "answer": "True",
+        "analysis": ""
+    }"#;
+    let default_question: Question = serde_json::from_str(default_json).unwrap();
+    assert_eq!(default_question.difficulty, None);
+
+    let default_serialized = serde_json::to_string(&default_question).unwrap();
+    assert!(!default_serialized.contains("\"difficulty\""));
+}

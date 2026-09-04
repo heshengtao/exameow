@@ -35,7 +35,7 @@ impl QuestionType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Difficulty {
     Easy,
@@ -72,6 +72,8 @@ pub struct Question {
     pub subject: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chapter: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub difficulty: Option<Difficulty>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

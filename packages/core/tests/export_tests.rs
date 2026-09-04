@@ -14,6 +14,7 @@ fn make_questions() -> Vec<Question> {
             score: None,
             subject: Some("计算机".to_string()),
             chapter: Some("第一章".to_string()),
+            difficulty: None,
         },
         Question {
             id: "q2".to_string(),
@@ -26,6 +27,7 @@ fn make_questions() -> Vec<Question> {
             score: None,
             subject: None,
             chapter: None,
+            difficulty: None,
         },
     ]
 }
