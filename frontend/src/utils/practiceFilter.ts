@@ -10,6 +10,20 @@ export type PracticeFilterComparison = Omit<PracticeFilter, 'difficulties'> & {
 
 export type AvailablePracticeType = { type: QuestionType; label: string; count: number }
 
+export function normalizeMockQuestionCount(count: number): number | null {
+  if (!Number.isFinite(count)) return null
+  const normalized = Math.floor(count)
+  return normalized > 0 ? normalized : null
+}
+
+export function getAvailablePracticeTypes(questions: Question[]): AvailablePracticeType[] {
+  const counts = new Map<QuestionType, number>()
+  for (const question of questions) {
+    counts.set(question.type, (counts.get(question.type) ?? 0) + 1)
+  }
+  return [...counts.entries()].map(([type, count]) => ({ type, label: type, count }))
+}
+
 export function reconcileMockTypeCounts(
   config: MockExamConfig,
   availableTypes: AvailablePracticeType[],
@@ -18,11 +32,16 @@ export function reconcileMockTypeCounts(
   const typeCounts: Record<string, number> = {}
   for (const [type, count] of Object.entries(config.typeCounts)) {
     const availableCount = availableCounts.get(type as QuestionType)
-    if (availableCount && count > 0) {
-      typeCounts[type] = Math.min(count, availableCount)
+    const normalizedCount = normalizeMockQuestionCount(count)
+    if (availableCount && normalizedCount !== null) {
+      typeCounts[type] = Math.min(normalizedCount, availableCount)
     }
   }
   return { ...config, typeCounts }
+}
+
+export function reconcileMockConfig(config: MockExamConfig, questions: Question[]): MockExamConfig {
+  return reconcileMockTypeCounts(config, getAvailablePracticeTypes(questions))
 }
 
 export function matchPracticeFilter(q: Question, filter?: PracticeFilterComparison): boolean {

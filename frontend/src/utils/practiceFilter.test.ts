@@ -1,6 +1,6 @@
 import { Difficulty, QuestionType } from '@exameow/shared'
 import type { MockExamConfig, PracticeSession, Question } from '@exameow/shared'
-import { matchPracticeFilter, reconcileMockTypeCounts, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
+import { matchPracticeFilter, normalizeMockQuestionCount, reconcileMockConfig, reconcileMockTypeCounts, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
 
 function assertEqual(actual: boolean, expected: boolean) {
   if (actual !== expected) throw new Error(`Expected ${expected}, received ${actual}`)
@@ -72,4 +72,29 @@ const staleOnly = reconcileMockTypeCounts(
 )
 if (Object.keys(staleOnly.typeCounts).length !== 0) {
   throw new Error('Expected stale-only mock configuration to become empty')
+}
+
+const invalidCounts: MockExamConfig = {
+  typeCounts: {
+    [QuestionType.SingleChoice]: 2.9,
+    [QuestionType.TrueFalse]: Number.NaN,
+    [QuestionType.FillBlank]: Number.POSITIVE_INFINITY,
+    [QuestionType.ShortAnswer]: 0,
+    [QuestionType.MultiChoice]: -1,
+  },
+}
+if (normalizeMockQuestionCount(2.9) !== 2) {
+  throw new Error('Expected decimal mock counts to be normalized down to a positive integer')
+}
+for (const count of [Number.NaN, Number.POSITIVE_INFINITY, 0, -1]) {
+  if (normalizeMockQuestionCount(count) !== null) {
+    throw new Error(`Expected invalid mock count ${count} to be discarded`)
+  }
+}
+
+const mixedBoundaryConfig = reconcileMockConfig(invalidCounts, [
+  { ...q, id: 'available-single' },
+])
+if (JSON.stringify(mixedBoundaryConfig.typeCounts) !== JSON.stringify({ [QuestionType.SingleChoice]: 1 })) {
+  throw new Error('Expected the mock boundary to retain only normalized, available counts')
 }

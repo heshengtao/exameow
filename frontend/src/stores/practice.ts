@@ -4,7 +4,7 @@ import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Quest
 import { analyzeCSV, analyzeExcel, parseWithMapping } from '@/utils/importParser'
 import type { ColumnMapping, ImportAnalysis } from '@/utils/importParser'
 import { usePracticeHistoryStore } from '@/stores/practiceHistory'
-import { matchPracticeFilter } from '@/utils/practiceFilter'
+import { matchPracticeFilter, reconcileMockConfig } from '@/utils/practiceFilter'
 
 const STORAGE_KEY = 'exameow-banks'
 const SESSION_KEY = 'exameow-practice-session'
@@ -185,11 +185,14 @@ export const usePracticeStore = defineStore('practice', () => {
     if (!bank) return false
 
     const baseQuestions = customQuestions ?? applyPracticeFilter(bank.questions, filter)
+    const normalizedMockConfig = mockConfig
+      ? reconcileMockConfig(mockConfig, baseQuestions)
+      : undefined
     let questions: Question[]
     if (customQuestions) {
       questions = customQuestions
-    } else if (mode === 'mock' && mockConfig) {
-      questions = generateMockQuestions({ ...bank, questions: baseQuestions }, mockConfig)
+    } else if (mode === 'mock' && normalizedMockConfig) {
+      questions = generateMockQuestions({ ...bank, questions: baseQuestions }, normalizedMockConfig)
     } else if (mode === 'sequential') {
       questions = [...baseQuestions]
     } else {
@@ -216,7 +219,7 @@ export const usePracticeStore = defineStore('practice', () => {
       currentIndex: 0,
       startedAt: Date.now(),
       finishedAt: null,
-      mockConfig: mode === 'mock' ? mockConfig : undefined,
+      mockConfig: mode === 'mock' ? normalizedMockConfig : undefined,
       filter: mode === 'wrong' ? undefined : filter,
     }
     saveSession(session.value)

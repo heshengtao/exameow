@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
+import { normalizeMockQuestionCount } from '@/utils/practiceFilter'
 import type { QuestionType, MockExamConfig } from '@exameow/shared'
 
 const props = defineProps<{
@@ -16,10 +17,11 @@ const i18n = useI18nStore()
 
 function setCount(qtype: string, count: number) {
   const newConfig = { ...props.config, typeCounts: { ...props.config.typeCounts } }
-  if (count <= 0) {
+  const normalizedCount = normalizeMockQuestionCount(count)
+  if (normalizedCount === null) {
     delete newConfig.typeCounts[qtype]
   } else {
-    newConfig.typeCounts[qtype] = Math.min(count, props.availableTypes.find(t => t.type === qtype)?.count ?? 99)
+    newConfig.typeCounts[qtype] = Math.min(normalizedCount, props.availableTypes.find(t => t.type === qtype)?.count ?? 99)
   }
   emit('update:config', newConfig)
 }

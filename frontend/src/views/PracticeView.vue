@@ -6,7 +6,7 @@ import { useWrongQuestionsStore } from '@/stores/wrongQuestions'
 import { useConfigStore } from '@/stores/config'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
-import { matchPracticeFilter, reconcileMockTypeCounts } from '@/utils/practiceFilter'
+import { matchPracticeFilter, reconcileMockConfig, reconcileMockTypeCounts } from '@/utils/practiceFilter'
 import type { JudgeResult, ExplainResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter, QuestionType } from '@exameow/shared'
@@ -566,7 +566,12 @@ function handleRetry() {
     return
   }
   practiceStore.clearSession()
-  const started = practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, s.filter)
+  const bank = practiceStore.getBank(s.bankId)
+  const retryPool = bank?.questions.filter(q => matchPracticeFilter(q, s.filter)) ?? []
+  const retryMockConfig = s.mode === 'mock' && s.mockConfig
+    ? reconcileMockConfig(s.mockConfig, retryPool)
+    : s.mockConfig
+  const started = practiceStore.startSession(s.bankId, s.mode, retryMockConfig, undefined, s.filter)
   if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
