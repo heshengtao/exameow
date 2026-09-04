@@ -94,6 +94,10 @@ DOCUMENT CONTENT:
 ${textSection}`
 }
 
+export function normalizeQuestionDifficulty(questions: Question[], difficulty: Difficulty): Question[] {
+  return questions.map((question) => ({ ...question, difficulty }))
+}
+
 function parseQuestions(jsonStr: string): Question[] {
   let cleaned = jsonStr.trim()
   cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '')
@@ -161,5 +165,5 @@ export async function callCustomAI(
   const content = json.choices?.[0]?.message?.content
   if (!content) throw new Error('AI returned empty response')
 
-  return parseQuestions(content)
+  return normalizeQuestionDifficulty(parseQuestions(content), params.difficulty)
 }

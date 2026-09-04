@@ -120,6 +120,19 @@ fn test_parse_questions_without_subject_chapter() {
 }
 
 #[test]
+fn test_normalize_questions_to_requested_difficulty() {
+    let json = r#"[
+        {"id":"q1","type":"single_choice","stem":"One?","options":["A"],"answer":"A","analysis":""},
+        {"id":"q2","type":"true_false","stem":"Two?","options":["True","False"],"answer":"True","analysis":"","difficulty":"easy"}
+    ]"#;
+    let mut questions = parse_questions(json).unwrap();
+
+    normalize_question_difficulty(&mut questions, &Difficulty::Hard);
+
+    assert!(questions.iter().all(|question| question.difficulty == Some(Difficulty::Hard)));
+}
+
+#[test]
 fn test_question_difficulty_round_trip_and_omission() {
     let hard_json = r#"{
         "id": "q1",
