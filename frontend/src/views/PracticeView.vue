@@ -561,11 +561,9 @@ function handleRetry() {
   const s = practiceStore.session
   if (!s) return
   if (s.mode === 'wrong') {
-    practiceStore.clearSession()
     startWrongPractice(wrongSort.value)
     return
   }
-  practiceStore.clearSession()
   const bank = practiceStore.getBank(s.bankId)
   const retryPool = bank?.questions.filter(q => matchPracticeFilter(q, s.filter)) ?? []
   const retryMockConfig = s.mode === 'mock' && s.mockConfig
