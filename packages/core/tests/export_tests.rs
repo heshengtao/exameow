@@ -1,5 +1,5 @@
-use exameow_core::exam::{Question, QuestionType};
-use exameow_core::export::export_csv;
+use exameow_core::exam::{Difficulty, Question, QuestionType};
+use exameow_core::export::{export_csv, export_xlsx_to_writer};
 
 fn make_questions() -> Vec<Question> {
     vec![
@@ -14,7 +14,7 @@ fn make_questions() -> Vec<Question> {
             score: None,
             subject: Some("计算机".to_string()),
             chapter: Some("第一章".to_string()),
-            difficulty: None,
+            difficulty: Some(Difficulty::Hard),
         },
         Question {
             id: "q2".to_string(),
@@ -48,6 +48,7 @@ fn test_export_csv() {
     assert!(content.contains("The sky is blue."));
     assert!(content.contains("判断题"));
     assert!(content.contains("Basic arithmetic"));
+    assert!(content.contains("计算机,第一章,hard"));
 
     std::fs::remove_file(&path).ok();
 }
@@ -82,4 +83,30 @@ fn test_export_csv_includes_subject_chapter() {
     assert!(content.contains("计算机,第一章"));
 
     std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn test_export_xlsx_includes_difficulty_value_in_final_column() {
+    let data = export_xlsx_to_writer(&make_questions()).unwrap();
+    let reader = std::io::Cursor::new(data);
+    let mut archive = zip::ZipArchive::new(reader).unwrap();
+    let mut sheet = String::new();
+    use std::io::Read;
+    archive
+        .by_name("xl/worksheets/sheet1.xml")
+        .unwrap()
+        .read_to_string(&mut sheet)
+        .unwrap();
+
+    assert!(sheet.contains("r=\"O1\""));
+    assert!(sheet.contains("r=\"O2\""));
+
+    let mut shared = String::new();
+    archive
+        .by_name("xl/sharedStrings.xml")
+        .unwrap()
+        .read_to_string(&mut shared)
+        .unwrap();
+    assert!(shared.contains("><t>难度</t>"));
+    assert!(shared.contains("><t>hard</t>"));
 }

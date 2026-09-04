@@ -245,7 +245,7 @@ fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
         writer.add_string_cell(11, if analysis.is_empty() { "" } else { analysis });
         writer.add_string_cell(12, q.subject.clone().unwrap_or_default().as_str());
         writer.add_string_cell(13, q.chapter.clone().unwrap_or_default().as_str());
-        writer.add_string_cell(14, "");
+        writer.add_string_cell(14, &q.difficulty.as_ref().map(ToString::to_string).unwrap_or_default());
 
         writer.finish_row();
     }

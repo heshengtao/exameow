@@ -24,6 +24,7 @@ const answer = ref<number | null>(m.answer)
 const analysisCol = ref<number | null>(m.analysis)
 const subjectCol = ref<number | null>(m.subject)
 const chapterCol = ref<number | null>(m.chapter)
+const difficultyCol = ref<number | null>(m.difficulty)
 const optionCols = ref<number[]>([...m.options])
 const combinedCol = ref<number | null>(m.combinedOptions)
 const delimiter = ref(m.optionsDelimiter)
@@ -85,6 +86,7 @@ function handleApply() {
     analysis: analysisCol.value,
     subject: subjectCol.value,
     chapter: chapterCol.value,
+    difficulty: difficultyCol.value,
   })
 }
 
@@ -152,6 +154,13 @@ const selectStyle = {
           {{ i18n.t('practiceImportColChapter') }}
         </span>
         <BaseSelect v-model="chapterCol" :options="colSelectOptions" :placeholder="i18n.t('practiceMapNone')" />
+      </label>
+
+      <label class="block">
+        <span class="block text-body-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          {{ i18n.t('genDifficulty') }}
+        </span>
+        <BaseSelect v-model="difficultyCol" :options="colSelectOptions" :placeholder="i18n.t('practiceMapNone')" />
       </label>
     </div>
 

@@ -22,6 +22,7 @@ export interface Question {
   score?: number
   subject?: string
   chapter?: string
+  difficulty?: Difficulty
 }
 
 export interface ExamParams {

@@ -175,7 +175,7 @@ export function generateCsvContent(questions: Question[]): string {
     q.analysis,
     q.subject || '',
     q.chapter || '',
-    '',
+    q.difficulty || '',
   ])
   const csvRows = [headers, ...rows].map((r) =>
     r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','),
