@@ -65,6 +65,7 @@ export interface PracticeSession {
   startedAt: number
   finishedAt: number | null
   mockConfig?: MockExamConfig
+  filter?: PracticeFilter
 }
 
 export interface ExamParams {

@@ -1,5 +1,5 @@
 import { Difficulty, QuestionType } from '@exameow/shared'
-import type { Question } from '@exameow/shared'
+import type { PracticeSession, Question } from '@exameow/shared'
 import { matchPracticeFilter, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
 
 function assertEqual(actual: boolean, expected: boolean) {
@@ -36,3 +36,17 @@ assertEqual(
 assertEqual(matchPracticeFilter(q, { types: [] }), false)
 assertEqual(matchPracticeFilter(q, { difficulties: [] }), false)
 assertEqual(matchPracticeFilter(q, { difficulties: undefined }), true)
+
+const persistedFilteredSession: PracticeSession = {
+  bankId: 'bank-1',
+  mode: 'sequential',
+  questions: [],
+  currentIndex: 0,
+  startedAt: 0,
+  finishedAt: null,
+  filter: { difficulties: [Difficulty.Hard] },
+}
+
+if (persistedFilteredSession.filter?.difficulties?.[0] !== Difficulty.Hard) {
+  throw new Error('Expected PracticeSession to preserve its filter')
+}

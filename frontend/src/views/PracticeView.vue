@@ -223,6 +223,9 @@ onUnmounted(() => {
 })
 
 function resumeSession() {
+  if (practiceStore.session?.filter) {
+    practiceFilter.value = practiceStore.session.filter
+  }
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -554,7 +557,7 @@ function handleRetry() {
     return
   }
   practiceStore.clearSession()
-  const started = practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, practiceFilter.value as PracticeFilter)
+  const started = practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, s.filter)
   if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false

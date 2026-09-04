@@ -217,6 +217,7 @@ export const usePracticeStore = defineStore('practice', () => {
       startedAt: Date.now(),
       finishedAt: null,
       mockConfig: mode === 'mock' ? mockConfig : undefined,
+      filter: mode === 'wrong' ? undefined : filter,
     }
     saveSession(session.value)
     return true
