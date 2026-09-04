@@ -11,6 +11,7 @@ gen/
 .gradle/
 .superpowers/
 .opencode/
+.worktrees/
 .env
 *.tar.gz
 
