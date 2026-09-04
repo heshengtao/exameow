@@ -81,6 +81,7 @@ watch(chapterOptions, (options) => {
       </h2>
       <p class="text-body-sm mt-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
         {{ i18n.t('practiceSettingsSummary', { n: matchedCount }) }}
+        <span class="text-xs opacity-75"> / {{ i18n.t('practiceQuestionUnit', { n: bank.questions.length }) }}</span>
       </p>
     </div>
 

@@ -1,4 +1,4 @@
-import type { Difficulty, MockExamConfig, Question, PracticeFilter, QuestionType } from '@exameow/shared'
+import type { Difficulty, MockExamConfig, Question, PracticeFilter, PracticeSession, QuestionType } from '@exameow/shared'
 
 export const UNMARKED_DIFFICULTY = '__unmarked__' as const
 
@@ -9,6 +9,22 @@ export type PracticeFilterComparison = Omit<PracticeFilter, 'difficulties'> & {
 }
 
 export type AvailablePracticeType = { type: QuestionType; label: string; count: number }
+
+export function getResumedPracticeSettings(session: PracticeSession): {
+  bankId: string
+  mode: PracticeSession['mode']
+  filter: PracticeFilterComparison
+  mockConfig: MockExamConfig
+} {
+  return {
+    bankId: session.bankId,
+    mode: session.mode,
+    filter: session.filter ? { ...session.filter } : {},
+    mockConfig: session.mockConfig
+      ? { ...session.mockConfig, typeCounts: { ...session.mockConfig.typeCounts } }
+      : { typeCounts: {} },
+  }
+}
 
 export function normalizeMockQuestionCount(count: number): number | null {
   if (!Number.isFinite(count)) return null

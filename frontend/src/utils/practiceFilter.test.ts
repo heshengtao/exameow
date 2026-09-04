@@ -1,6 +1,6 @@
 import { Difficulty, QuestionType } from '@exameow/shared'
 import type { MockExamConfig, PracticeSession, Question } from '@exameow/shared'
-import { matchPracticeFilter, normalizeMockQuestionCount, reconcileMockConfig, reconcileMockTypeCounts, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
+import { getResumedPracticeSettings, matchPracticeFilter, normalizeMockQuestionCount, reconcileMockConfig, reconcileMockTypeCounts, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
 
 function assertEqual(actual: boolean, expected: boolean) {
   if (actual !== expected) throw new Error(`Expected ${expected}, received ${actual}`)
@@ -50,6 +50,23 @@ const persistedFilteredSession: PracticeSession = {
 
 if (persistedFilteredSession.filter?.difficulties?.[0] !== Difficulty.Hard) {
   throw new Error('Expected PracticeSession to preserve its filter')
+}
+
+const resumedSettings = getResumedPracticeSettings({
+  ...persistedFilteredSession,
+  bankId: 'bank-2',
+  mode: 'mock',
+  mockConfig: { typeCounts: { single_choice: 3 } },
+})
+if (resumedSettings.bankId !== 'bank-2' || resumedSettings.mode !== 'mock'
+  || resumedSettings.filter.difficulties?.[0] !== Difficulty.Hard
+  || resumedSettings.mockConfig.typeCounts.single_choice !== 3) {
+  throw new Error('Expected persisted practice settings to resume together')
+}
+
+const legacyResumedSettings = getResumedPracticeSettings({ ...persistedFilteredSession, filter: undefined })
+if (Object.keys(legacyResumedSettings.filter).length !== 0) {
+  throw new Error('Expected legacy sessions without filters to reset filter state')
 }
 
 const availableTypes = [

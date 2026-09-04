@@ -27,3 +27,8 @@ for (const header of ['難易度', '難易度']) {
   if (!analysis) throw new Error(`expected CSV analysis for ${header}`)
   assertEqual(parseWithMapping(analysis, analysis.mapping, 'test')[0]?.difficulty, Difficulty.Hard, `header ${header}`)
 }
+
+const headerlessCanonical = analyzeCSV('Q,single_choice,A,B,C,D,E,F,G,H,A,,Physics,Chapter 1,hard')
+if (!headerlessCanonical) throw new Error('expected headerless canonical CSV analysis')
+assertEqual(headerlessCanonical.hasHeader, false, 'headerless canonical format')
+assertEqual(parseWithMapping(headerlessCanonical, headerlessCanonical.mapping, 'test')[0]?.difficulty, Difficulty.Hard, 'headerless canonical difficulty')

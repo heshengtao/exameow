@@ -6,10 +6,11 @@ import { useWrongQuestionsStore } from '@/stores/wrongQuestions'
 import { useConfigStore } from '@/stores/config'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
-import { matchPracticeFilter, reconcileMockConfig, reconcileMockTypeCounts } from '@/utils/practiceFilter'
+import { getResumedPracticeSettings, matchPracticeFilter, reconcileMockConfig, reconcileMockTypeCounts } from '@/utils/practiceFilter'
 import type { JudgeResult, ExplainResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter, QuestionType } from '@exameow/shared'
+import type { LocaleMessages } from '@/i18n/locales'
 import type { PracticeDifficulty, PracticeFilterComparison } from '@/utils/practiceFilter'
 import BankListCard from '@/components/practice/BankListCard.vue'
 import FilterBar from '@/components/practice/FilterBar.vue'
@@ -46,6 +47,7 @@ const selectedBankId = ref<string | null>(null)
 const practiceFilter = ref<PracticeFilterComparison>({})
 const selectedMode = ref<PracticeMode | null>(null)
 const mockConfig = ref<MockExamConfig>({ typeCounts: {} })
+const mockConfigAdjusted = ref(false)
 const showImportDialog = ref(false)
 const showDeleteConfirm = ref(false)
 const showClearSessionConfirm = ref(false)
@@ -223,9 +225,14 @@ onUnmounted(() => {
 })
 
 function resumeSession() {
-  if (practiceStore.session?.filter) {
-    practiceFilter.value = practiceStore.session.filter
-  }
+  const session = practiceStore.session
+  if (!session) return
+  const settings = getResumedPracticeSettings(session)
+  selectedBankId.value = settings.bankId
+  selectedMode.value = settings.mode
+  practiceFilter.value = settings.filter
+  mockConfig.value = settings.mockConfig
+  mockConfigAdjusted.value = false
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -262,8 +269,8 @@ const availableTypes = computed(() => {
     short_answer: 'typeShortAnswer',
   }
   return Object.entries(counts).map(([type, count]) => ({
-    type: type as any,
-    label: i18n.t(typeKeys[type] as any),
+    type: type as QuestionType,
+    label: i18n.t(typeKeys[type] as keyof LocaleMessages),
     count,
   }))
 })
@@ -271,6 +278,9 @@ const availableTypes = computed(() => {
 watch(availableTypes, (types) => {
   const reconciled = reconcileMockTypeCounts(mockConfig.value, types)
   if (JSON.stringify(reconciled.typeCounts) !== JSON.stringify(mockConfig.value.typeCounts)) {
+    if (selectedMode.value === 'mock' && Object.keys(mockConfig.value.typeCounts).length > 0) {
+      mockConfigAdjusted.value = true
+    }
     mockConfig.value = reconciled
   }
 })
@@ -294,6 +304,7 @@ function selectBank(id: string) {
   practiceFilter.value = { types }
   selectedMode.value = null
   mockConfig.value = { typeCounts: {} }
+  mockConfigAdjusted.value = false
   viewState.value = 'settings'
 }
 
@@ -585,6 +596,7 @@ function handleHome() {
   selectedBankId.value = null
   selectedMode.value = null
   mockConfig.value = { typeCounts: {} }
+  mockConfigAdjusted.value = false
   practiceFilter.value = {}
   showWrongSortDialog.value = false
   viewState.value = 'browse'
@@ -738,7 +750,8 @@ function handleBack() {
           {{ practiceStore.getBank(selectedBankId)?.name }}
         </div>
         <div class="text-title-md truncate" :style="{ color: 'rgb(var(--md-on-surface))' }">
-          {{ i18n.t('practiceQuestionUnit', { n: practiceStore.getBank(selectedBankId)!.questions.length }) }}
+          {{ i18n.t('practiceSettingsSummary', { n: filteredQuestions.length }) }}
+          <span class="text-sm font-normal opacity-75"> / {{ i18n.t('practiceQuestionUnit', { n: practiceStore.getBank(selectedBankId)!.questions.length }) }}</span>
         </div>
       </div>
       <div class="grid gap-4 lg:grid-cols-2 items-start">
@@ -752,6 +765,13 @@ function handleBack() {
         />
       </div>
       <div v-if="selectedMode === 'mock'" class="mt-4">
+        <p
+          v-if="mockConfigAdjusted"
+          class="mb-3 rounded-lg px-3 py-2 text-body-sm"
+          :style="{ backgroundColor: 'rgb(var(--md-tertiary-container))', color: 'rgb(var(--md-on-tertiary-container))' }"
+        >
+          {{ i18n.t('practiceMockConfigAdjusted') }}
+        </p>
         <MockExamConfigComponent
           :available-types="availableTypes"
           :config="mockConfig"

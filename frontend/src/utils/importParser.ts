@@ -200,6 +200,21 @@ function applyPositionalFallback(map: ColumnMapping, columnCount: number): void 
   }
 }
 
+function isCanonicalHeaderlessRow(row: string[]): boolean {
+  return row.length >= 15 && detectColumnType(row[1] ?? '') !== null
+}
+
+function applyCanonicalHeaderlessFallback(map: ColumnMapping): void {
+  map.stem = 0
+  map.type = 1
+  map.options = [2, 3, 4, 5, 6, 7, 8, 9]
+  map.answer = 10
+  map.analysis = 11
+  map.subject = 12
+  map.chapter = 13
+  map.difficulty = 14
+}
+
 function buildXlsxColumnMap(): ColumnMapping {
   return {
     stem: 0,
@@ -358,7 +373,11 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
     headers = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`)
     rows = rawRows
     mapping = buildColumnMap([])
-    applyPositionalFallback(mapping, columnCount)
+    if (rows.some(isCanonicalHeaderlessRow)) {
+      applyCanonicalHeaderlessFallback(mapping)
+    } else {
+      applyPositionalFallback(mapping, columnCount)
+    }
   }
 
   if (mapping.combinedOptions !== null) {
