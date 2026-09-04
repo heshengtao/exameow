@@ -70,6 +70,7 @@ function looksLikeHeader(cell: string): boolean {
 
 function isHeaderRow(row: unknown[]): boolean {
   if (!row || row.length === 0) return false
+  if (detectColumnType(String(row[1] ?? '')) !== null) return false
   const totalCells = row.length
   const headerCells = row.filter(c => {
     const s = String(c ?? '').trim()
@@ -359,7 +360,8 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
     }
   }
 
-  const hasHeader = isHeaderRow(firstRow)
+  const isCanonicalHeaderless = isCanonicalHeaderlessRow(firstRow)
+  const hasHeader = !isCanonicalHeaderless && isHeaderRow(firstRow)
   let headers: string[]
   let rows: string[][]
   let mapping: ColumnMapping
@@ -373,7 +375,7 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
     headers = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`)
     rows = rawRows
     mapping = buildColumnMap([])
-    if (rows.some(isCanonicalHeaderlessRow)) {
+    if (isCanonicalHeaderless) {
       applyCanonicalHeaderlessFallback(mapping)
     } else {
       applyPositionalFallback(mapping, columnCount)
@@ -461,7 +463,8 @@ function detectXlsxFormat(headers: string[]): boolean {
 
 export function analyzeCSV(text: string): ImportAnalysis | null {
   const rows = parseCSVText(text).filter(r => r.some(c => c.trim() !== ''))
-  if (rows.length < 2) return null
+  if (rows.length === 0) return null
+  if (rows.length < 2 && !isCanonicalHeaderlessRow(rows[0] ?? [])) return null
   return analyzeRows(rows, false)
 }
 

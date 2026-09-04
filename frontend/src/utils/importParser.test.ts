@@ -1,5 +1,5 @@
 import { Difficulty } from '@exameow/shared'
-import { analyzeCSV, parseWithMapping } from './importParser'
+import { analyzeCSV, parseWithMapping } from './importParser.ts'
 
 function assertEqual<T>(actual: T, expected: T, message: string): void {
   if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`)
@@ -32,3 +32,22 @@ const headerlessCanonical = analyzeCSV('Q,single_choice,A,B,C,D,E,F,G,H,A,,Physi
 if (!headerlessCanonical) throw new Error('expected headerless canonical CSV analysis')
 assertEqual(headerlessCanonical.hasHeader, false, 'headerless canonical format')
 assertEqual(parseWithMapping(headerlessCanonical, headerlessCanonical.mapping, 'test')[0]?.difficulty, Difficulty.Hard, 'headerless canonical difficulty')
+
+const multiRowCanonical = analyzeCSV([
+  'First question,single_choice,A,B,C,D,E,F,G,H,A,,Physics,Chapter 1,hard',
+  'Second question,multi_choice,A,B,C,D,E,F,G,H,A,B,Physics,Chapter 2,medium',
+].join('\n'))
+if (!multiRowCanonical) throw new Error('expected multi-row headerless canonical CSV analysis')
+assertEqual(multiRowCanonical.hasHeader, false, 'multi-row headerless canonical format')
+const multiRowQuestions = parseWithMapping(multiRowCanonical, multiRowCanonical.mapping, 'test')
+assertEqual(multiRowQuestions.length, 2, 'multi-row headerless canonical retains first row')
+assertEqual(multiRowQuestions[0]?.stem, 'First question', 'multi-row headerless canonical first stem')
+assertEqual(multiRowQuestions[0]?.difficulty, Difficulty.Hard, 'multi-row headerless canonical difficulty')
+assertEqual(multiRowQuestions[1]?.difficulty, Difficulty.Medium, 'multi-row headerless canonical second difficulty')
+
+const singleRowCanonical = analyzeCSV('Only question,single_choice,A,B,C,D,E,F,G,H,A,,Physics,Chapter 3,easy')
+if (!singleRowCanonical) throw new Error('expected single-row headerless canonical CSV analysis')
+assertEqual(singleRowCanonical.hasHeader, false, 'single-row headerless canonical format')
+const singleRowQuestions = parseWithMapping(singleRowCanonical, singleRowCanonical.mapping, 'test')
+assertEqual(singleRowQuestions.length, 1, 'single-row headerless canonical retains row')
+assertEqual(singleRowQuestions[0]?.difficulty, Difficulty.Easy, 'single-row headerless canonical difficulty')
