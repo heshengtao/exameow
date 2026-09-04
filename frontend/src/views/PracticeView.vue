@@ -728,7 +728,7 @@ function handleBack() {
           v-model="practiceFilter"
         />
       </div>
-      <div v-if="selectedMode === 'mock'" class="card-outlined mt-4 p-4 sm:p-5">
+      <div v-if="selectedMode === 'mock'" class="mt-4">
         <MockExamConfigComponent
           :available-types="availableTypes"
           :config="mockConfig"

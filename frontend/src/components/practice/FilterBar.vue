@@ -60,10 +60,7 @@ const selectedChapters = computed(() => props.modelValue.chapters ?? [])
 const selectedDifficulties = computed(() => (props.modelValue.difficulties ?? []) as PracticeDifficulty[])
 const selectedTypes = computed(() => props.modelValue.types ?? [])
 
-const matchedCount = computed(() => props.bank.questions.filter(q => matchPracticeFilter(q, {
-  ...props.modelValue,
-  difficulties: selectedDifficulties.value,
-})).length)
+const matchedCount = computed(() => props.bank.questions.filter(q => matchPracticeFilter(q, props.modelValue)).length)
 
 function update(key: keyof PracticeFilterComparison, value: any[]) {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
