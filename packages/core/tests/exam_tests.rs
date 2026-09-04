@@ -135,6 +135,8 @@ fn test_question_difficulty_round_trip_and_omission() {
 
     let hard_serialized = serde_json::to_string(&hard_question).unwrap();
     assert!(hard_serialized.contains("\"difficulty\":\"hard\""));
+    let hard_round_tripped: Question = serde_json::from_str(&hard_serialized).unwrap();
+    assert_eq!(hard_round_tripped.difficulty, Some(Difficulty::Hard));
 
     let default_json = r#"{
         "id": "q2",
