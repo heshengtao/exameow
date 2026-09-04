@@ -6,10 +6,12 @@ import { useWrongQuestionsStore } from '@/stores/wrongQuestions'
 import { useConfigStore } from '@/stores/config'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
-import { matchPracticeFilter } from '@/utils/practiceFilter'
+import { getResumedPracticeSettings, matchPracticeFilter, reconcileMockConfig, reconcileMockTypeCounts } from '@/utils/practiceFilter'
 import type { JudgeResult, ExplainResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
-import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter } from '@exameow/shared'
+import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter, QuestionType } from '@exameow/shared'
+import type { LocaleMessages } from '@/i18n/locales'
+import type { PracticeDifficulty, PracticeFilterComparison } from '@/utils/practiceFilter'
 import BankListCard from '@/components/practice/BankListCard.vue'
 import FilterBar from '@/components/practice/FilterBar.vue'
 import ImportDialog from '@/components/practice/ImportDialog.vue'
@@ -38,13 +40,14 @@ const practiceStore = usePracticeStore()
 const wrongStore = useWrongQuestionsStore()
 const configStore = useConfigStore()
 
-type ViewState = 'browse' | 'filter' | 'select-mode' | 'mock-config' | 'practice' | 'result'
+type ViewState = 'browse' | 'settings' | 'practice' | 'result'
 
 const viewState = ref<ViewState>('browse')
 const selectedBankId = ref<string | null>(null)
-const practiceFilter = ref<PracticeFilter>({})
+const practiceFilter = ref<PracticeFilterComparison>({})
 const selectedMode = ref<PracticeMode | null>(null)
 const mockConfig = ref<MockExamConfig>({ typeCounts: {} })
+const mockConfigAdjusted = ref(false)
 const showImportDialog = ref(false)
 const showDeleteConfirm = ref(false)
 const showClearSessionConfirm = ref(false)
@@ -222,6 +225,14 @@ onUnmounted(() => {
 })
 
 function resumeSession() {
+  const session = practiceStore.session
+  if (!session) return
+  const settings = getResumedPracticeSettings(session)
+  selectedBankId.value = settings.bankId
+  selectedMode.value = settings.mode
+  practiceFilter.value = settings.filter
+  mockConfig.value = settings.mockConfig
+  mockConfigAdjusted.value = false
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -242,10 +253,6 @@ const filteredQuestions = computed(() => {
   if (!selectedBankId.value) return []
   const bank = practiceStore.getBank(selectedBankId.value)
   if (!bank) return []
-  const subjects = practiceFilter.value.subjects ?? []
-  const chapters = practiceFilter.value.chapters ?? []
-  const types = practiceFilter.value.types ?? []
-  if (subjects.length === 0 && chapters.length === 0 && types.length === 0) return bank.questions
   return bank.questions.filter(q => matchPracticeFilter(q, practiceFilter.value))
 })
 
@@ -262,46 +269,67 @@ const availableTypes = computed(() => {
     short_answer: 'typeShortAnswer',
   }
   return Object.entries(counts).map(([type, count]) => ({
-    type: type as any,
-    label: i18n.t(typeKeys[type] as any),
+    type: type as QuestionType,
+    label: i18n.t(typeKeys[type] as keyof LocaleMessages),
     count,
   }))
 })
 
+watch(availableTypes, (types) => {
+  const reconciled = reconcileMockTypeCounts(mockConfig.value, types)
+  if (JSON.stringify(reconciled.typeCounts) !== JSON.stringify(mockConfig.value.typeCounts)) {
+    if (selectedMode.value === 'mock' && Object.keys(mockConfig.value.typeCounts).length > 0) {
+      mockConfigAdjusted.value = true
+    }
+    mockConfig.value = reconciled
+  }
+})
+
+const effectiveMockConfig = computed(() => reconcileMockTypeCounts(mockConfig.value, availableTypes.value))
+
 const canStartMockExam = computed(() => {
-  return Object.values(mockConfig.value.typeCounts).some(c => c > 0)
+  return Object.values(effectiveMockConfig.value.typeCounts).some(c => c > 0)
+})
+
+const canStartSelectedMode = computed(() => {
+  if (!selectedMode.value) return false
+  if (selectedMode.value === 'wrong') return selectedBankId.value !== null && wrongStore.hasWrongQuestions(selectedBankId.value)
+  return filteredQuestions.value.length > 0 && (selectedMode.value !== 'mock' || canStartMockExam.value)
 })
 
 function selectBank(id: string) {
   selectedBankId.value = id
-  practiceFilter.value = {}
-  viewState.value = 'filter'
-}
-
-function handleFilterConfirm() {
-  viewState.value = 'select-mode'
+  const bank = practiceStore.getBank(id)
+  const types = [...new Set(bank?.questions.map(q => q.type) ?? [])] as QuestionType[]
+  practiceFilter.value = { types }
+  selectedMode.value = null
+  mockConfig.value = { typeCounts: {} }
+  mockConfigAdjusted.value = false
+  viewState.value = 'settings'
 }
 
 function handleModeSelect(mode: PracticeMode) {
   selectedMode.value = mode
   if (mode === 'wrong') {
     showWrongSortDialog.value = true
-  } else if (mode === 'mock') {
-    viewState.value = 'mock-config'
-    mockConfig.value = { typeCounts: {} }
-  } else {
-    startPractice(mode)
   }
 }
 
-function generateMockExam() {
-  if (!canStartMockExam.value || !selectedBankId.value) return
-  startPractice('mock')
+function startSettingsPractice() {
+  if (!selectedMode.value) return
+  if (selectedMode.value === 'wrong') {
+    showWrongSortDialog.value = true
+  } else if (selectedMode.value === 'mock') {
+    if (canStartMockExam.value) startPractice('mock')
+  } else {
+    startPractice(selectedMode.value)
+  }
 }
 
 function startPractice(mode: PracticeMode) {
   if (!selectedBankId.value) return
-  practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? mockConfig.value : undefined, undefined, practiceFilter.value)
+  const started = practiceStore.startSession(selectedBankId.value, mode, mode === 'mock' ? effectiveMockConfig.value : undefined, undefined, practiceFilter.value as PracticeFilter)
+  if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -544,12 +572,16 @@ function handleRetry() {
   const s = practiceStore.session
   if (!s) return
   if (s.mode === 'wrong') {
-    practiceStore.clearSession()
     startWrongPractice(wrongSort.value)
     return
   }
-  practiceStore.clearSession()
-  practiceStore.startSession(s.bankId, s.mode, s.mockConfig, undefined, practiceFilter.value)
+  const bank = practiceStore.getBank(s.bankId)
+  const retryPool = bank?.questions.filter(q => matchPracticeFilter(q, s.filter)) ?? []
+  const retryMockConfig = s.mode === 'mock' && s.mockConfig
+    ? reconcileMockConfig(s.mockConfig, retryPool)
+    : s.mockConfig
+  const started = practiceStore.startSession(s.bankId, s.mode, retryMockConfig, undefined, s.filter)
+  if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
 }
@@ -564,6 +596,7 @@ function handleHome() {
   selectedBankId.value = null
   selectedMode.value = null
   mockConfig.value = { typeCounts: {} }
+  mockConfigAdjusted.value = false
   practiceFilter.value = {}
   showWrongSortDialog.value = false
   viewState.value = 'browse'
@@ -586,19 +619,13 @@ function confirmDelete() {
 }
 
 function handleBack() {
-  if (viewState.value === 'filter') {
+  if (viewState.value === 'settings') {
     viewState.value = 'browse'
     selectedBankId.value = null
     practiceFilter.value = {}
     return
   }
-  if (viewState.value === 'select-mode') {
-    viewState.value = 'browse'
-    selectedMode.value = null
-  } else if (viewState.value === 'mock-config') {
-    viewState.value = 'select-mode'
-    selectedMode.value = null
-  } else if (viewState.value === 'practice') {
+  if (viewState.value === 'practice') {
     if (practiceStore.session?.mode === 'wrong') {
       practiceStore.session = null
       if (savedMainSession.value) {
@@ -716,42 +743,49 @@ function handleBack() {
       />
     </template>
 
-    <!-- Filter View -->
-    <template v-if="isView('filter') && selectedBankId">
-      <FilterBar
-        :bank="practiceStore.getBank(selectedBankId)!"
-        v-model="practiceFilter"
-        @confirm="handleFilterConfirm"
-      />
-    </template>
-
-    <!-- Mode Selection View -->
-    <template v-if="isView('select-mode')">
-      <template v-if="selectedBankId">
-        <div class="card-outlined p-4 mb-4">
-          <div class="text-sm truncate" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-            {{ practiceStore.getBank(selectedBankId)?.name }}
-          </div>
-          <div class="text-title-md truncate" :style="{ color: 'rgb(var(--md-on-surface))' }">
-            {{ practiceStore.getBank(selectedBankId)?.questions.length ? i18n.t('practiceQuestionUnit', { n: practiceStore.getBank(selectedBankId)!.questions.length }) : '0' }}
-          </div>
+    <!-- Practice Settings -->
+    <template v-if="isView('settings') && selectedBankId">
+      <div class="mb-4">
+        <div class="text-sm truncate" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          {{ practiceStore.getBank(selectedBankId)?.name }}
         </div>
-      </template>
-      <ModeSelector
-        v-model="selectedMode"
-        :has-wrong-questions="selectedBankId ? wrongStore.hasWrongQuestions(selectedBankId) : false"
-        @confirm="handleModeSelect"
-      />
-    </template>
-
-    <!-- Mock Exam Config View -->
-    <template v-if="isView('mock-config')">
-      <MockExamConfigComponent
-        :available-types="availableTypes"
-        :config="mockConfig"
-        @update:config="mockConfig = $event"
-        @generate="generateMockExam"
-      />
+        <div class="text-title-md truncate" :style="{ color: 'rgb(var(--md-on-surface))' }">
+          {{ i18n.t('practiceSettingsSummary', { n: filteredQuestions.length }) }}
+          <span class="text-sm font-normal opacity-75"> / {{ i18n.t('practiceQuestionUnit', { n: practiceStore.getBank(selectedBankId)!.questions.length }) }}</span>
+        </div>
+      </div>
+      <div class="grid gap-4 lg:grid-cols-2 items-start">
+        <ModeSelector
+          v-model="selectedMode"
+          :has-wrong-questions="wrongStore.hasWrongQuestions(selectedBankId)"
+        />
+        <FilterBar
+          :bank="practiceStore.getBank(selectedBankId)!"
+          v-model="practiceFilter"
+        />
+      </div>
+      <div v-if="selectedMode === 'mock'" class="mt-4">
+        <p
+          v-if="mockConfigAdjusted"
+          class="mb-3 rounded-lg px-3 py-2 text-body-sm"
+          :style="{ backgroundColor: 'rgb(var(--md-tertiary-container))', color: 'rgb(var(--md-on-tertiary-container))' }"
+        >
+          {{ i18n.t('practiceMockConfigAdjusted') }}
+        </p>
+        <MockExamConfigComponent
+          :available-types="availableTypes"
+          :config="mockConfig"
+          @update:config="mockConfig = $event"
+        />
+      </div>
+      <button
+        class="btn-filled w-full mt-4 !h-12 !text-base !font-semibold"
+        :disabled="!canStartSelectedMode"
+        @click="startSettingsPractice"
+      >
+        <PlayIcon class="w-5 h-5" />
+        {{ i18n.t('practiceStartBtn') }}
+      </button>
     </template>
 
     <!-- Practice View -->

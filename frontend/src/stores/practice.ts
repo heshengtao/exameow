@@ -4,7 +4,7 @@ import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Quest
 import { analyzeCSV, analyzeExcel, parseWithMapping } from '@/utils/importParser'
 import type { ColumnMapping, ImportAnalysis } from '@/utils/importParser'
 import { usePracticeHistoryStore } from '@/stores/practiceHistory'
-import { matchPracticeFilter } from '@/utils/practiceFilter'
+import { matchPracticeFilter, reconcileMockConfig } from '@/utils/practiceFilter'
 
 const STORAGE_KEY = 'exameow-banks'
 const SESSION_KEY = 'exameow-practice-session'
@@ -89,8 +89,11 @@ function applyPracticeFilter(questions: Question[], filter?: PracticeFilter): Qu
   if (!filter) return questions
   const subjects = filter.subjects?.filter(Boolean)
   const chapters = filter.chapters?.filter(Boolean)
+  const difficulties = filter.difficulties?.filter(Boolean)
   const types = filter.types?.filter(Boolean)
-  if (!subjects?.length && !chapters?.length && !types?.length) return questions
+  if ((filter.difficulties !== undefined && difficulties?.length === 0)
+    || (filter.types !== undefined && types?.length === 0)) return []
+  if (!subjects?.length && !chapters?.length && !difficulties?.length && !types?.length) return questions
   return questions.filter(q => matchPracticeFilter(q, filter))
 }
 
@@ -177,16 +180,19 @@ export const usePracticeStore = defineStore('practice', () => {
     addBank(bank)
   }
 
-  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[], filter?: PracticeFilter) {
+  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[], filter?: PracticeFilter): boolean {
     const bank = getBank(bankId)
-    if (!bank) return
+    if (!bank) return false
 
     const baseQuestions = customQuestions ?? applyPracticeFilter(bank.questions, filter)
+    const normalizedMockConfig = mockConfig
+      ? reconcileMockConfig(mockConfig, baseQuestions)
+      : undefined
     let questions: Question[]
     if (customQuestions) {
       questions = customQuestions
-    } else if (mode === 'mock' && mockConfig) {
-      questions = generateMockQuestions({ ...bank, questions: baseQuestions }, mockConfig)
+    } else if (mode === 'mock' && normalizedMockConfig) {
+      questions = generateMockQuestions({ ...bank, questions: baseQuestions }, normalizedMockConfig)
     } else if (mode === 'sequential') {
       questions = [...baseQuestions]
     } else {
@@ -196,6 +202,8 @@ export const usePracticeStore = defineStore('practice', () => {
     if (mode === 'random') {
       questions = shuffleOptions(questions)
     }
+
+    if (questions.length === 0) return false
 
     const sessionQuestions = questions.map((q, i) => ({
       question: { ...q, id: `${q.id}-s${i}` },
@@ -211,9 +219,11 @@ export const usePracticeStore = defineStore('practice', () => {
       currentIndex: 0,
       startedAt: Date.now(),
       finishedAt: null,
-      mockConfig: mode === 'mock' ? mockConfig : undefined,
+      mockConfig: mode === 'mock' ? normalizedMockConfig : undefined,
+      filter: mode === 'wrong' ? undefined : filter,
     }
     saveSession(session.value)
+    return true
   }
 
   const currentSubmitted = computed(() => {

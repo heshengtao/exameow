@@ -23,11 +23,13 @@ export interface Question {
   score?: number
   subject?: string
   chapter?: string
+  difficulty?: Difficulty
 }
 
 export interface PracticeFilter {
   subjects?: string[]
   chapters?: string[]
+  difficulties?: Difficulty[]
   types?: QuestionType[]
 }
 
@@ -63,6 +65,7 @@ export interface PracticeSession {
   startedAt: number
   finishedAt: number | null
   mockConfig?: MockExamConfig
+  filter?: PracticeFilter
 }
 
 export interface ExamParams {

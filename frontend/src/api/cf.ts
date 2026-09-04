@@ -65,8 +65,9 @@ export const cfApi = {
       '选项 H': q.options[7] || '',
       '正确答案': q.answer,
       '解析': q.analysis,
-      '章节': '',
-      '难度': '',
+      '学科': q.subject || '',
+      '章节': q.chapter || '',
+      '难度': q.difficulty || '',
     }))
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
@@ -175,7 +176,7 @@ export function generateCsvContent(questions: Question[]): string {
     q.analysis,
     q.subject || '',
     q.chapter || '',
-    '',
+    q.difficulty || '',
   ])
   const csvRows = [headers, ...rows].map((r) =>
     r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','),

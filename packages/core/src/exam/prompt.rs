@@ -153,6 +153,12 @@ pub fn parse_questions(json_str: &str) -> Result<Vec<Question>, CoreError> {
     Ok(questions)
 }
 
+pub fn normalize_question_difficulty(questions: &mut [Question], difficulty: &Difficulty) {
+    for question in questions {
+        question.difficulty = Some(difficulty.clone());
+    }
+}
+
 fn safe_char_boundary(s: &str, mut index: usize) -> usize {
     if index >= s.len() {
         return s.len();
@@ -173,5 +179,7 @@ pub async fn generate_exam(
     let system_prompt = build_system_prompt();
     let user_prompt = build_user_prompt(doc_text, params);
     let response = client.chat(&system_prompt, &user_prompt, model).await?;
-    parse_questions(&response)
+    let mut questions = parse_questions(&response)?;
+    normalize_question_difficulty(&mut questions, &params.difficulty);
+    Ok(questions)
 }

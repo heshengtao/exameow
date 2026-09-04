@@ -22,10 +22,10 @@ function extractBatchFileLabel(text: string): string {
   return ''
 }
 
-function tagQuestions(qs: Question[], batchText: string, sourceFileName: string, subject: string): Question[] {
+function tagQuestions(qs: Question[], batchText: string, sourceFileName: string, subject: string, requestedDifficulty: Difficulty): Question[] {
   const chapter = extractBatchFileLabel(batchText) || sourceFileName.trim() || undefined
   const subj = subject.trim() || undefined
-  return qs.map(q => ({ ...q, subject: subj, chapter }))
+  return qs.map(q => ({ ...q, subject: subj, chapter, difficulty: requestedDifficulty }))
 }
 
 export const useExamStore = defineStore('exam', () => {
@@ -501,6 +501,7 @@ export const useExamStore = defineStore('exam', () => {
       error.value = null
       const config = configStore.getConfig()
       const baseParams = getParams()
+      const requestedDifficulty = baseParams.difficulty
 
       // Parse all files and concatenate text
       let fullText = await parseInputs(
@@ -558,10 +559,10 @@ export const useExamStore = defineStore('exam', () => {
         if (useDirectAI && batch.text) {
           const { callCustomAI } = await import('@/utils/aiClient')
           const questions_ = await callCustomAI(batch.text, batch, config, signal)
-          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value))
+          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value, requestedDifficulty))
         } else {
           const result = await api.generateExam(fileRef, batch, config, signal)
-          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value))
+          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value, requestedDifficulty))
         }
         console.log(`[Exameow] Batch ${batch.batch_index} done: ${questions.value.length} questions total`)
       }

@@ -13,7 +13,11 @@ export async function generateExam(
   const userPrompt = buildUserPrompt(docText, params)
   const response = await aiChat(ai, { model, systemPrompt, userPrompt })
   console.log('AI response preview:', response.substring(0, 200))
-  return parseQuestions(response)
+  return normalizeQuestionDifficulty(parseQuestions(response), params.difficulty)
+}
+
+export function normalizeQuestionDifficulty(questions: Question[], difficulty: Difficulty): Question[] {
+  return questions.map((question) => ({ ...question, difficulty }))
 }
 
 function buildSystemPrompt(): string {

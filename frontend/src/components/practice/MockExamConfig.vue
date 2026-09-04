@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
+import { normalizeMockQuestionCount } from '@/utils/practiceFilter'
 import type { QuestionType, MockExamConfig } from '@exameow/shared'
 
 const props = defineProps<{
@@ -10,21 +10,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:config', v: MockExamConfig): void
-  (e: 'generate'): void
 }>()
 
 const i18n = useI18nStore()
 
-const canGenerate = computed(() => {
-  return Object.values(props.config.typeCounts).some(c => c > 0)
-})
-
 function setCount(qtype: string, count: number) {
   const newConfig = { ...props.config, typeCounts: { ...props.config.typeCounts } }
-  if (count <= 0) {
+  const normalizedCount = normalizeMockQuestionCount(count)
+  if (normalizedCount === null) {
     delete newConfig.typeCounts[qtype]
   } else {
-    newConfig.typeCounts[qtype] = Math.min(count, props.availableTypes.find(t => t.type === qtype)?.count ?? 99)
+    newConfig.typeCounts[qtype] = Math.min(normalizedCount, props.availableTypes.find(t => t.type === qtype)?.count ?? 99)
   }
   emit('update:config', newConfig)
 }
@@ -73,8 +69,5 @@ function toggleType(qtype: string) {
       </Transition>
     </div>
 
-    <button class="btn-filled w-full" :disabled="!canGenerate" @click="emit('generate')">
-      {{ i18n.t('practiceMockGenerate') }}
-    </button>
   </div>
 </template>

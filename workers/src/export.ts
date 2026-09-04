@@ -132,7 +132,7 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
     cells.push({ col: 11, value: analysis || '' })
     cells.push({ col: 12, value: q.subject || '' })
     cells.push({ col: 13, value: q.chapter || '' })
-    cells.push({ col: 14, value: '' })
+    cells.push({ col: 14, value: q.difficulty || '' })
 
     addRow(cells)
   }
@@ -212,7 +212,7 @@ export function generateCsvContent(questions: import('./types').Question[]): str
     q.analysis,
     q.subject || '',
     q.chapter || '',
-    '',
+    q.difficulty || '',
   ])
 
   const csvRows = [headers, ...rows].map((r) =>

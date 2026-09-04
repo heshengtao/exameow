@@ -42,7 +42,7 @@ fn write_csv_records<W: Write>(questions: &[Question], wtr: &mut csv::Writer<W>)
         row.push(q.analysis.clone());
         row.push(q.subject.clone().unwrap_or_default());
         row.push(q.chapter.clone().unwrap_or_default());
-        row.push(String::new());
+        row.push(q.difficulty.as_ref().map(ToString::to_string).unwrap_or_default());
 
         wtr.write_record(&row)
             .map_err(|e| CoreError::Export(format!("write error: {e}")))?;

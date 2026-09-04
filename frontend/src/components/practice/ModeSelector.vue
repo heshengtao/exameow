@@ -7,7 +7,6 @@ import {
   ArrowPathRoundedSquareIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  PlayIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -17,7 +16,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: PracticeMode): void
-  (e: 'confirm', v: PracticeMode): void
 }>()
 
 const i18n = useI18nStore()
@@ -59,22 +57,17 @@ function select(mode: PracticeMode) {
   emit('update:modelValue', mode)
 }
 
-function start() {
-  if (props.modelValue) {
-    emit('confirm', props.modelValue)
-  }
-}
 </script>
 
 <template>
-  <div class="space-y-3">
+  <section class="card-outlined p-4 sm:p-5 space-y-3">
     <h3 class="text-title-md font-bold tracking-tight mb-2" :style="{ color: 'rgb(var(--md-on-surface))' }">
       {{ i18n.t('practiceSelectModeTitle') }}
     </h3>
     <button
       v-for="m in modes"
       :key="m.value"
-      class="w-full text-left p-4.5 rounded-[24px] border transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex items-center gap-4 cursor-pointer active:scale-[0.98] shadow-sm"
+      class="w-full text-left p-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-[rgb(var(--md-primary))]"
       :class="[
         props.modelValue === m.value
           ? 'border-[rgb(var(--md-primary))] bg-[rgba(var(--md-primary),0.07)] shadow-md'
@@ -83,7 +76,7 @@ function start() {
       @click="select(m.value)"
     >
       <div
-        class="w-12 h-12 rounded-[20px] flex items-center justify-center shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+        class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200"
         :class="{ 'scale-105': props.modelValue === m.value }"
         :style="{
           backgroundColor:
@@ -122,14 +115,6 @@ function start() {
           :style="{ backgroundColor: 'rgb(var(--md-primary))' }"
         />
       </div>
-    </button>
-    <button
-      class="btn-filled w-full mt-5 !h-12 !text-base !font-semibold shadow-md"
-      :disabled="!props.modelValue"
-      @click="start"
-    >
-      <PlayIcon class="w-5 h-5" />
-      <span>{{ props.modelValue === 'mock' ? i18n.t('practiceMockConfigTitle') : i18n.t('practiceStartBtn') }}</span>
-    </button>
-  </div>
+     </button>
+  </section>
 </template>

@@ -1,5 +1,5 @@
 import type { Question } from '@exameow/shared'
-import { QuestionType as QT } from '@exameow/shared'
+import { Difficulty, QuestionType as QT } from '@exameow/shared'
 import * as XLSX from 'xlsx'
 
 type QuestionType = typeof QT[keyof typeof QT]
@@ -20,6 +20,7 @@ export interface ColumnMapping {
   analysis: number | null
   subject: number | null
   chapter: number | null
+  difficulty: number | null
 }
 
 export type MissingField = 'stem' | 'answer' | 'options'
@@ -36,6 +37,18 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
+export function normalizeDifficulty(value: string): Difficulty | undefined {
+  switch (normalize(value)) {
+    case '简单':
+    case 'easy': return Difficulty.Easy
+    case '中等':
+    case 'medium': return Difficulty.Medium
+    case '困难':
+    case 'hard': return Difficulty.Hard
+    default: return undefined
+  }
+}
+
 function looksLikeHeader(cell: string): boolean {
   if (!cell || cell.trim().length === 0) return false
   const t = cell.trim()
@@ -46,7 +59,8 @@ function looksLikeHeader(cell: string): boolean {
     '题型', '类型', 'type',
     '选项', 'option', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
     '答案', '正确答案', 'answer',
-    '解析', '分析', 'analysis', '章节', '难度', 'difficulty',
+    '解析', '分析', 'analysis', '章节', '难度', '難度', '难易度', '難易度', 'difficulty',
+    'dificultad', 'difficulté', 'schwierigkeit', 'сложность', 'مستوى الصعوبة', '난이도',
     'questiontype', 'singlechoice', 'multichoice', 'truefalse',
     '单选题', '多选题', '判断题', '填空题', '简答题', '判断',
     '对错', '正确', '正确选项',
@@ -56,6 +70,7 @@ function looksLikeHeader(cell: string): boolean {
 
 function isHeaderRow(row: unknown[]): boolean {
   if (!row || row.length === 0) return false
+  if (detectColumnType(String(row[1] ?? '')) !== null) return false
   const totalCells = row.length
   const headerCells = row.filter(c => {
     const s = String(c ?? '').trim()
@@ -98,7 +113,7 @@ function isCombinedOptionsHeader(n: string): boolean {
 function buildColumnMap(headers: string[]): ColumnMapping {
   const map: ColumnMapping = {
     stem: null, type: null, options: [], combinedOptions: null,
-    optionsDelimiter: '', answer: null, analysis: null, subject: null, chapter: null,
+    optionsDelimiter: '', answer: null, analysis: null, subject: null, chapter: null, difficulty: null,
   }
 
   for (let i = 0; i < headers.length; i++) {
@@ -148,6 +163,15 @@ function buildColumnMap(headers: string[]): ColumnMapping {
       continue
     }
 
+    if (map.difficulty === null && (
+      n.includes('难度') || n.includes('難度') || n.includes('難易度') || n.includes('难易度') || n.includes('difficulty')
+      || n.includes('dificultad') || n.includes('difficulté') || n.includes('schwierigkeit')
+      || n.includes('сложность') || n.includes('مستوىالصعوبة') || n.includes('난이도')
+    )) {
+      map.difficulty = i
+      continue
+    }
+
     if (isCombinedOptionsHeader(n)) {
       if (map.combinedOptions === null) map.combinedOptions = i
       continue
@@ -177,6 +201,21 @@ function applyPositionalFallback(map: ColumnMapping, columnCount: number): void 
   }
 }
 
+function isCanonicalHeaderlessRow(row: string[]): boolean {
+  return row.length >= 15 && detectColumnType(row[1] ?? '') !== null
+}
+
+function applyCanonicalHeaderlessFallback(map: ColumnMapping): void {
+  map.stem = 0
+  map.type = 1
+  map.options = [2, 3, 4, 5, 6, 7, 8, 9]
+  map.answer = 10
+  map.analysis = 11
+  map.subject = 12
+  map.chapter = 13
+  map.difficulty = 14
+}
+
 function buildXlsxColumnMap(): ColumnMapping {
   return {
     stem: 0,
@@ -188,6 +227,7 @@ function buildXlsxColumnMap(): ColumnMapping {
     analysis: 11,
     subject: 12,
     chapter: 13,
+    difficulty: 14,
   }
 }
 
@@ -320,7 +360,8 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
     }
   }
 
-  const hasHeader = isHeaderRow(firstRow)
+  const isCanonicalHeaderless = isCanonicalHeaderlessRow(firstRow)
+  const hasHeader = !isCanonicalHeaderless && isHeaderRow(firstRow)
   let headers: string[]
   let rows: string[][]
   let mapping: ColumnMapping
@@ -334,7 +375,11 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
     headers = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`)
     rows = rawRows
     mapping = buildColumnMap([])
-    applyPositionalFallback(mapping, columnCount)
+    if (isCanonicalHeaderless) {
+      applyCanonicalHeaderlessFallback(mapping)
+    } else {
+      applyPositionalFallback(mapping, columnCount)
+    }
   }
 
   if (mapping.combinedOptions !== null) {
@@ -381,6 +426,9 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
 
     const answer = mapping.answer !== null ? (row[mapping.answer] ?? '').trim() : ''
     const analysis = mapping.analysis !== null ? (row[mapping.analysis] ?? '').trim() : ''
+    const difficulty = mapping.difficulty !== null
+      ? normalizeDifficulty(row[mapping.difficulty] ?? '')
+      : undefined
 
     if (!qtype || qtype === SA) {
       const inferred = detectColumnTypeFromQA(stem, answer, options.length > 0)
@@ -396,6 +444,7 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
       analysis,
       subject: mapping.subject !== null ? (row[mapping.subject] ?? '').trim() || undefined : undefined,
       chapter: mapping.chapter !== null ? (row[mapping.chapter] ?? '').trim() || undefined : undefined,
+      difficulty,
     })
   }
 
@@ -414,7 +463,8 @@ function detectXlsxFormat(headers: string[]): boolean {
 
 export function analyzeCSV(text: string): ImportAnalysis | null {
   const rows = parseCSVText(text).filter(r => r.some(c => c.trim() !== ''))
-  if (rows.length < 2) return null
+  if (rows.length === 0) return null
+  if (rows.length < 2 && !isCanonicalHeaderlessRow(rows[0] ?? [])) return null
   return analyzeRows(rows, false)
 }
 
