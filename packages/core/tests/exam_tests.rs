@@ -1,4 +1,32 @@
 use exameow_core::exam::*;
+use exameow_core::ai::AIClient;
+
+fn mock_ai_response() -> &'static str {
+    r#"{"choices":[{"message":{"content":"[\n        {\"id\":\"q1\",\"type\":\"single_choice\",\"stem\":\"One?\",\"options\":[\"A\",\"B\"],\"answer\":\"A\",\"analysis\":\"\"},\n        {\"id\":\"q2\",\"type\":\"true_false\",\"stem\":\"Two?\",\"options\":[\"True\",\"False\"],\"answer\":\"True\",\"analysis\":\"\",\"difficulty\":\"easy\"}\n    ]"}}]}"#
+}
+
+async fn start_mock_ai_server() -> String {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::thread;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut request = [0_u8; 4096];
+        let _ = stream.read(&mut request);
+        let body = mock_ai_response();
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        )
+        .unwrap();
+    });
+    format!("http://{}", address)
+}
 
 #[test]
 fn test_build_system_prompt() {
@@ -130,6 +158,33 @@ fn test_normalize_questions_to_requested_difficulty() {
     normalize_question_difficulty(&mut questions, &Difficulty::Hard);
 
     assert!(questions.iter().all(|question| question.difficulty == Some(Difficulty::Hard)));
+}
+
+#[tokio::test]
+async fn test_generate_exam_response_path_normalizes_every_question_difficulty() {
+    let endpoint = start_mock_ai_server().await;
+    let client = AIClient::new(&endpoint, "test-key");
+    let params = ExamParams {
+        question_types: vec![QuestionType::SingleChoice, QuestionType::TrueFalse],
+        count: 2,
+        difficulty: Difficulty::Hard,
+        language: "en-US".to_string(),
+        topic_filter: None,
+        type_counts: None,
+        text: None,
+        batch_index: None,
+        batch_total: None,
+        source_name: None,
+    };
+
+    let questions = generate_exam(&client, "Boundary test content", &params, "mock-model")
+        .await
+        .unwrap();
+
+    assert_eq!(questions.len(), 2);
+    assert!(questions
+        .iter()
+        .all(|question| question.difficulty == Some(Difficulty::Hard)));
 }
 
 #[test]
