@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickzyl/tauri/refs/heads/master/crates/tauri-config-schema/schema.json",
   "productName": "Exameow",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "identifier": "com.exameow.app",
   "build": {
     "frontendDist": "../frontend/dist",
