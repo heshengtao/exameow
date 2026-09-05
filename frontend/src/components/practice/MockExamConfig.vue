@@ -16,16 +16,32 @@ const emit = defineEmits<{
 
 const i18n = useI18nStore()
 const inputErrors = reactive<Record<string, 'invalid' | 'exceeds'>>({})
+let pendingLocalEmission: { available: string; typeCounts: string } | null = null
 
 const configuredTotal = computed(() => Object.values(props.config.typeCounts).reduce((sum, count) => sum + count, 0))
 const availableTotal = computed(() => props.availableTypes.reduce((sum, item) => sum + item.count, 0))
 
+function getAvailableSignature() {
+  return props.availableTypes.map(item => `${item.type}:${item.count}`).join('|')
+}
+
+function getTypeCountsSignature(typeCounts: MockExamConfig['typeCounts']) {
+  return JSON.stringify(typeCounts)
+}
+
 watch(
   () => [
-    props.availableTypes.map(item => `${item.type}:${item.count}`).join('|'),
-    JSON.stringify(props.config.typeCounts),
+    getAvailableSignature(),
+    getTypeCountsSignature(props.config.typeCounts),
   ],
-  () => {
+  ([availableSignature, typeCountsSignature]) => {
+    const localEmission = pendingLocalEmission
+    if (localEmission && localEmission.available === availableSignature
+      && localEmission.typeCounts === typeCountsSignature) {
+      pendingLocalEmission = null
+      return
+    }
+    pendingLocalEmission = null
     const availableCounts = new Map(props.availableTypes.map(item => [item.type, item.count]))
     for (const qtype of Object.keys(inputErrors)) {
       const availableCount = availableCounts.get(qtype as QuestionType)
@@ -53,6 +69,10 @@ function setCount(qtype: string, count: number) {
     delete newConfig.typeCounts[qtype]
   } else {
     newConfig.typeCounts[qtype] = Math.min(normalizedCount, availableCount)
+  }
+  pendingLocalEmission = {
+    available: getAvailableSignature(),
+    typeCounts: getTypeCountsSignature(newConfig.typeCounts),
   }
   emit('update:config', newConfig)
 }
