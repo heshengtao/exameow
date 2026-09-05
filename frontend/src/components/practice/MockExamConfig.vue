@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { normalizeMockQuestionCount } from '@/utils/practiceFilter'
 import type { QuestionType, MockExamConfig } from '@exameow/shared'
@@ -19,6 +19,24 @@ const inputErrors = reactive<Record<string, 'invalid' | 'exceeds'>>({})
 
 const configuredTotal = computed(() => Object.values(props.config.typeCounts).reduce((sum, count) => sum + count, 0))
 const availableTotal = computed(() => props.availableTypes.reduce((sum, item) => sum + item.count, 0))
+
+watch(
+  () => props.availableTypes.map(item => `${item.type}:${item.count}`),
+  () => {
+    const availableCounts = new Map(props.availableTypes.map(item => [item.type, item.count]))
+    for (const qtype of Object.keys(inputErrors)) {
+      const availableCount = availableCounts.get(qtype as QuestionType)
+      if (availableCount === undefined) {
+        delete inputErrors[qtype]
+      } else if (inputErrors[qtype] === 'invalid') {
+        delete inputErrors[qtype]
+      } else {
+        const count = props.config.typeCounts[qtype]
+        if (count !== undefined && count <= availableCount) delete inputErrors[qtype]
+      }
+    }
+  },
+)
 
 function getAvailableCount(qtype: string) {
   return props.availableTypes.find(item => item.type === qtype)?.count ?? 0
@@ -48,7 +66,7 @@ function toggleType(qtype: string) {
 function updateInput(qtype: string, event: Event) {
   const value = (event.target as HTMLInputElement).value
   if (!value) {
-    delete inputErrors[qtype]
+    inputErrors[qtype] = 'invalid'
     setCount(qtype, 0)
     return
   }
