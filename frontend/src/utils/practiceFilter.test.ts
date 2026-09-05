@@ -115,3 +115,20 @@ const mixedBoundaryConfig = reconcileMockConfig(invalidCounts, [
 if (JSON.stringify(mixedBoundaryConfig.typeCounts) !== JSON.stringify({ [QuestionType.SingleChoice]: 1 })) {
   throw new Error('Expected the mock boundary to retain only normalized, available counts')
 }
+
+const available = [{ type: QuestionType.SingleChoice, label: 'Single choice', count: 3 }]
+const empty: MockExamConfig = { typeCounts: {} }
+const selected: MockExamConfig = { typeCounts: { [QuestionType.SingleChoice]: 3 } }
+
+if (normalizeMockQuestionCount(1.8) !== 1) throw new Error('Decimals must be floored')
+if (normalizeMockQuestionCount(Number.NaN) !== null) throw new Error('NaN must be rejected')
+if (reconcileMockTypeCounts({ typeCounts: { single_choice: 8 } }, available).typeCounts.single_choice !== 3) {
+  throw new Error('Counts must be clamped to availability')
+}
+if (Object.keys(reconcileMockTypeCounts({ typeCounts: { true_false: 2 } }, available).typeCounts).length !== 0) {
+  throw new Error('Unavailable types must be removed')
+}
+
+if (Object.keys(empty.typeCounts).length !== 0 || selected.typeCounts.single_choice !== 3) {
+  throw new Error('Mock configuration fixtures must preserve the component contract')
+}
