@@ -7,6 +7,7 @@ import { usePracticeStore } from './practice'
 import { useI18nStore } from './i18n'
 import type { ParseProgressReport } from '@/utils/fileParser'
 import { isTauri, isCloudflare } from '@/utils/platform'
+import { tagQuestions } from '@/utils/questionMetadata'
 
 const ALL_TYPES: QuestionType[] = [
   'single_choice' as QuestionType,
@@ -15,18 +16,6 @@ const ALL_TYPES: QuestionType[] = [
   'fill_blank' as QuestionType,
   'short_answer' as QuestionType,
 ]
-
-function extractBatchFileLabel(text: string): string {
-  const firstLine = text.trimStart().split('\n')[0] ?? ''
-  if (firstLine.startsWith('## ')) return firstLine.slice(3).trim()
-  return ''
-}
-
-function tagQuestions(qs: Question[], batchText: string, sourceFileName: string, subject: string, requestedDifficulty: Difficulty): Question[] {
-  const chapter = extractBatchFileLabel(batchText) || sourceFileName.trim() || undefined
-  const subj = subject.trim() || undefined
-  return qs.map(q => ({ ...q, subject: subj, chapter, difficulty: requestedDifficulty }))
-}
 
 export const useExamStore = defineStore('exam', () => {
   const questionTypes = ref<QuestionType[]>([])
@@ -559,10 +548,10 @@ export const useExamStore = defineStore('exam', () => {
         if (useDirectAI && batch.text) {
           const { callCustomAI } = await import('@/utils/aiClient')
           const questions_ = await callCustomAI(batch.text, batch, config, signal)
-          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value, requestedDifficulty))
+          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty))
         } else {
           const result = await api.generateExam(fileRef, batch, config, signal)
-          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value, requestedDifficulty))
+          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty))
         }
         console.log(`[Exameow] Batch ${batch.batch_index} done: ${questions.value.length} questions total`)
       }

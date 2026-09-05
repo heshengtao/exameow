@@ -1,5 +1,6 @@
 import { Difficulty } from '@exameow/shared'
-import { analyzeCSV, parseWithMapping } from './importParser.ts'
+import * as XLSX from 'xlsx'
+import { analyzeCSV, analyzeExcel, parseWithMapping } from './importParser.ts'
 
 function assertEqual<T>(actual: T, expected: T, message: string): void {
   if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`)
@@ -51,3 +52,17 @@ assertEqual(singleRowCanonical.hasHeader, false, 'single-row headerless canonica
 const singleRowQuestions = parseWithMapping(singleRowCanonical, singleRowCanonical.mapping, 'test')
 assertEqual(singleRowQuestions.length, 1, 'single-row headerless canonical retains row')
 assertEqual(singleRowQuestions[0]?.difficulty, Difficulty.Easy, 'single-row headerless canonical difficulty')
+
+const xlsxWorkbook = XLSX.utils.book_new()
+const xlsxSheet = XLSX.utils.aoa_to_sheet([
+  ['题干（必填）', '题型 （必填）', '选项 A', '选项 B', '选项 C', '选项 D', '选项E\n(勿删)', '选项F\n(勿删)', '选项G\n(勿删)', '选项H\n(勿删)', '正确答案\n（必填）', '解析\n（勿删）', '章节\n（勿删）', '难度'],
+  ['Question', '单选题', 'A', 'B', 'C', 'D', '', '', '', '', 'A', 'Analysis', '1章', '适中'],
+])
+XLSX.utils.book_append_sheet(xlsxWorkbook, xlsxSheet, '试题内容')
+const xlsxBuffer = XLSX.write(xlsxWorkbook, { type: 'array', bookType: 'xlsx' })
+const xlsxTemplateWithoutSubject = analyzeExcel(xlsxBuffer)
+if (!xlsxTemplateWithoutSubject) throw new Error('expected xlsx template-shaped analysis')
+const xlsxTemplateQuestion = parseWithMapping(xlsxTemplateWithoutSubject, xlsxTemplateWithoutSubject.mapping, 'xlsx')[0]
+assertEqual(xlsxTemplateQuestion?.subject, undefined, 'xlsx template without subject leaves subject empty')
+assertEqual(xlsxTemplateQuestion?.chapter, '1章', 'xlsx template maps chapter by header')
+assertEqual(xlsxTemplateQuestion?.difficulty, Difficulty.Medium, 'xlsx template maps 适中 difficulty by header')

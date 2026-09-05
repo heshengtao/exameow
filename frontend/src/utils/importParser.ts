@@ -42,6 +42,7 @@ export function normalizeDifficulty(value: string): Difficulty | undefined {
     case '简单':
     case 'easy': return Difficulty.Easy
     case '中等':
+    case '适中':
     case 'medium': return Difficulty.Medium
     case '困难':
     case 'hard': return Difficulty.Hard
@@ -216,21 +217,6 @@ function applyCanonicalHeaderlessFallback(map: ColumnMapping): void {
   map.difficulty = 14
 }
 
-function buildXlsxColumnMap(): ColumnMapping {
-  return {
-    stem: 0,
-    type: 1,
-    options: [2, 3, 4, 5, 6, 7, 8, 9],
-    combinedOptions: null,
-    optionsDelimiter: '',
-    answer: 10,
-    analysis: 11,
-    subject: 12,
-    chapter: 13,
-    difficulty: 14,
-  }
-}
-
 function typeLabelToEnum(label: string): QuestionType {
   const n = normalize(label)
   if (n.includes('单选') || n.includes('single')) return ST
@@ -355,7 +341,7 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
       headers: firstRow,
       rows: rawRows.slice(1),
       hasHeader: true,
-      mapping: buildXlsxColumnMap(),
+      mapping: buildColumnMap(firstRow),
       missing: [],
     }
   }
