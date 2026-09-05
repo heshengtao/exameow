@@ -21,7 +21,10 @@ const configuredTotal = computed(() => Object.values(props.config.typeCounts).re
 const availableTotal = computed(() => props.availableTypes.reduce((sum, item) => sum + item.count, 0))
 
 watch(
-  () => props.availableTypes.map(item => `${item.type}:${item.count}`),
+  () => [
+    props.availableTypes.map(item => `${item.type}:${item.count}`).join('|'),
+    JSON.stringify(props.config.typeCounts),
+  ],
   () => {
     const availableCounts = new Map(props.availableTypes.map(item => [item.type, item.count]))
     for (const qtype of Object.keys(inputErrors)) {
