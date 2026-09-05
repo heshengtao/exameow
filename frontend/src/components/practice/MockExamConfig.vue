@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { normalizeMockQuestionCount } from '@/utils/practiceFilter'
 import type { QuestionType, MockExamConfig } from '@exameow/shared'
@@ -15,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const i18n = useI18nStore()
+const inputErrors = reactive<Record<string, 'invalid' | 'exceeds'>>({})
 
 const configuredTotal = computed(() => Object.values(props.config.typeCounts).reduce((sum, count) => sum + count, 0))
 const availableTotal = computed(() => props.availableTypes.reduce((sum, item) => sum + item.count, 0))
@@ -36,6 +37,7 @@ function setCount(qtype: string, count: number) {
 }
 
 function toggleType(qtype: string) {
+  delete inputErrors[qtype]
   if (props.config.typeCounts[qtype]) {
     setCount(qtype, 0)
   } else {
@@ -46,10 +48,22 @@ function toggleType(qtype: string) {
 function updateInput(qtype: string, event: Event) {
   const value = (event.target as HTMLInputElement).value
   if (!value) {
+    delete inputErrors[qtype]
     setCount(qtype, 0)
     return
   }
-  setCount(qtype, Number(value))
+  const count = Number(value)
+  if (normalizeMockQuestionCount(count) === null) {
+    inputErrors[qtype] = 'invalid'
+    setCount(qtype, 0)
+    return
+  }
+  if (count > getAvailableCount(qtype)) {
+    inputErrors[qtype] = 'exceeds'
+  } else {
+    delete inputErrors[qtype]
+  }
+  setCount(qtype, count)
 }
 </script>
 
@@ -58,6 +72,9 @@ function updateInput(qtype: string, event: Event) {
     <h3 class="text-title-sm" :style="{ color: 'rgb(var(--md-on-surface))' }">
       {{ i18n.t('practiceMockConfigTitle') }}
     </h3>
+    <p class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+      {{ i18n.t('practiceModeMockDesc') }}
+    </p>
 
     <div class="space-y-2">
       <div
@@ -65,7 +82,7 @@ function updateInput(qtype: string, event: Event) {
         :key="item.type"
         class="flex items-stretch gap-2 rounded-2xl border p-2 transition-all duration-200"
         :class="props.config.typeCounts[item.type]
-          ? 'border-transparent bg-[rgb(var(--md-primary-container))] text-[rgb(var(--md-on-primary-container))] shadow-[var(--md-elevation-1)]'
+          ? 'border-[rgb(var(--md-primary))] bg-[rgb(var(--md-primary-container))] text-[rgb(var(--md-on-primary-container))] shadow-[var(--md-elevation-1)]'
           : 'border-[rgb(var(--md-outline-variant)/0.55)] bg-[rgb(var(--md-surface-container-low))] hover:bg-[rgb(var(--md-surface-container))]'"
       >
         <button
@@ -84,14 +101,14 @@ function updateInput(qtype: string, event: Event) {
             <CheckIcon v-if="props.config.typeCounts[item.type]" class="h-4 w-4" />
           </span>
           <span class="min-w-0">
-            <span class="block truncate text-title-sm font-medium">{{ item.label }}</span>
+            <span class="block break-words text-title-sm font-medium [overflow-wrap:anywhere]">{{ item.label }}</span>
             <span class="text-body-sm" :style="{ color: props.config.typeCounts[item.type] ? 'rgb(var(--md-on-primary-container))' : 'rgb(var(--md-on-surface-variant))' }">
               {{ item.count }} {{ i18n.t('practiceAvailableQuestions') }}
             </span>
           </span>
         </button>
 
-        <div class="flex shrink-0 items-center gap-2 pr-1">
+        <div class="flex w-24 shrink-0 flex-col items-end gap-1 pr-1">
           <input
             type="number"
             :value="props.config.typeCounts[item.type] ?? ''"
@@ -99,11 +116,16 @@ function updateInput(qtype: string, event: Event) {
             :max="item.count"
             :disabled="!props.config.typeCounts[item.type]"
             :aria-label="`${item.label} ${i18n.t('practiceQuestions', { n: props.config.typeCounts[item.type] ?? 0 })}`"
+            :aria-invalid="Boolean(inputErrors[item.type])"
+            :class="inputErrors[item.type] ? '!border-[rgb(var(--md-error))] !text-[rgb(var(--md-error))]' : ''"
             class="input-outlined !w-16 !px-2 !py-2 text-center text-sm disabled:cursor-not-allowed disabled:opacity-45"
             @input="updateInput(item.type, $event)"
           />
-          <span class="hidden text-body-sm text-[rgb(var(--md-on-surface-variant))] sm:inline">
-            {{ i18n.t('practiceQuestions', { n: props.config.typeCounts[item.type] ?? 0 }) }}
+          <span v-if="inputErrors[item.type]" class="w-full text-right text-xs text-[rgb(var(--md-error))]" role="alert">
+            {{ inputErrors[item.type] === 'exceeds' ? i18n.t('practiceMockCountExceedsAvailable') : i18n.t('practiceMockInvalidCount') }}
+          </span>
+          <span v-else class="hidden text-body-sm text-[rgb(var(--md-on-surface-variant))] sm:inline">
+            {{ i18n.t('practiceQuestionUnitOnly') }}
           </span>
         </div>
       </div>
