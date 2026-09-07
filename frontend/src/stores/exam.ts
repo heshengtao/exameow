@@ -25,6 +25,7 @@ export const useExamStore = defineStore('exam', () => {
   const difficulty = ref<Difficulty>('medium' as Difficulty)
   const language = ref('zh-CN')
   const topicFilter = ref('')
+  const autoChapter = ref(false)
   const subject = ref('')
   const questions = ref<Question[]>(loadCachedQuestions())
   const sourceFileName = ref(loadCachedSourceFile())
@@ -49,6 +50,7 @@ export const useExamStore = defineStore('exam', () => {
       difficulty: difficulty.value,
       language: language.value,
       topic_filter: topicFilter.value || undefined,
+      auto_chapter: autoChapter.value,
     }
   }
 
@@ -537,6 +539,9 @@ export const useExamStore = defineStore('exam', () => {
         progress.value = { current: i, total: batches.length, phase: 'generating', message: i18n.t('genProgressGeneratingBatch', { current: i + 1, total: batches.length }) }
         const batch = batches[i]
         if (!batch) continue
+        if (batch.auto_chapter) {
+          batch.chapter_names = [...new Set(questions.value.flatMap(q => q.chapter ? [q.chapter] : []))]
+        }
 
         const textLen = (batch.text || '').length
         const textPreview = (batch.text || '').slice(0, 80).replace(/\n/g, '\\n')
@@ -548,10 +553,10 @@ export const useExamStore = defineStore('exam', () => {
         if (useDirectAI && batch.text) {
           const { callCustomAI } = await import('@/utils/aiClient')
           const questions_ = await callCustomAI(batch.text, batch, config, signal)
-          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty))
+          questions.value.push(...tagQuestions(questions_, batch.text, sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty, batch.auto_chapter))
         } else {
           const result = await api.generateExam(fileRef, batch, config, signal)
-          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty))
+          questions.value.push(...tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty, batch.auto_chapter))
         }
         console.log(`[Exameow] Batch ${batch.batch_index} done: ${questions.value.length} questions total`)
       }
@@ -589,7 +594,7 @@ export const useExamStore = defineStore('exam', () => {
 
   return {
     questionTypes, typeCounts, totalCount,
-    difficulty, language, topicFilter, subject, questions, generating, generated,
+    difficulty, language, topicFilter, autoChapter, subject, questions, generating, generated,
     sourceFileName, error, progress, getParams, generate, cancelGeneration, reset,
   }
 })

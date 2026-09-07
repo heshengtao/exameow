@@ -1,7 +1,7 @@
 import type { AIConfig, ExamParams, Question, QuestionType, Difficulty } from '@exameow/shared'
 import { chatRequest } from './chatRequest'
 
-function buildSystemPrompt(): string {
+export function buildSystemPrompt(autoChapter = false): string {
   const questionTypes = [
     'single_choice', 'multi_choice', 'true_false', 'fill_blank', 'short_answer',
   ].join(', ')
@@ -16,7 +16,7 @@ function buildSystemPrompt(): string {
 
 ## Output Rules
 1. Respond ONLY with a valid JSON array — no explanation, no markdown fences.
-2. Each question object MUST have exactly these fields:
+2. Each question object MUST have these required fields:
    - "id": a short unique identifier string
    - "type": one of [${questionTypes}]
    - "stem": the question text
@@ -29,10 +29,10 @@ function buildSystemPrompt(): string {
 6. For fill_blank: answer is the exact word/phrase to fill in.
 7. For short_answer: answer is a concise reference answer.
 8. All questions must be based on the document content.
-9. Use the specified language for questions.`
+9. Use the specified language for questions.${autoChapter ? '\n10. When chapter tagging is enabled, also include "chapter" in every question: use the original chapter title from the material, or a concise knowledge topic in the requested language if there are no headings. Use an empty string if uncertain. Reuse the same name for the same chapter within and across batches.' : ''}`
 }
 
-function buildUserPrompt(text: string, params: ExamParams): string {
+export function buildUserPrompt(text: string, params: ExamParams): string {
   const difficultyMap: Record<string, string> = {
     easy: 'easy questions suitable for beginners',
     medium: 'moderate difficulty questions requiring understanding',
@@ -40,6 +40,10 @@ function buildUserPrompt(text: string, params: ExamParams): string {
   }
 
   const difficultyStr = difficultyMap[params.difficulty] || difficultyMap.medium
+
+  const chapterNote = params.auto_chapter
+    ? `\nChapter tagging is enabled. Previously used chapter names (reuse when applicable): ${JSON.stringify(params.chapter_names ?? [])}`
+    : ''
 
   const topicNote = params.topic_filter
     ? `\nFocus on this topic: ${params.topic_filter}`
@@ -82,7 +86,7 @@ function buildUserPrompt(text: string, params: ExamParams): string {
 
   return `${countInstruction}
 Difficulty: ${difficultyStr}
-Language: ${params.language}${topicNote}${batchNote}${docName}
+Language: ${params.language}${topicNote}${chapterNote}${batchNote}${docName}
 
 DOCUMENT CONTENT:
 ${textSection}`
@@ -127,7 +131,7 @@ export async function callCustomAI(
   config: AIConfig,
   signal?: AbortSignal,
 ): Promise<Question[]> {
-  const content = await chatRequest(buildSystemPrompt(), buildUserPrompt(text, params), config, signal)
+  const content = await chatRequest(buildSystemPrompt(params.auto_chapter), buildUserPrompt(text, params), config, signal)
 
   return normalizeQuestionDifficulty(parseQuestions(content), params.difficulty)
 }

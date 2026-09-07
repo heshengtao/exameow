@@ -13,13 +13,16 @@ export function tagQuestions(
   subject: string,
   topicFilter: string,
   requestedDifficulty: Difficulty,
+  autoChapter = false,
 ): Question[] {
   const chapter = topicFilter.trim() || extractBatchFileLabel(batchText) || sourceFileName.trim() || undefined
   const normalizedSubject = subject.trim() || undefined
   return questions.map(question => ({
     ...question,
     subject: normalizedSubject,
-    chapter,
+    chapter: autoChapter
+      ? (typeof question.chapter === 'string' ? question.chapter.trim() || undefined : undefined)
+      : chapter,
     difficulty: requestedDifficulty,
   }))
 }

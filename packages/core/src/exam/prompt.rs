@@ -3,7 +3,9 @@ use crate::error::CoreError;
 use crate::ai::AIClient;
 use crate::exam::Question;
 
-pub fn build_system_prompt() -> String {
+pub fn build_system_prompt(auto_chapter: bool) -> String {
+    let chapter_rule = if auto_chapter { r#"
+10. When chapter tagging is enabled, also include "chapter" in every question: use the original chapter title from the material, or a concise knowledge topic in the requested language if there are no headings. Use an empty string if uncertain. Reuse the same name for the same chapter within and across batches."# } else { "" };
     format!(
         r#"You are an expert exam question generator. Generate questions based on the provided document content.
 
@@ -15,7 +17,7 @@ pub fn build_system_prompt() -> String {
 
 ## Output Rules
 1. Respond ONLY with a valid JSON array — no explanation, no markdown fences.
-2. Each question object MUST have exactly these fields:
+2. Each question object MUST have these required fields:
    - "id": a short unique identifier string
    - "type": one of [{}]
    - "stem": the question text
@@ -28,7 +30,7 @@ pub fn build_system_prompt() -> String {
 6. For fill_blank: answer is the exact word/phrase to fill in.
 7. For short_answer: answer is a concise reference answer.
 8. All questions must be based on the document content.
-9. Use the specified language for questions.
+9. Use the specified language for questions.{chapter_rule}
 "#,
         vec![
             QuestionType::SingleChoice,
@@ -49,6 +51,12 @@ pub fn build_user_prompt(text: &str, params: &ExamParams) -> String {
         Difficulty::Easy => "easy questions suitable for beginners",
         Difficulty::Medium => "moderate difficulty questions requiring understanding",
         Difficulty::Hard => "challenging questions requiring deep analysis",
+    };
+
+    let chapter_note = if params.auto_chapter {
+        format!("\nChapter tagging is enabled. Previously used chapter names (reuse when applicable): {}", serde_json::to_string(&params.chapter_names.as_deref().unwrap_or(&[])).unwrap())
+    } else {
+        String::new()
     };
 
     let topic_note = match &params.topic_filter {
@@ -120,7 +128,7 @@ pub fn build_user_prompt(text: &str, params: &ExamParams) -> String {
     format!(
         r#"{count_instruction}
 Difficulty: {difficulty_str}
-Language: {language}{topic_note}{batch_note}{doc_name}
+Language: {language}{topic_note}{chapter_note}{batch_note}{doc_name}
 
 DOCUMENT CONTENT:
 {text_content}
@@ -176,7 +184,7 @@ pub async fn generate_exam(
     model: &str,
 ) -> Result<Vec<Question>, CoreError> {
     let doc_text = params.text.as_deref().unwrap_or(text);
-    let system_prompt = build_system_prompt();
+    let system_prompt = build_system_prompt(params.auto_chapter);
     let user_prompt = build_user_prompt(doc_text, params);
     let response = client.chat(&system_prompt, &user_prompt, model).await?;
     let mut questions = parse_questions(&response)?;

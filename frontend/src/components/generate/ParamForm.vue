@@ -129,5 +129,12 @@ function toggleType(type: QuestionType) {
         />
       </div>
     </div>
+    <label class="flex items-start gap-3 mt-5 cursor-pointer">
+      <input v-model="store.autoChapter" type="checkbox" :disabled="store.generating" class="mt-1 h-4 w-4 accent-primary" />
+      <span>
+        <span class="text-label-md font-semibold">{{ i18n.t('genAutoChapter') }}</span>
+        <span class="block text-body-sm mt-1" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('genAutoChapterHint') }}</span>
+      </span>
+    </label>
   </div>
 </template>

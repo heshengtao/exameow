@@ -30,7 +30,7 @@ async fn start_mock_ai_server() -> String {
 
 #[test]
 fn test_build_system_prompt() {
-    let prompt = build_system_prompt();
+    let prompt = build_system_prompt(false);
     assert!(prompt.contains("expert exam question generator"));
     assert!(prompt.contains("single_choice"));
 }
@@ -38,6 +38,8 @@ fn test_build_system_prompt() {
 #[test]
 fn test_build_user_prompt() {
     let params = ExamParams {
+        auto_chapter: false,
+        chapter_names: None,
         question_types: vec![QuestionType::SingleChoice, QuestionType::TrueFalse],
         count: 5,
         difficulty: Difficulty::Medium,
@@ -65,6 +67,8 @@ fn test_build_user_prompt_with_counts() {
     type_counts.insert("single_choice".to_string(), 3);
     type_counts.insert("true_false".to_string(), 2);
     let params = ExamParams {
+        auto_chapter: false,
+        chapter_names: None,
         question_types: vec![QuestionType::SingleChoice, QuestionType::TrueFalse],
         count: 5,
         difficulty: Difficulty::Easy,
@@ -165,6 +169,8 @@ async fn test_generate_exam_response_path_normalizes_every_question_difficulty()
     let endpoint = start_mock_ai_server().await;
     let client = AIClient::new(&endpoint, "test-key");
     let params = ExamParams {
+        auto_chapter: false,
+        chapter_names: None,
         question_types: vec![QuestionType::SingleChoice, QuestionType::TrueFalse],
         count: 2,
         difficulty: Difficulty::Hard,
@@ -219,4 +225,36 @@ fn test_question_difficulty_round_trip_and_omission() {
 
     let default_serialized = serde_json::to_string(&default_question).unwrap();
     assert!(!default_serialized.contains("\"difficulty\""));
+}
+
+#[test]
+fn test_automatic_chapter_prompts_and_legacy_params() {
+    let mut params: ExamParams = serde_json::from_value(serde_json::json!({
+        "question_types": ["single_choice"], "count": 1, "difficulty": "easy", "language": "en"
+    })).unwrap();
+    assert!(!params.auto_chapter);
+    assert!(!build_system_prompt(false).contains("also include \"chapter\""));
+    assert!(!build_user_prompt("Content", &params).contains("Chapter tagging is enabled"));
+    params.auto_chapter = true;
+    params.chapter_names = Some(vec!["Chapter 1".into()]);
+    assert!(build_system_prompt(true).contains("also include \"chapter\""));
+    assert!(build_user_prompt("Content", &params).contains(r#"["Chapter 1"]"#));
+}
+
+#[test]
+fn test_automatic_chapter_invalid_metadata_keeps_questions() {
+    for (chapter, expected) in [
+        (serde_json::json!(" Chapter 1 "), Some("Chapter 1")),
+        (serde_json::json!("  "), None),
+        (serde_json::json!(42), None),
+        (serde_json::json!({}), None),
+        (serde_json::Value::Null, None),
+    ] {
+        let input = serde_json::json!([{
+            "id": "q1", "type": "short_answer", "stem": "Question", "answer": "Answer", "chapter": chapter
+        }]);
+        let questions = parse_questions(&input.to_string()).unwrap();
+        assert_eq!(questions.len(), 1);
+        assert_eq!(questions[0].chapter.as_deref(), expected);
+    }
 }

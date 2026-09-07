@@ -32,6 +32,8 @@ export interface ExamParams {
   difficulty: Difficulty
   language: string
   topic_filter?: string
+  auto_chapter?: boolean
+  chapter_names?: string[]
   text?: string
   batch_index?: number
   batch_total?: number

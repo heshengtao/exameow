@@ -71,6 +71,7 @@ pub struct Question {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_chapter")]
     pub chapter: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub difficulty: Option<Difficulty>,
@@ -84,6 +85,10 @@ pub struct ExamParams {
     pub language: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topic_filter: Option<String>,
+    #[serde(default)]
+    pub auto_chapter: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter_names: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub type_counts: Option<std::collections::HashMap<String, u32>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -94,4 +99,9 @@ pub struct ExamParams {
     pub batch_total: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_name: Option<String>,
+}
+
+fn deserialize_chapter<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<String>, D::Error> {
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|value| value.as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_owned)))
 }
