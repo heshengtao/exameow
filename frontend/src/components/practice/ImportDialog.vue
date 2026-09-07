@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { usePracticeStore } from '@/stores/practice'
+import { groupChapters } from '@/utils/chapters'
 import ColumnMapper from '@/components/practice/ColumnMapper.vue'
 import type { ColumnMapping } from '@/utils/importParser'
 import {
@@ -21,6 +22,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const parsing = ref(false)
 const parseError = ref('')
+const chapterGroups = computed(() => groupChapters(practiceStore.importPreview ?? []))
 
 const previewHeaders = computed(() => {
   const qs = practiceStore.importPreview
@@ -166,6 +168,8 @@ function handleConfirm() {
       {{ i18n.t('practiceImportFail') }}
     </div>
 
+    <p class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceChapterImportHint') }}</p>
+
     <template v-if="practiceStore.importPreview && practiceStore.importPreview.length > 0 && !parsing">
       <div class="flex items-center justify-between">
         <span class="text-title-sm" :style="{ color: 'rgb(var(--md-on-surface))' }">
@@ -174,6 +178,13 @@ function handleConfirm() {
         <button class="btn-text text-sm" :style="{ color: 'rgb(var(--md-error))' }" @click="removeFile">
           {{ i18n.t('practiceRemoveFile') }}
         </button>
+      </div>
+
+      <div v-if="chapterGroups.some(group => group.chapter !== null)" class="flex flex-wrap gap-2 text-body-sm">
+        <span v-for="group in chapterGroups" :key="JSON.stringify(group.chapter)" class="rounded-xl px-3 py-2 break-words max-w-full"
+          :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">
+          {{ group.chapter ?? i18n.t('practiceUnchaptered') }} · {{ group.count }}
+        </span>
       </div>
 
       <div class="overflow-x-auto rounded-xl" :style="{ border: '1px solid rgb(var(--md-outline-variant))' }">

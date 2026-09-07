@@ -2,6 +2,10 @@
 export type Locale = 'zh' | 'zh-TW' | 'en' | 'ja' | 'ko' | 'es' | 'fr' | 'de' | 'ru' | 'ar'
 
 export interface LocaleMessages {
+  practiceUnchaptered: string
+  practiceChapterImportHint: string
+  genAutoChapter: string
+  genAutoChapterHint: string
   aiAdvanced: string
   aiAdvancedHint: string
   aiThinking: string
@@ -490,6 +494,11 @@ export interface LocaleMessages {
 }
 
 export const zh: LocaleMessages = {
+  practiceUnchaptered: "未分章",
+  practiceChapterImportHint: "CSV/XLSX 可填写“章节”列，同名自动分组；无章节列仍可正常导入。",
+  genAutoChapter: "AI 自动分章",
+  genAutoChapterHint: "根据资料为每题标注章节；知识点输入仅限定出题范围。",
+
   aiAdvanced: "AI 高级设置",
   aiAdvancedHint: "适用于当前设备上的出题、答题、批改和解析。思考使用 reasoning_effort，支持的档位取决于模型。OpenAI 推理模型请选择 max_completion_tokens，并按模型要求勾选不发送 temperature。",
   aiThinking: "思考开关",
@@ -978,6 +987,11 @@ export const zh: LocaleMessages = {
 }
 
 export const zhTW: LocaleMessages = {
+  practiceUnchaptered: "未分章",
+  practiceChapterImportHint: "CSV/XLSX 可填寫「章節」欄，同名自動分組；無章節欄仍可正常匯入。",
+  genAutoChapter: "AI 自動分章",
+  genAutoChapterHint: "根據資料為每題標註章節；知識點輸入僅限定出題範圍。",
+
   aiAdvanced: "AI 高级设置",
   aiAdvancedHint: "适用于当前设备上的出题、答题、批改和解析。思考使用 reasoning_effort，支持的档位取决于模型。OpenAI 推理模型请选择 max_completion_tokens，并按模型要求勾选不发送 temperature。",
   aiThinking: "思考开关",
@@ -1466,6 +1480,11 @@ export const zhTW: LocaleMessages = {
 }
 
 export const en: LocaleMessages = {
+  practiceUnchaptered: "Unchaptered",
+  practiceChapterImportHint: "Add a Chapter column to CSV/XLSX to group questions by name. Files without chapters still work.",
+  genAutoChapter: "AI chapter tagging",
+  genAutoChapterHint: "Label each question from the material; the topic input only limits the question scope.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -1954,6 +1973,11 @@ export const en: LocaleMessages = {
 }
 
 export const ja: LocaleMessages = {
+  practiceUnchaptered: "章未設定",
+  practiceChapterImportHint: "CSV/XLSX の「Chapter」列で同名の章をまとめます。章のないファイルも読み込めます。",
+  genAutoChapter: "AIで章を自動設定",
+  genAutoChapterHint: "資料から各問題の章を設定します。トピック入力は出題範囲のみを指定します。",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -2442,6 +2466,11 @@ export const ja: LocaleMessages = {
 }
 
 export const ko: LocaleMessages = {
+  practiceUnchaptered: "미분류",
+  practiceChapterImportHint: "CSV/XLSX에 Chapter 열을 추가하면 같은 이름으로 묶습니다. 장이 없는 파일도 가져올 수 있습니다.",
+  genAutoChapter: "AI 자동 장 분류",
+  genAutoChapterHint: "자료를 바탕으로 각 문제의 장을 지정합니다. 주제 입력은 출제 범위만 제한합니다.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -2930,6 +2959,11 @@ export const ko: LocaleMessages = {
 }
 
 export const es: LocaleMessages = {
+  practiceUnchaptered: "Sin capítulo",
+  practiceChapterImportHint: "Añade una columna Chapter al CSV/XLSX para agrupar por nombre. También se admiten archivos sin capítulos.",
+  genAutoChapter: "Capítulos automáticos con IA",
+  genAutoChapterHint: "Asigna un capítulo según el material; el tema solo limita el alcance de las preguntas.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -3418,6 +3452,11 @@ export const es: LocaleMessages = {
 }
 
 export const fr: LocaleMessages = {
+  practiceUnchaptered: "Sans chapitre",
+  practiceChapterImportHint: "Ajoutez une colonne Chapter au CSV/XLSX pour regrouper par nom. Les fichiers sans chapitres restent compatibles.",
+  genAutoChapter: "Chapitres automatiques par IA",
+  genAutoChapterHint: "Attribue un chapitre selon le document ; le sujet limite uniquement la portée des questions.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -3906,6 +3945,11 @@ export const fr: LocaleMessages = {
 }
 
 export const de: LocaleMessages = {
+  practiceUnchaptered: "Ohne Kapitel",
+  practiceChapterImportHint: "Eine Chapter-Spalte in CSV/XLSX gruppiert Fragen nach Namen. Dateien ohne Kapitel werden weiterhin unterstützt.",
+  genAutoChapter: "KI-Kapitelzuordnung",
+  genAutoChapterHint: "Ordnet Fragen anhand des Materials zu; das Thema begrenzt nur den Fragenumfang.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -4394,6 +4438,11 @@ export const de: LocaleMessages = {
 }
 
 export const ru: LocaleMessages = {
+  practiceUnchaptered: "Без главы",
+  practiceChapterImportHint: "Столбец Chapter в CSV/XLSX группирует вопросы по названию. Файлы без глав также поддерживаются.",
+  genAutoChapter: "Главы с помощью ИИ",
+  genAutoChapterHint: "Определяет главу по материалу; поле темы только ограничивает область вопросов.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",
@@ -4882,6 +4931,11 @@ export const ru: LocaleMessages = {
 }
 
 export const ar: LocaleMessages = {
+  practiceUnchaptered: "بلا فصل",
+  practiceChapterImportHint: "أضف عمود Chapter إلى CSV/XLSX لتجميع الأسئلة حسب الاسم. تبقى الملفات بلا فصول مدعومة.",
+  genAutoChapter: "تصنيف الفصول بالذكاء الاصطناعي",
+  genAutoChapterHint: "يحدد فصل كل سؤال حسب المادة؛ حقل الموضوع يحدد نطاق الأسئلة فقط.",
+
   aiAdvanced: "Advanced AI settings",
   aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
   aiThinking: "Thinking",

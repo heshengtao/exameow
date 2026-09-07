@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import type { QuestionBank, QuestionType } from '@exameow/shared'
 import type { PracticeFilterComparison } from '@/utils/practiceFilter'
+import { groupChapters } from '@/utils/chapters'
 import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
 import { matchPracticeFilter, UNMARKED_DIFFICULTY, type PracticeDifficulty } from '@/utils/practiceFilter'
 
@@ -38,15 +39,23 @@ const typeOptions = computed(() => {
 const subjectOptions = computed(() => [...new Set(props.bank.questions.flatMap(q => q.subject ? [q.subject] : []))]
   .map(value => ({ value, label: value })))
 
-const chapterOptions = computed(() => {
-  const subjects = props.modelValue.subjects ?? []
-  const chapters = new Set<string>()
-  for (const q of props.bank.questions) {
-    if (!q.chapter) continue
-    if (subjects.length === 0 || !q.subject || subjects.includes(q.subject)) chapters.add(q.chapter)
+const chapterGroups = computed(() => groupChapters(props.bank.questions))
+const hasChapters = computed(() => chapterGroups.value.some(group => group.chapter !== null))
+
+function toggleChapter(chapter: string | null) {
+  if (chapter === null) {
+    emit('update:modelValue', { ...props.modelValue, includeUnchaptered: !props.modelValue.includeUnchaptered })
+  } else {
+    const chapters = selectedChapters.value.includes(chapter)
+      ? selectedChapters.value.filter(value => value !== chapter)
+      : [...selectedChapters.value, chapter]
+    update('chapters', chapters)
   }
-  return [...chapters].map(value => ({ value, label: value }))
-})
+}
+
+function clearChapters() {
+  emit('update:modelValue', { ...props.modelValue, chapters: [], includeUnchaptered: false })
+}
 
 const difficultyOptions = computed(() => [
   { value: 'easy' as PracticeDifficulty, label: i18n.t('diffEasy') },
@@ -66,11 +75,6 @@ function update(key: keyof PracticeFilterComparison, value: any[]) {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
 }
 
-watch(chapterOptions, (options) => {
-  const valid = new Set(options.map(o => o.value))
-  const chapters = selectedChapters.value.filter(chapter => valid.has(chapter))
-  if (chapters.length !== selectedChapters.value.length) update('chapters', chapters)
-})
 </script>
 
 <template>
@@ -85,14 +89,29 @@ watch(chapterOptions, (options) => {
       </p>
     </div>
 
+    <fieldset v-if="hasChapters" class="space-y-2 min-w-0">
+      <legend class="text-body-sm mb-2">{{ i18n.t('practiceFilterChapter') }}</legend>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-tonal !h-auto !py-2"
+          :aria-pressed="!selectedChapters.length && !modelValue.includeUnchaptered"
+          :class="{ 'ring-2 ring-current': !selectedChapters.length && !modelValue.includeUnchaptered }"
+          @click="clearChapters">
+          {{ i18n.t('practiceFilterAll') }} · {{ bank.questions.length }}
+        </button>
+        <button v-for="group in chapterGroups" :key="JSON.stringify(group.chapter)" type="button"
+          class="btn-tonal !h-auto !py-2 !whitespace-normal text-left break-words max-w-full"
+          :aria-pressed="group.chapter === null ? !!modelValue.includeUnchaptered : selectedChapters.includes(group.chapter)"
+          :class="{ 'ring-2 ring-current': group.chapter === null ? modelValue.includeUnchaptered : selectedChapters.includes(group.chapter) }"
+          @click="toggleChapter(group.chapter)">
+          {{ group.chapter ?? i18n.t('practiceUnchaptered') }} · {{ group.count }}
+        </button>
+      </div>
+    </fieldset>
+
     <div class="grid gap-3 sm:grid-cols-2">
       <label v-if="subjectOptions.length" class="space-y-1.5">
         <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterSubject') }}</span>
         <BaseMultiSelect :model-value="selectedSubjects" :options="subjectOptions" :placeholder="i18n.t('practiceFilterAll')" @update:model-value="update('subjects', $event)" />
-      </label>
-      <label v-if="chapterOptions.length" class="space-y-1.5">
-        <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterChapter') }}</span>
-        <BaseMultiSelect :model-value="selectedChapters" :options="chapterOptions" :placeholder="i18n.t('practiceFilterAll')" @update:model-value="update('chapters', $event)" />
       </label>
       <label class="space-y-1.5">
         <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceFilterDifficulty') }}</span>

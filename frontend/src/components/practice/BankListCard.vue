@@ -131,7 +131,7 @@ async function handleDownloadTemplate() {
           '正确答案': 'A',
           '解析': 'Exameow 兼容所有 OpenAI 格式的 API，支持对接任何 OpenAI 兼容的服务商。',
           '学科': '',
-          '章节': '',
+          '章节': '第一章 基础',
           '难度': '',
         }
       : {
@@ -148,7 +148,7 @@ async function handleDownloadTemplate() {
           'Answer': 'A',
           'Analysis': 'Exameow works with any OpenAI-compatible API provider.',
           'Subject': '',
-          'Chapter': '',
+          'Chapter': 'Chapter 1 Basics',
           'Difficulty': '',
         }
     const ws = XLSX.utils.json_to_sheet([sample])
