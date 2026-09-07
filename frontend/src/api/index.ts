@@ -65,7 +65,7 @@ export const api = {
   ): Promise<AnswerResult> {
     if (isTauri()) {
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
-      return tauriApi.answerQuestion(question, language, config.endpoint, config.api_key, config.model, config.options)
+      return tauriApi.answerQuestion(question, language, config.endpoint, config.api_key, config.model, config.options, signal)
     }
     if (isCloudflare()) {
       return cfApi.answerQuestion(question, language, config, signal)
@@ -81,7 +81,7 @@ export const api = {
   ): Promise<JudgeResult> {
     if (isTauri()) {
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
-      return tauriApi.judgeAnswer(params, language, config.endpoint, config.api_key, config.model, config.options)
+      return tauriApi.judgeAnswer(params, language, config.endpoint, config.api_key, config.model, config.options, signal)
     }
     if (isCloudflare()) {
       return cfApi.judgeAnswer(params, language, config, signal)
@@ -97,7 +97,7 @@ export const api = {
   ): Promise<ExplainResult> {
     if (isTauri()) {
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
-      return tauriApi.explainQuestion(params, language, config.endpoint, config.api_key, config.model, config.options)
+      return tauriApi.explainQuestion(params, language, config.endpoint, config.api_key, config.model, config.options, signal)
     }
     if (isCloudflare()) {
       return cfApi.explainQuestion(params, language, config, signal)

@@ -11,6 +11,24 @@ export interface OtaStatus {
   error: string | null
 }
 
+async function invokeAI<T>(command: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+  signal?.throwIfAborted()
+  const requestId = crypto.randomUUID()
+  const pending = invoke<T>(command, { ...args, requestId })
+  const cancel = () => { void invoke('cancel_ai_request', { requestId }).catch(console.error) }
+  signal?.addEventListener('abort', cancel, { once: true })
+  try {
+    const result = await pending
+    signal?.throwIfAborted()
+    return result
+  } catch (error) {
+    signal?.throwIfAborted()
+    throw error
+  } finally {
+    signal?.removeEventListener('abort', cancel)
+  }
+}
+
 export const tauriApi = {
   async parseFileText(filePath: string): Promise<string> {
     return invoke<string>('parse_file_text', { filePath })
@@ -40,15 +58,16 @@ export const tauriApi = {
     const safePath = typeof filePath === 'string' ? filePath : String(filePath || 'file')
     console.log('[bridge] safePath:', safePath)
     try {
-      return await invoke<GenerateResult>('generate_exam', {
+      return await invokeAI<GenerateResult>('generate_exam', {
         filePath: safePath,
         paramsJson: JSON.stringify(params),
         endpoint,
         apiKey,
         model,
         options,
-      })
+      }, signal)
     } catch (e: any) {
+      signal?.throwIfAborted()
       const detail = `[DIAG] filePath type=${fpType} val=${fpVal} safePath=${safePath} | ${e?.message || e}`
       console.error(detail)
       throw new Error(detail)
@@ -106,8 +125,9 @@ export const tauriApi = {
     apiKey: string,
     model: string,
     options?: AIConfig['options'],
+    signal?: AbortSignal,
   ): Promise<AnswerResult> {
-    return invoke<AnswerResult>('answer_question', { question, language, endpoint, apiKey, model, options })
+    return invokeAI<AnswerResult>('answer_question', { question, language, endpoint, apiKey, model, options }, signal)
   },
 
   async judgeAnswer(
@@ -117,8 +137,9 @@ export const tauriApi = {
     apiKey: string,
     model: string,
     options?: AIConfig['options'],
+    signal?: AbortSignal,
   ): Promise<JudgeResult> {
-    return invoke<JudgeResult>('judge_answer', {
+    return invokeAI<JudgeResult>('judge_answer', {
       stem: params.stem,
       referenceAnswer: params.reference_answer,
       analysis: params.analysis ?? '',
@@ -128,7 +149,7 @@ export const tauriApi = {
       apiKey,
       model,
       options,
-    })
+    }, signal)
   },
 
   async explainQuestion(
@@ -138,8 +159,9 @@ export const tauriApi = {
     apiKey: string,
     model: string,
     options?: AIConfig['options'],
+    signal?: AbortSignal,
   ): Promise<ExplainResult> {
-    return invoke<ExplainResult>('explain_question', {
+    return invokeAI<ExplainResult>('explain_question', {
       stem: params.stem,
       referenceAnswer: params.reference_answer,
       analysis: params.analysis ?? '',
@@ -148,7 +170,7 @@ export const tauriApi = {
       apiKey,
       model,
       options,
-    })
+    }, signal)
   },
 
   async saveConfig(config: AIConfig): Promise<void> {

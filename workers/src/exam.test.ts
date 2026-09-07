@@ -34,15 +34,19 @@ const aiResponse = [
 ]
 
 const mockAi = {
-  run: async () => ({ response: aiResponse }),
+  run: async () => Response.json({ response: aiResponse }),
 } as unknown as Ai
 
-const generated = await generateExam(mockAi, 'Boundary test content', {
-  question_types: [QuestionType.SingleChoice, QuestionType.TrueFalse],
-  count: 2,
-  difficulty: Difficulty.Hard,
-  language: 'en-US',
-}, 'mock-model')
+async function testGeneration(): Promise<void> {
+  const generated = await generateExam(mockAi, 'Boundary test content', {
+    question_types: [QuestionType.SingleChoice, QuestionType.TrueFalse],
+    count: 2,
+    difficulty: Difficulty.Hard,
+    language: 'en-US',
+  }, 'mock-model')
 
-assertEqual(generated.length, 2, 'generated question count')
-assertOk(generated.every((question) => question.difficulty === Difficulty.Hard), 'generated questions should have the requested difficulty')
+  assertEqual(generated.length, 2, 'generated question count')
+  assertOk(generated.every((question) => question.difficulty === Difficulty.Hard), 'generated questions should have the requested difficulty')
+}
+
+void testGeneration()

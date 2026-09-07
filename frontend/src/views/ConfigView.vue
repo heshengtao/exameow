@@ -154,8 +154,6 @@ async function handleSave() {
       </div>
     </div>
 
-    <AdvancedAIOptions />
-
     <!-- Model -->
     <div class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
       <label class="text-label-md font-semibold block mb-3" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('configSectionModel') }}</label>
@@ -190,6 +188,8 @@ async function handleSave() {
         <span>{{ configFetchError }}</span>
       </div>
     </Transition>
+
+    <AdvancedAIOptions />
 
     <!-- ========= Unified Save + CTA ========= -->
     <div class="flex items-center justify-center gap-3 mt-8">

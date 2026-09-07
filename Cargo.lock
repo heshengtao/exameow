@@ -1390,6 +1390,7 @@ dependencies = [
  "tauri-plugin-screenrecord",
  "tauri-plugin-sharekit",
  "tauri-plugin-updater",
+ "tokio",
  "xcap",
 ]
 
