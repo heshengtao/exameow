@@ -31,6 +31,7 @@ export const tauriApi = {
     apiKey: string,
     model: string,
     signal?: AbortSignal,
+    options?: AIConfig['options'],
   ): Promise<GenerateResult> {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
     const fpType = typeof filePath
@@ -45,6 +46,7 @@ export const tauriApi = {
         endpoint,
         apiKey,
         model,
+        options,
       })
     } catch (e: any) {
       const detail = `[DIAG] filePath type=${fpType} val=${fpVal} safePath=${safePath} | ${e?.message || e}`
@@ -103,8 +105,9 @@ export const tauriApi = {
     endpoint: string,
     apiKey: string,
     model: string,
+    options?: AIConfig['options'],
   ): Promise<AnswerResult> {
-    return invoke<AnswerResult>('answer_question', { question, language, endpoint, apiKey, model })
+    return invoke<AnswerResult>('answer_question', { question, language, endpoint, apiKey, model, options })
   },
 
   async judgeAnswer(
@@ -113,6 +116,7 @@ export const tauriApi = {
     endpoint: string,
     apiKey: string,
     model: string,
+    options?: AIConfig['options'],
   ): Promise<JudgeResult> {
     return invoke<JudgeResult>('judge_answer', {
       stem: params.stem,
@@ -123,6 +127,7 @@ export const tauriApi = {
       endpoint,
       apiKey,
       model,
+      options,
     })
   },
 
@@ -132,6 +137,7 @@ export const tauriApi = {
     endpoint: string,
     apiKey: string,
     model: string,
+    options?: AIConfig['options'],
   ): Promise<ExplainResult> {
     return invoke<ExplainResult>('explain_question', {
       stem: params.stem,
@@ -141,6 +147,7 @@ export const tauriApi = {
       endpoint,
       apiKey,
       model,
+      options,
     })
   },
 

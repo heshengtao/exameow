@@ -1,3 +1,4 @@
+import type { AIOptions } from '../../packages/shared/src/aiOptions'
 import { Ai } from '@cloudflare/workers-types'
 import { aiChat } from './ai'
 import { AnswerResult } from './types'
@@ -6,11 +7,13 @@ export async function answerQuestion(
   ai: Ai,
   question: string,
   language: string,
-  model?: string
+  model?: string,
+  options?: AIOptions,
+  signal?: AbortSignal,
 ): Promise<AnswerResult> {
   const systemPrompt = buildAnswerSystemPrompt()
   const userPrompt = buildAnswerUserPrompt(question, language)
-  const response = await aiChat(ai, { model, systemPrompt, userPrompt })
+  const response = await aiChat(ai, { model, options, signal, systemPrompt, userPrompt })
   return parseAnswer(response)
 }
 

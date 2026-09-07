@@ -1,3 +1,4 @@
+import type { AIOptions } from '../../packages/shared/src/aiOptions'
 import type { Ai } from '@cloudflare/workers-types'
 import { aiChat } from './ai'
 import { ExplainResult } from './types'
@@ -7,6 +8,8 @@ export interface ExplainInput {
   referenceAnswer: string
   analysis: string
   language: string
+  options?: AIOptions
+  signal?: AbortSignal
   model?: string
 }
 
@@ -18,7 +21,7 @@ export async function explainQuestion(ai: Ai, input: ExplainInput): Promise<Expl
     input.analysis,
     input.language
   )
-  const response = await aiChat(ai, { model: input.model, systemPrompt, userPrompt })
+  const response = await aiChat(ai, { model: input.model, options: input.options, signal: input.signal, systemPrompt, userPrompt })
   return parseExplain(response)
 }
 

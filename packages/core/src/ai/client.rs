@@ -1,4 +1,5 @@
 use crate::error::CoreError;
+use super::AIOptions;
 use super::models::{ModelInfo, ModelsResponse};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 
@@ -6,6 +7,7 @@ pub struct AIClient {
     client: reqwest::Client,
     endpoint: String,
     api_key: String,
+    options: Option<AIOptions>,
 }
 
 impl AIClient {
@@ -25,7 +27,14 @@ impl AIClient {
             client,
             endpoint,
             api_key: api_key.to_string(),
+            options: None,
         }
+    }
+
+    pub fn with_options(mut self, options: Option<AIOptions>) -> Result<Self, CoreError> {
+        if let Some(ref options) = options { options.validate()?; }
+        self.options = options;
+        Ok(self)
     }
 
     pub async fn fetch_models(&self) -> Result<Vec<ModelInfo>, CoreError> {
@@ -88,32 +97,43 @@ impl AIClient {
         self.post_chat(body).await
     }
 
-    async fn post_chat(&self, body: serde_json::Value) -> Result<String, CoreError> {
+    async fn post_chat(&self, mut body: serde_json::Value) -> Result<String, CoreError> {
+        if let Some(ref options) = self.options { options.apply(&mut body); }
+        let options = self.options.clone().unwrap_or_default();
+        for attempt in 0..=options.retries {
+            match self.post_chat_once(&body, options.timeout_seconds).await {
+                Ok(content) => return Ok(content),
+                Err((error, retryable)) => {
+                    if !retryable || attempt == options.retries { return Err(error); }
+                    tokio::time::sleep(std::time::Duration::from_secs(u64::from(attempt + 1))).await;
+                }
+            }
+        }
+        unreachable!()
+    }
+
+    async fn post_chat_once(&self, body: &serde_json::Value, timeout: u64) -> Result<String, (CoreError, bool)> {
+        fn transport_error(error: reqwest::Error) -> (CoreError, bool) {
+            let retryable = error.is_timeout() || error.is_connect() || error.is_body();
+            (error.into(), retryable)
+        }
         let url = format!("{}/chat/completions", self.endpoint);
-        let response = self
-            .client
-            .post(&url)
+        let response = self.client.post(&url)
             .header(AUTHORIZATION, format!("Bearer {}", self.api_key))
             .header(CONTENT_TYPE, "application/json")
-            .json(&body)
-            .timeout(std::time::Duration::from_secs(120))
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(CoreError::AI(format!("HTTP {status}: {body}")));
+            .json(body)
+            .timeout(std::time::Duration::from_secs(timeout))
+            .send().await.map_err(transport_error)?;
+        let status = response.status();
+        let text = response.text().await.map_err(transport_error)?;
+        if !status.is_success() {
+            return Err((CoreError::AI(format!("HTTP {status}: {text}")),
+                status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error()));
         }
-
-        let json: serde_json::Value = response.json().await?;
-        let content = json["choices"][0]["message"]["content"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-
-        if content.is_empty() {
-            return Err(CoreError::AI("empty response from AI".to_string()));
+        let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| (e.into(), false))?;
+        let content = json["choices"][0]["message"]["content"].as_str().unwrap_or("").to_string();
+        if content.trim().is_empty() {
+            return Err((CoreError::AI("empty response from AI".into()), false));
         }
         Ok(content)
     }

@@ -1,7 +1,11 @@
+import { aiRequestParameters, withAdditionalPrompt, type AIOptions } from '../../packages/shared/src/aiOptions'
+import { AIHttpError, runAIRequest } from '../../packages/shared/src/aiRequest'
 import { Ai } from '@cloudflare/workers-types'
 import { DEFAULT_MODEL } from './types'
 
 interface AIChatInput {
+  options?: AIOptions
+  signal?: AbortSignal
   model?: string
   systemPrompt: string
   userPrompt: string
@@ -60,18 +64,23 @@ export async function aiChat(
 ): Promise<string> {
   const model = input.model || DEFAULT_MODEL
 
-  const result: any = await ai.run(model as any, {
-    messages: [
-      { role: 'system', content: input.systemPrompt },
-      { role: 'user', content: input.userPrompt },
-    ],
-    temperature: 0.7,
-    max_tokens: 16384,
-    stream: false,
-  })
+  return runAIRequest(async (signal) => {
+    const response = await ai.run(model as any, {
+      messages: [
+        { role: 'system', content: withAdditionalPrompt(input.systemPrompt, input.options) },
+        { role: 'user', content: input.userPrompt },
+      ],
+      ...aiRequestParameters(input.options),
+      stream: false,
+    }, { signal, returnRawResponse: true })
+    if (!response.ok) throw new AIHttpError(response.status, await response.text())
+    const result = response.headers.get('content-type')?.includes('text/event-stream')
+      ? response.body : await response.json()
+    return parseAIResult(result)
+  }, input.options, input.signal)
+}
 
-  console.log('AI result type:', typeof result, 'keys:', result ? Object.keys(result) : 'null')
-
+async function parseAIResult(result: any): Promise<string> {
   // CF Workers AI returns { response: string } for text generation
   if (typeof result === 'string') {
     if (!result.trim()) throw new Error('AI returned empty response')

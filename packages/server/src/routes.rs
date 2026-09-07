@@ -4,7 +4,7 @@ use axum::{
     response::Response,
     Json,
 };
-use exameow_core::ai::{AIClient, ModelInfo};
+use exameow_core::ai::{AIClient, AIOptions, ModelInfo};
 use exameow_core::config::{AIConfigData, ConfigStore};
 use exameow_core::exam::{
     answer_question, explain_question, generate_exam, judge_answer, AnswerResult, ExamParams, ExplainResult, JudgeResult, Question,
@@ -75,6 +75,7 @@ pub async fn generate_exam_handler(
     let mut endpoint = String::new();
     let mut api_key = String::new();
     let mut model = String::new();
+    let mut options: Option<AIOptions> = None;
 
     while let Ok(Some(field)) = multipart.next_field().await {
         let name = field.name().unwrap_or("").to_string();
@@ -106,6 +107,10 @@ pub async fn generate_exam_handler(
                     .text()
                     .await
                     .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+            }
+            "options" => {
+                let json = field.text().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+                options = Some(serde_json::from_str(&json).map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid AI options: {e}")))?);
             }
             "model" => {
                 model = field
@@ -150,7 +155,8 @@ pub async fn generate_exam_handler(
 
     let _ = std::fs::remove_file(&temp_path_str);
 
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(options)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
     let questions = generate_exam(&client, &text, &params, &model)
         .await
         .map_err(|e| (StatusCode::BAD_GATEWAY, format!("AI error: {e}")))?;
@@ -225,6 +231,7 @@ pub struct AnswerRequest {
     pub endpoint: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
+    pub options: Option<AIOptions>,
 }
 
 pub async fn answer_handler(
@@ -253,7 +260,8 @@ pub async fn answer_handler(
 
     let language = req.language.filter(|s| !s.is_empty()).unwrap_or_else(|| "Chinese".to_string());
 
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(req.options)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
     let result = answer_question(&client, &req.question, &language, &model)
         .await
         .map_err(|e| (StatusCode::BAD_GATEWAY, format!("AI error: {e}")))?;
@@ -270,6 +278,7 @@ pub struct JudgeRequest {
     pub endpoint: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
+    pub options: Option<AIOptions>,
 }
 
 pub async fn judge_handler(
@@ -299,7 +308,8 @@ pub async fn judge_handler(
     let language = req.language.filter(|s| !s.is_empty()).unwrap_or_else(|| "Chinese".to_string());
     let analysis = req.analysis.unwrap_or_default();
 
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(req.options)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
     let result = judge_answer(
         &client,
         &req.stem,
@@ -323,6 +333,7 @@ pub struct ExplainRequest {
     pub endpoint: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
+    pub options: Option<AIOptions>,
 }
 
 pub async fn explain_handler(
@@ -352,7 +363,8 @@ pub async fn explain_handler(
     let language = req.language.filter(|s| !s.is_empty()).unwrap_or_else(|| "Chinese".to_string());
     let analysis = req.analysis.unwrap_or_default();
 
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(req.options)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
     let result = explain_question(
         &client,
         &req.stem,

@@ -1,3 +1,4 @@
+import { chatRequest } from './chatRequest'
 import type { AIConfig, AnswerResult, ExplainParams, ExplainResult, JudgeParams, JudgeResult } from '@exameow/shared'
 
 const SYSTEM_PROMPT = `You are an expert exam-solving assistant. The user will give you an exam question (it may include options). Solve it.
@@ -16,28 +17,7 @@ export async function answerViaCustomAI(
   config: AIConfig,
   signal?: AbortSignal,
 ): Promise<AnswerResult> {
-  const endpoint = config.endpoint.replace(/\/+$/, '')
-  const res = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.api_key}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Language: ${language}\n\nQUESTION:\n${question}` },
-      ],
-      temperature: 0.7,
-      max_tokens: 16384,
-    }),
-    signal,
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text().catch(() => '')}`)
-  const data = await res.json()
-  const content = data.choices?.[0]?.message?.content
-  if (typeof content !== 'string') throw new Error('AI returned no content')
+  const content = await chatRequest(SYSTEM_PROMPT, `Language: ${language}\n\nQUESTION:\n${question}`, config, signal)
   return parseAnswer(content)
 }
 
@@ -83,28 +63,7 @@ export async function judgeViaCustomAI(
   config: AIConfig,
   signal?: AbortSignal,
 ): Promise<JudgeResult> {
-  const endpoint = config.endpoint.replace(/\/+$/, '')
-  const res = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.api_key}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages: [
-        { role: 'system', content: JUDGE_SYSTEM_PROMPT },
-        { role: 'user', content: buildJudgeUserPrompt(params, language) },
-      ],
-      temperature: 0.7,
-      max_tokens: 16384,
-    }),
-    signal,
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text().catch(() => '')}`)
-  const data = await res.json()
-  const content = data.choices?.[0]?.message?.content
-  if (typeof content !== 'string') throw new Error('AI returned no content')
+  const content = await chatRequest(JUDGE_SYSTEM_PROMPT, buildJudgeUserPrompt(params, language), config, signal)
   return parseJudge(content)
 }
 
@@ -150,28 +109,7 @@ export async function explainViaCustomAI(
   config: AIConfig,
   signal?: AbortSignal,
 ): Promise<ExplainResult> {
-  const endpoint = config.endpoint.replace(/\/+$/, '')
-  const res = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.api_key}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages: [
-        { role: 'system', content: EXPLAIN_SYSTEM_PROMPT },
-        { role: 'user', content: buildExplainUserPrompt(params, language) },
-      ],
-      temperature: 0.7,
-      max_tokens: 16384,
-    }),
-    signal,
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text().catch(() => '')}`)
-  const data = await res.json()
-  const content = data.choices?.[0]?.message?.content
-  if (typeof content !== 'string') throw new Error('AI returned no content')
+  const content = await chatRequest(EXPLAIN_SYSTEM_PROMPT, buildExplainUserPrompt(params, language), config, signal)
   return parseExplain(content)
 }
 

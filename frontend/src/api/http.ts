@@ -32,6 +32,7 @@ export const httpApi = {
     formData.append('endpoint', config.endpoint)
     formData.append('api_key', config.api_key)
     formData.append('model', config.model)
+    formData.append('options', JSON.stringify(config.options ?? {}))
 
     const res = await fetch(`${BASE_URL}/api/generate`, {
       method: 'POST',
@@ -84,6 +85,7 @@ export const httpApi = {
         endpoint: config.endpoint,
         api_key: config.api_key,
         model: config.model,
+        options: config.options,
       }),
       signal,
     })
@@ -109,6 +111,7 @@ export const httpApi = {
         endpoint: config.endpoint,
         api_key: config.api_key,
         model: config.model,
+        options: config.options,
       }),
       signal,
     })
@@ -133,6 +136,7 @@ export const httpApi = {
         endpoint: config.endpoint,
         api_key: config.api_key,
         model: config.model,
+        options: config.options,
       }),
       signal,
     })

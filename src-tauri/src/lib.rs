@@ -1,3 +1,4 @@
+use exameow_core::ai::AIOptions;
 use exameow_core::ai::{AIClient, ModelInfo};
 use exameow_core::config::{AIConfigData, ConfigStore};
 use exameow_core::exam::{
@@ -79,6 +80,7 @@ async fn generate_exam(
     endpoint: String,
     api_key: String,
     model: String,
+    options: Option<AIOptions>,
 ) -> Result<GenerateResult, CommandError> {
     let params: ExamParams = serde_json::from_str(&params_json)
         .map_err(|e| CommandError(format!("Invalid params JSON: {e}")))?;
@@ -89,7 +91,8 @@ async fn generate_exam(
         parse_file(&file_path).map_err(|e| CommandError(format!("File parse error: {e}")))?
     };
 
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(options)
+        .map_err(|e| CommandError(e.to_string()))?;
     let questions = core_generate_exam(&client, &text, &params, &model)
         .await
         .map_err(|e| CommandError(format!("Exam generation error: {e}")))?;
@@ -104,11 +107,13 @@ async fn answer_question(
     endpoint: String,
     api_key: String,
     model: String,
+    options: Option<AIOptions>,
 ) -> Result<AnswerResult, CommandError> {
     if question.trim().is_empty() {
         return Err(CommandError("Question is empty".to_string()));
     }
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(options)
+        .map_err(|e| CommandError(e.to_string()))?;
     core_answer_question(&client, &question, &language, &model)
         .await
         .map_err(|e| CommandError(format!("Answer error: {e}")))
@@ -124,11 +129,13 @@ async fn judge_answer(
     endpoint: String,
     api_key: String,
     model: String,
+    options: Option<AIOptions>,
 ) -> Result<JudgeResult, CommandError> {
     if user_answer.trim().is_empty() {
         return Err(CommandError("User answer is empty".to_string()));
     }
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(options)
+        .map_err(|e| CommandError(e.to_string()))?;
     core_judge_answer(
         &client,
         &stem,
@@ -151,11 +158,13 @@ async fn explain_question(
     endpoint: String,
     api_key: String,
     model: String,
+    options: Option<AIOptions>,
 ) -> Result<ExplainResult, CommandError> {
     if stem.trim().is_empty() {
         return Err(CommandError("Question is empty".to_string()));
     }
-    let client = AIClient::new(&endpoint, &api_key);
+    let client = AIClient::new(&endpoint, &api_key).with_options(options)
+        .map_err(|e| CommandError(e.to_string()))?;
     core_explain_question(&client, &stem, &reference_answer, &analysis, &language, &model)
         .await
         .map_err(|e| CommandError(format!("Explain error: {e}")))

@@ -33,6 +33,7 @@ export const cfApi = {
     }
     formData.append('params', JSON.stringify(params))
     formData.append('model', config.model)
+    formData.append('options', JSON.stringify(config.options ?? {}))
 
     const res = await fetch(`${getBaseUrl()}/api/generate`, {
       method: 'POST',
@@ -87,7 +88,7 @@ export const cfApi = {
     const res = await fetch(`${getBaseUrl()}/api/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, language, model: config.model }),
+      body: JSON.stringify({ question, language, model: config.model, options: config.options }),
       signal,
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
@@ -110,6 +111,7 @@ export const cfApi = {
         user_answer: params.user_answer,
         language,
         model: config.model,
+        options: config.options,
       }),
       signal,
     })
@@ -132,6 +134,7 @@ export const cfApi = {
         analysis: params.analysis,
         language,
         model: config.model,
+        options: config.options,
       }),
       signal,
     })

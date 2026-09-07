@@ -1,3 +1,4 @@
+import type { AIOptions } from '../../packages/shared/src/aiOptions'
 import type { Ai } from '@cloudflare/workers-types'
 import { aiChat } from './ai'
 import { JudgeResult } from './types'
@@ -8,6 +9,8 @@ export interface JudgeInput {
   analysis: string
   userAnswer: string
   language: string
+  options?: AIOptions
+  signal?: AbortSignal
   model?: string
 }
 
@@ -20,7 +23,7 @@ export async function judgeAnswer(ai: Ai, input: JudgeInput): Promise<JudgeResul
     input.userAnswer,
     input.language
   )
-  const response = await aiChat(ai, { model: input.model, systemPrompt, userPrompt })
+  const response = await aiChat(ai, { model: input.model, options: input.options, signal: input.signal, systemPrompt, userPrompt })
   return parseJudge(response)
 }
 

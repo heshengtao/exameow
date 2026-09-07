@@ -1,3 +1,4 @@
+import { resolveAIOptions, type AIOptions } from '../../packages/shared/src/aiOptions'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Ai, Fetcher, D1Database } from '@cloudflare/workers-types'
@@ -85,6 +86,7 @@ app.post('/api/generate', async (c) => {
   let fileName = 'unknown'
   let paramsJson = ''
   let model = ''
+  let options: AIOptions | undefined
 
   try {
     const formData = await c.req.formData()
@@ -100,6 +102,8 @@ app.post('/api/generate', async (c) => {
       paramsJson = paramsField
     }
 
+    const optionsField = formData.get('options')
+    options = resolveAIOptions(typeof optionsField === 'string' ? JSON.parse(optionsField) : undefined)
     const modelField = formData.get('model')
     if (typeof modelField === 'string') {
       model = modelField
@@ -139,7 +143,7 @@ app.post('/api/generate', async (c) => {
 
   let questions: Question[]
   try {
-    questions = await generateExam(c.env.AI, text, params, model || undefined)
+    questions = await generateExam(c.env.AI, text, params, model || undefined, options, c.req.raw.signal)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('AI generation error:', msg)
@@ -151,9 +155,10 @@ app.post('/api/generate', async (c) => {
 
 // POST /api/answer - answers a user question via AI
 app.post('/api/answer', async (c) => {
-  let body: { question?: string; language?: string; model?: string }
+  let body: { question?: string; language?: string; model?: string; options?: AIOptions }
   try {
     body = await c.req.json()
+    body.options = resolveAIOptions(body.options)
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
@@ -168,7 +173,9 @@ app.post('/api/answer', async (c) => {
       c.env.AI,
       question,
       body.language || 'Chinese',
-      body.model || undefined
+      body.model || undefined,
+      body.options,
+      c.req.raw.signal,
     )
     return c.json(result)
   } catch (err) {
@@ -187,9 +194,11 @@ app.post('/api/judge', async (c) => {
     user_answer?: string
     language?: string
     model?: string
+    options?: AIOptions
   }
   try {
     body = await c.req.json()
+    body.options = resolveAIOptions(body.options)
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
@@ -207,6 +216,8 @@ app.post('/api/judge', async (c) => {
       userAnswer,
       language: body.language || 'Chinese',
       model: body.model || undefined,
+      options: body.options,
+      signal: c.req.raw.signal,
     })
     return c.json(result)
   } catch (err) {
@@ -224,9 +235,11 @@ app.post('/api/explain', async (c) => {
     analysis?: string
     language?: string
     model?: string
+    options?: AIOptions
   }
   try {
     body = await c.req.json()
+    body.options = resolveAIOptions(body.options)
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
@@ -243,6 +256,8 @@ app.post('/api/explain', async (c) => {
       analysis: body.analysis || '',
       language: body.language || 'Chinese',
       model: body.model || undefined,
+      options: body.options,
+      signal: c.req.raw.signal,
     })
     return c.json(result)
   } catch (err) {
