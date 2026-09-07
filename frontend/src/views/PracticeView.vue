@@ -342,12 +342,13 @@ function handleStartWrongPractice(sort: WrongSort) {
 function startWrongPractice(sort: WrongSort) {
   if (!selectedBankId.value) return
   const wrongQs = wrongStore.getWrongQuestions(selectedBankId.value, sort)
+    .filter(q => matchPracticeFilter(q, practiceFilter.value))
   if (wrongQs.length === 0) return
   if (practiceStore.session && practiceStore.session.mode !== 'wrong') {
     savedMainSession.value = JSON.parse(JSON.stringify(practiceStore.session))
   }
   wrongSort.value = sort
-  practiceStore.startSession(selectedBankId.value, 'wrong', undefined, wrongQs)
+  practiceStore.startSession(selectedBankId.value, 'wrong', undefined, wrongQs, practiceFilter.value as PracticeFilter)
   viewState.value = 'practice'
   autoAdvancing.value = false
   selectedMode.value = 'wrong'

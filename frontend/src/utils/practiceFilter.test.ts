@@ -132,3 +132,13 @@ if (Object.keys(reconcileMockTypeCounts({ typeCounts: { true_false: 2 } }, avail
 if (Object.keys(empty.typeCounts).length !== 0 || selected.typeCounts.single_choice !== 3) {
   throw new Error('Mock configuration fixtures must preserve the component contract')
 }
+
+assertEqual(matchPracticeFilter(q, { includeUnchaptered: true }), true)
+assertEqual(matchPracticeFilter({ ...q, chapter: 'A' }, { includeUnchaptered: true }), false)
+assertEqual(matchPracticeFilter(q, { chapters: ['A'] }), false)
+assertEqual(matchPracticeFilter(q, { chapters: ['A'], includeUnchaptered: true }), true)
+assertEqual(matchPracticeFilter({ ...q, chapter: ' A ' }, { chapters: ['A'] }), true)
+assertEqual(matchPracticeFilter({ ...q, chapter: 'B' }, { chapters: ['A'], includeUnchaptered: true }), false)
+const chapterSession = JSON.parse(JSON.stringify({ ...persistedFilteredSession, filter: { chapters: ['A'], includeUnchaptered: true } }))
+const chapterSettings = getResumedPracticeSettings(chapterSession)
+assertEqual(chapterSettings.filter.includeUnchaptered === true && chapterSettings.filter.chapters?.[0] === 'A', true)

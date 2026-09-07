@@ -29,6 +29,7 @@ export interface Question {
 export interface PracticeFilter {
   subjects?: string[]
   chapters?: string[]
+  includeUnchaptered?: boolean
   difficulties?: Difficulty[]
   types?: QuestionType[]
 }

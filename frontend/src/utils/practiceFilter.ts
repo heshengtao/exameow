@@ -67,7 +67,10 @@ export function matchPracticeFilter(q: Question, filter?: PracticeFilterComparis
   const types = filter?.types?.filter(Boolean)
   if (types && !types.includes(q.type)) return false
   if (subjects.length && (!q.subject || !subjects.includes(q.subject))) return false
-  if (chapters.length && (!q.chapter || !chapters.includes(q.chapter))) return false
+  const chapter = q.chapter?.trim()
+  if (chapters.length || filter?.includeUnchaptered) {
+    if (chapter ? !chapters.includes(chapter) : !filter?.includeUnchaptered) return false
+  }
   if (difficulties !== undefined && difficulties.length === 0) return false
   if (difficulties?.length) {
     const difficulty = q.difficulty ?? UNMARKED_DIFFICULTY
