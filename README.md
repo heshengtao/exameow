@@ -167,6 +167,19 @@ docker run -d -p 3000:3000 \
 
 If `ADMIN_TOKEN` is not set, it defaults to `pass` and must be changed on first visit to `/#/admin`.
 
+## Advanced AI settings
+
+Open **My → AI Config → Advanced AI settings**. Settings are saved on the current device and apply to generation, answers, grading and explanations across native, Docker and Cloudflare backends.
+
+- **Thinking:** model default (omit the parameter), on (send the selected `reasoning_effort`), or off (send `none`). Effort values are `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`; support depends on the selected provider and model. Provider-specific switches such as `enable_thinking` are not sent.
+- **Output limit:** 1–1,000,000 tokens, default 16,384. Choose `max_tokens` or `max_completion_tokens` to match your API; the provider's own limit still applies. OpenAI's completion limit also includes reasoning tokens.
+- **Temperature:** 0–2, default 0.7, or omit it for models that do not accept this parameter.
+- **Additional prompt:** up to 20,000 characters, appended to the built-in system prompt while retaining required JSON output instructions. It applies to every AI task, so keep it appropriate for both generation and grading.
+- **Timeout:** 1–3,600 seconds per model request attempt, including reading the response body; default 120 seconds. File parsing and the entire multi-batch job are not covered by this timeout.
+- **Automatic retries:** 0–5 extra attempts, default 0. Only transient network failures, timeouts, HTTP 408/429 and 5xx are retried, with increasing 1–5 second delays. Other HTTP errors and malformed AI output are returned immediately. Each attempt may incur provider charges. Native cancellation stops the current call and further retries; web cancellation signals depend on the server/proxy forwarding client disconnects.
+
+See the [OpenAI Chat Completions reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) for supported parameter semantics. Unsupported settings surface the provider error without silently changing your configuration. Mobile users need the **1.5.0 or newer native shell**; OTA is gated accordingly.
+
 ## Environment Variables
 
 | Variable | Default | Description |

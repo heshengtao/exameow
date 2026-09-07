@@ -167,6 +167,19 @@ docker run -d -p 3000:3000 \
 
 不设置 `ADMIN_TOKEN` 时默认为 `pass`，首次访问 `/#/admin` 会被强制修改。
 
+## AI 高级设置
+
+进入 **我的 → 算力配置 → AI 高级设置**。设置保存在当前设备，适用于原生端、Docker 和 Cloudflare 的出题、答题、批改及解析。
+
+- **思考开关**：跟随模型（不传参数）、开启（发送所选 `reasoning_effort`）、关闭（发送 `none`）。强度可选 `minimal`、`low`、`medium`、`high`、`xhigh`、`max`，具体支持情况取决于服务商和模型。暂不发送 `enable_thinking` 等服务商专用开关。
+- **最大输出**：1–1,000,000 token，默认 16,384。按接口选择 `max_tokens` 或 `max_completion_tokens` 字段，实际仍受模型上限约束；OpenAI 的 completion 上限也包含推理 token。
+- **Temperature**：0–2，默认 0.7；不支持此参数的模型可勾选“不发送 temperature”。
+- **补充 Prompt**：最多 20,000 字符，追加到内置系统提示词，并保留必要的 JSON 输出要求。它适用于所有 AI 任务，请兼顾出题和批改等场景。
+- **超时**：每次模型请求 1–3,600 秒，默认 120 秒，包含读取响应体的时间；不包含文件解析，也不是整个多批次任务的总时限。
+- **自动重试**：失败后额外尝试 0–5 次，默认 0。仅重试临时网络错误、超时、HTTP 408/429 和 5xx，间隔依次为 1–5 秒；其他 HTTP 错误和 AI 输出格式错误直接报错。每次尝试可能计费。原生端取消会停止当前调用及后续重试；网页端向服务端传递取消信号的效果取决于服务器和代理对断连的处理。
+
+参数语义见 [OpenAI Chat Completions 文档](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)。不支持的参数会显示服务商错误，不会静默更改配置。移动端需要 **1.5.0 或更新的原生壳**，OTA 已设置对应的最低版本限制。
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
