@@ -1,3 +1,4 @@
+import { DEFAULT_AI_OPTIONS, resolveAIOptions } from '@exameow/shared'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { AIConfig, ModelInfo } from '@exameow/shared'
@@ -12,6 +13,7 @@ import { normalizeEndpoint, withV1Suffix } from '@/utils/endpoint'
 export type AIProvider = 'cf-free' | 'custom' | 'server'
 
 export const useConfigStore = defineStore('config', () => {
+  const options = ref({ ...DEFAULT_AI_OPTIONS })
   const endpoint = ref('')
   const apiKey = ref('')
   const model = ref('')
@@ -35,6 +37,8 @@ export const useConfigStore = defineStore('config', () => {
 
   async function loadSaved() {
     const saved = await api.loadConfig()
+    const localOptions = localStorage.getItem('exameow_ai_options')
+    if (localOptions) options.value = resolveAIOptions(JSON.parse(localOptions))
     if (saved) {
       if (saved.endpoint) endpoint.value = saved.endpoint
       if (saved.api_key) apiKey.value = saved.api_key
@@ -104,6 +108,8 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   async function save() {
+    options.value = resolveAIOptions(options.value)
+    localStorage.setItem('exameow_ai_options', JSON.stringify(options.value))
     localStorage.setItem('exameow_ai_provider', aiProvider.value)
     if (!isCloudflare() && !isTauri() && aiProvider.value === 'server') {
       return
@@ -114,9 +120,9 @@ export const useConfigStore = defineStore('config', () => {
 
   function getConfig(): AIConfig {
     if (!isCloudflare() && !isTauri() && aiProvider.value === 'server') {
-      return { endpoint: '', api_key: '', model: model.value }
+      return { endpoint: '', api_key: '', model: model.value, options: resolveAIOptions(options.value) }
     }
-    return { endpoint: endpoint.value, api_key: apiKey.value, model: model.value }
+    return { endpoint: endpoint.value, api_key: apiKey.value, model: model.value, options: resolveAIOptions(options.value) }
   }
 
   function setProvider(provider: AIProvider) {
@@ -130,5 +136,5 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  return { endpoint, apiKey, model, models, loading, configured, aiProvider, serverInfo, loadSaved, fetchModels, save, getConfig, setProvider }
+  return { options, endpoint, apiKey, model, models, loading, configured, aiProvider, serverInfo, loadSaved, fetchModels, save, getConfig, setProvider }
 })

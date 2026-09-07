@@ -82,6 +82,7 @@ export interface ExamParams {
 }
 
 export interface AIConfig {
+  options?: import('./aiOptions').AIOptions
   endpoint: string
   api_key: string
   model: string

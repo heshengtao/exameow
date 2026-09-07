@@ -2,6 +2,23 @@
 export type Locale = 'zh' | 'zh-TW' | 'en' | 'ja' | 'ko' | 'es' | 'fr' | 'de' | 'ru' | 'ar'
 
 export interface LocaleMessages {
+  aiAdvanced: string
+  aiAdvancedHint: string
+  aiThinking: string
+  aiDefault: string
+  aiOn: string
+  aiOff: string
+  aiEffort: string
+  aiMaxTokens: string
+  aiTokenField: string
+  aiOmitTemperature: string
+  aiTimeout: string
+  aiRetries: string
+  aiRetryHint: string
+  aiPrompt: string
+  aiPromptHint: string
+  aiReset: string
+
   appName: string
   appSubtitle: string
   navConfig: string
@@ -473,6 +490,23 @@ export interface LocaleMessages {
 }
 
 export const zh: LocaleMessages = {
+  aiAdvanced: "AI 高级设置",
+  aiAdvancedHint: "适用于当前设备上的出题、答题、批改和解析。思考使用 reasoning_effort，支持的档位取决于模型。OpenAI 推理模型请选择 max_completion_tokens，并按模型要求勾选不发送 temperature。",
+  aiThinking: "思考开关",
+  aiDefault: "跟随模型",
+  aiOn: "开启",
+  aiOff: "关闭",
+  aiEffort: "思考强度",
+  aiMaxTokens: "最大输出 token 数",
+  aiTokenField: "输出上限 API 字段",
+  aiOmitTemperature: "不发送 temperature",
+  aiTimeout: "每次请求超时（秒）",
+  aiRetries: "自动重试次数（0 为关闭）",
+  aiRetryHint: "仅重试临时网络错误、超时、HTTP 408/429 和 5xx，最多额外尝试 5 次。每次尝试可能计费；取消和其他 4xx 错误不会重试。",
+  aiPrompt: "补充 Prompt",
+  aiPromptHint: "为 AI 调用补充要求；程序仍保留必要的 JSON 输出规则。",
+  aiReset: "恢复默认",
+
   appName: '过了喵',
   appSubtitle: 'AI 智能出题',
   navConfig: '配置',
@@ -944,6 +978,23 @@ export const zh: LocaleMessages = {
 }
 
 export const zhTW: LocaleMessages = {
+  aiAdvanced: "AI 高级设置",
+  aiAdvancedHint: "适用于当前设备上的出题、答题、批改和解析。思考使用 reasoning_effort，支持的档位取决于模型。OpenAI 推理模型请选择 max_completion_tokens，并按模型要求勾选不发送 temperature。",
+  aiThinking: "思考开关",
+  aiDefault: "跟随模型",
+  aiOn: "开启",
+  aiOff: "关闭",
+  aiEffort: "思考强度",
+  aiMaxTokens: "最大输出 token 数",
+  aiTokenField: "输出上限 API 字段",
+  aiOmitTemperature: "不发送 temperature",
+  aiTimeout: "每次请求超时（秒）",
+  aiRetries: "自动重试次数（0 为关闭）",
+  aiRetryHint: "仅重试临时网络错误、超时、HTTP 408/429 和 5xx，最多额外尝试 5 次。每次尝试可能计费；取消和其他 4xx 错误不会重试。",
+  aiPrompt: "补充 Prompt",
+  aiPromptHint: "为 AI 调用补充要求；程序仍保留必要的 JSON 输出规则。",
+  aiReset: "恢复默认",
+
   appName: '過瞭喵',
   appSubtitle: 'AI 智能出題',
   navConfig: '配置',
@@ -1415,6 +1466,23 @@ export const zhTW: LocaleMessages = {
 }
 
 export const en: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'AI Question Generator',
   navConfig: 'Config',
@@ -1886,6 +1954,23 @@ export const en: LocaleMessages = {
 }
 
 export const ja: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'AI問題ジェネレーター',
   navConfig: '設定',
@@ -2357,6 +2442,23 @@ export const ja: LocaleMessages = {
 }
 
 export const ko: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'AI 문제 생성기',
   navConfig: '설정',
@@ -2828,6 +2930,23 @@ export const ko: LocaleMessages = {
 }
 
 export const es: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'Generador de Exámenes IA',
   navConfig: 'Configuración',
@@ -3299,6 +3418,23 @@ export const es: LocaleMessages = {
 }
 
 export const fr: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'Générateur d\\\\\\\\\\\\\\\'Examens IA',
   navConfig: 'Configuration',
@@ -3770,6 +3906,23 @@ export const fr: LocaleMessages = {
 }
 
 export const de: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'KI Prüfungsgenerator',
   navConfig: 'Konfiguration',
@@ -4241,6 +4394,23 @@ export const de: LocaleMessages = {
 }
 
 export const ru: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'ИИ Генератор Тестов',
   navConfig: 'Настройки',
@@ -4712,6 +4882,23 @@ export const ru: LocaleMessages = {
 }
 
 export const ar: LocaleMessages = {
+  aiAdvanced: "Advanced AI settings",
+  aiAdvancedHint: "Applies to generation, answers, grading and explanations on this device. Thinking uses reasoning_effort; supported values depend on the model. For OpenAI reasoning models, select max_completion_tokens and omit temperature when required.",
+  aiThinking: "Thinking",
+  aiDefault: "Model default",
+  aiOn: "On",
+  aiOff: "Off",
+  aiEffort: "Thinking effort",
+  aiMaxTokens: "Maximum output tokens",
+  aiTokenField: "Output limit API field",
+  aiOmitTemperature: "Do not send temperature",
+  aiTimeout: "Timeout per attempt (seconds)",
+  aiRetries: "Automatic retries (0 = off)",
+  aiRetryHint: "Retry transient network errors, timeouts, HTTP 408/429 and 5xx, up to 5 extra attempts. Each attempt may incur charges. Cancellation and other 4xx errors are not retried.",
+  aiPrompt: "Additional prompt",
+  aiPromptHint: "Extra instructions for AI calls; required JSON output rules remain in place.",
+  aiReset: "Restore defaults",
+
   appName: 'Exameow',
   appSubtitle: 'مولد أسئلة الامتحانات بالذكاء الاصطناعي',
   navConfig: 'الإعدادات',

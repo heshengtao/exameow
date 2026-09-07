@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AdvancedAIOptions from '@/components/config/AdvancedAIOptions.vue'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfigStore } from '@/stores/config'
@@ -152,6 +153,8 @@ async function handleSave() {
         </button>
       </div>
     </div>
+
+    <AdvancedAIOptions />
 
     <!-- Model -->
     <div class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
