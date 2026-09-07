@@ -15,6 +15,8 @@ Version `1.2.1` (kept in sync across root `package.json`, `src-tauri/Cargo.toml`
 - **发布流程**：bump 提交 → 打 `v*` tag 推送触发 CI（desktop/mobile/docker 三条流水线）→ CI 生成的 GitHub Release **默认是草稿，必须发布（`gh release edit vX.Y.Z --draft=false`），否则 Tauri 更新器看不到 `latest.json`** → 用 `bash scripts/deploy-cf.sh` 顺便更新 Cloudflare 线上版。
 - **移动端 OTA 热更新**：`src-tauri/src/ota.rs` 自研实现（assets 替换 + 三态回滚 staged→booting→committed），仅 Android/iOS 生效，桌面端仍用官方 updater。CI 随 release 附加 `mobile-dist.tar.gz` + `mobile-ota.json`；App 查 `releases/latest/download/mobile-ota.json`。**若某版本前端依赖新增的原生能力（Rust 命令/插件），发版前必须把仓库根 `ota.json` 的 `minShell` 提高到能支持它的最低 APK 版本**，否则旧壳会热更到不兼容的前端，调新命令时报 `command xxx not found`（v1.3.5 真实事故：`explain_question` 新增但 minShell 滞留 1.3.0，旧壳热更后 AI 解析全挂；且已中招设备无法靠 OTA 自愈——minShell 只在下载决策时校验，必须重装新 APK）。纯前端修复无需动 `minShell`。**防忘**：mobile CI 首步跑 `scripts/check-ota-minshell.sh`，自动 diff 前端 `invoke()` 命令集与上一 tag 原生代码（`src-tauri/` + `plugins/`），发现新命令但 `minShell` 未提到 ≥ 当前版本则流水线直接失败。
 
+**章节功能发布提醒**：`auto_chapter` / `chapter_names` 依赖本次新增的 Rust 生成提示词能力。下次发布此功能时须升级次版本，并将 `ota.json` 的 `minShell` 提高到包含该能力的新壳版本；旧 1.5.0 壳会忽略这些参数，不能仅靠新命令检测覆盖此兼容性变化。
+
 ## Tech Stack
 
 - **Frontend**: Vue 3 + Vite + Pinia + Vue Router + TypeScript, Tailwind CSS 3.4 (custom Material You tonal palette)

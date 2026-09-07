@@ -66,3 +66,12 @@ const xlsxTemplateQuestion = parseWithMapping(xlsxTemplateWithoutSubject, xlsxTe
 assertEqual(xlsxTemplateQuestion?.subject, undefined, 'xlsx template without subject leaves subject empty')
 assertEqual(xlsxTemplateQuestion?.chapter, '1章', 'xlsx template maps chapter by header')
 assertEqual(xlsxTemplateQuestion?.difficulty, Difficulty.Medium, 'xlsx template maps 适中 difficulty by header')
+
+for (const [csv, expected] of [
+  ['题干,答案,章节\nQ,A, 第一章 ', '第一章'],
+  ['题干,答案,章节\nQ,A,   ', undefined],
+  ['题干,答案\nQ,A', undefined],
+] as const) {
+  const analysis = analyzeCSV(csv)!
+  assertEqual(parseWithMapping(analysis, analysis.mapping, 'test')[0]?.chapter, expected, 'chapter import compatibility')
+}

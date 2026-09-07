@@ -5,10 +5,11 @@ import type { QuestionBank, QuestionType } from '@exameow/shared'
 import type { PracticeFilterComparison } from '@/utils/practiceFilter'
 import { groupChapters } from '@/utils/chapters'
 import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
-import { matchPracticeFilter, UNMARKED_DIFFICULTY, type PracticeDifficulty } from '@/utils/practiceFilter'
+import { UNMARKED_DIFFICULTY, type PracticeDifficulty } from '@/utils/practiceFilter'
 
 const props = defineProps<{
   bank: QuestionBank
+  matchedCount: number
   modelValue: PracticeFilterComparison
 }>()
 
@@ -69,8 +70,6 @@ const selectedChapters = computed(() => props.modelValue.chapters ?? [])
 const selectedDifficulties = computed(() => (props.modelValue.difficulties ?? []) as PracticeDifficulty[])
 const selectedTypes = computed(() => props.modelValue.types ?? [])
 
-const matchedCount = computed(() => props.bank.questions.filter(q => matchPracticeFilter(q, props.modelValue)).length)
-
 function update(key: keyof PracticeFilterComparison, value: any[]) {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
 }
@@ -94,14 +93,14 @@ function update(key: keyof PracticeFilterComparison, value: any[]) {
       <div class="flex flex-wrap gap-2">
         <button type="button" class="btn-tonal !h-auto !py-2"
           :aria-pressed="!selectedChapters.length && !modelValue.includeUnchaptered"
-          :class="{ 'ring-2 ring-current': !selectedChapters.length && !modelValue.includeUnchaptered }"
+          :style="{ outline: !selectedChapters.length && !modelValue.includeUnchaptered ? '2px solid rgb(var(--md-primary))' : undefined }"
           @click="clearChapters">
           {{ i18n.t('practiceFilterAll') }} · {{ bank.questions.length }}
         </button>
         <button v-for="group in chapterGroups" :key="JSON.stringify(group.chapter)" type="button"
           class="btn-tonal !h-auto !py-2 !whitespace-normal text-left break-words max-w-full"
           :aria-pressed="group.chapter === null ? !!modelValue.includeUnchaptered : selectedChapters.includes(group.chapter)"
-          :class="{ 'ring-2 ring-current': group.chapter === null ? modelValue.includeUnchaptered : selectedChapters.includes(group.chapter) }"
+          :style="{ outline: (group.chapter === null ? modelValue.includeUnchaptered : selectedChapters.includes(group.chapter)) ? '2px solid rgb(var(--md-primary))' : undefined }"
           @click="toggleChapter(group.chapter)">
           {{ group.chapter ?? i18n.t('practiceUnchaptered') }} · {{ group.count }}
         </button>

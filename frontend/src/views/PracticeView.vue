@@ -180,7 +180,8 @@ const currentWrongCount = computed(() => {
 
 const resumeSessionHasWrong = computed(() => {
   if (!practiceStore.session) return false
-  return wrongStore.hasWrongQuestions(practiceStore.session.bankId)
+  return wrongStore.getWrongQuestions(practiceStore.session.bankId, wrongSort.value)
+    .some(q => matchPracticeFilter(q, practiceStore.session!.filter))
 })
 
 onMounted(() => {
@@ -253,7 +254,10 @@ const filteredQuestions = computed(() => {
   if (!selectedBankId.value) return []
   const bank = practiceStore.getBank(selectedBankId.value)
   if (!bank) return []
-  return bank.questions.filter(q => matchPracticeFilter(q, practiceFilter.value))
+  const pool = selectedMode.value === 'wrong'
+    ? wrongStore.getWrongQuestions(bank.id, wrongSort.value)
+    : bank.questions
+  return pool.filter(q => matchPracticeFilter(q, practiceFilter.value))
 })
 
 const availableTypes = computed(() => {
@@ -293,7 +297,6 @@ const canStartMockExam = computed(() => {
 
 const canStartSelectedMode = computed(() => {
   if (!selectedMode.value) return false
-  if (selectedMode.value === 'wrong') return selectedBankId.value !== null && wrongStore.hasWrongQuestions(selectedBankId.value)
   return filteredQuestions.value.length > 0 && (selectedMode.value !== 'mock' || canStartMockExam.value)
 })
 
@@ -357,6 +360,7 @@ function startWrongPractice(sort: WrongSort) {
 function handleWrongPracticeFromCard() {
   if (!practiceStore.session) return
   selectedBankId.value = practiceStore.session.bankId
+  practiceFilter.value = getResumedPracticeSettings(practiceStore.session).filter
   showWrongSortDialog.value = true
 }
 
@@ -374,6 +378,7 @@ function handleRemoveWrong() {
 
 function handleManageWrong(bankId: string) {
   selectedBankId.value = bankId
+  practiceFilter.value = {}
   showWrongSortDialog.value = true
 }
 
@@ -762,6 +767,7 @@ function handleBack() {
         />
         <FilterBar
           :bank="practiceStore.getBank(selectedBankId)!"
+          :matched-count="filteredQuestions.length"
           v-model="practiceFilter"
         />
       </div>
