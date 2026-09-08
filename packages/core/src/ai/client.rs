@@ -2,6 +2,15 @@ use crate::error::CoreError;
 use super::models::{ModelInfo, ModelsResponse};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 
+/// AI 请求超时(秒),默认 600s 以兼容响应较慢的自托管网关/大文档生成;
+/// 可通过环境变量 AI_TIMEOUT_SECS 覆盖。
+fn ai_timeout_secs() -> u64 {
+    std::env::var("AI_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(600)
+}
+
 pub struct AIClient {
     client: reqwest::Client,
     endpoint: String,
@@ -96,7 +105,7 @@ impl AIClient {
             .header(AUTHORIZATION, format!("Bearer {}", self.api_key))
             .header(CONTENT_TYPE, "application/json")
             .json(&body)
-            .timeout(std::time::Duration::from_secs(120))
+            .timeout(std::time::Duration::from_secs(ai_timeout_secs()))
             .send()
             .await?;
 
