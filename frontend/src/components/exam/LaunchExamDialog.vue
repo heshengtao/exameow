@@ -6,6 +6,7 @@ import { usePublishedStore } from '@/stores/published'
 import { publishExam, examLinkFor } from '@/api/relay'
 import ScheduleFields from '@/components/exam/ScheduleFields.vue'
 import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
+import { exportQuestionsToWord } from '@/utils/wordExport'
 import { QuestionType, type Question } from '@exameow/shared'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
@@ -56,6 +57,7 @@ const publishing = ref(false)
 const error = ref('')
 const result = ref<{ code: string; manageUrl: string } | null>(null)
 const copied = ref('')
+const lastComposed = ref<Question[] | null>(null)
 
 const examLink = computed(() => examLinkFor(result.value?.code ?? ''))
 
@@ -120,6 +122,7 @@ async function handlePublish() {
     error.value = i18n.t('launchErrorNoQuestions')
     return
   }
+  lastComposed.value = questions
   publishing.value = true
   try {
     const res = await publishExam({
@@ -203,6 +206,13 @@ async function copy(text: string, which: string) {
         <p v-if="error" class="text-sm" style="color: rgb(var(--md-error))">{{ error }}</p>
         <div class="flex gap-2 justify-end">
           <button class="btn-outlined" @click="emit('close')">{{ i18n.t('pubCancel') }}</button>
+          <button
+            class="btn-tonal"
+            :disabled="totalSelected === 0"
+            @click="exportQuestionsToWord(title.trim() || '考试试卷', composeQuestions())"
+          >
+            下载 Word 试卷
+          </button>
           <button class="btn-filled" :disabled="publishing || totalSelected === 0" @click="handlePublish">
             {{ publishing ? i18n.t('pubPublishing') : i18n.t('pubConfirm') }}
           </button>
@@ -228,6 +238,13 @@ async function copy(text: string, which: string) {
           </div>
         </div>
         <button class="btn-filled w-full" @click="emit('close')">{{ i18n.t('pubClose') }}</button>
+        <button
+          v-if="lastComposed"
+          class="btn-tonal w-full mt-2"
+          @click="exportQuestionsToWord(title.trim() || '考试试卷', lastComposed!)"
+        >
+          下载 Word 试卷(与本次发布完全一致)
+        </button>
       </template>
     </div>
   </div>

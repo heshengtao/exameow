@@ -1,8 +1,9 @@
 import { api } from '@/api'
 import { generateCsvContent } from '@/api/http'
+import { exportBankToWord } from '@/utils/wordExport'
 import type { QuestionBank } from '@exameow/shared'
 
-export type BankExportFormat = 'csv' | 'xlsx'
+export type BankExportFormat = 'csv' | 'xlsx' | 'word'
 
 export interface BankExportResult {
   ok: boolean
@@ -45,6 +46,14 @@ async function saveTauri(filename: string, questions: QuestionBank['questions'],
 }
 
 export async function exportBank(bank: QuestionBank, format: BankExportFormat): Promise<BankExportResult> {
+  if (format === 'word') {
+    try {
+      const files = await exportBankToWord(bank)
+      return { ok: true, path: files.join('、') }
+    } catch (e: any) {
+      return { ok: false, error: String(e?.message ?? e) }
+    }
+  }
   const filename = `${sanitizeFilename(bank.name)}.${format}`
   try {
     if (isTauriPlatform()) {
