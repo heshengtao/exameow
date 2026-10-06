@@ -118,7 +118,7 @@ Pre-built binaries for all platforms are available on the [GitHub Releases](http
 | Platform | Status | Download |
 |----------|--------|----------|
 | Windows | ✅ Supported | `.msi` installer / portable `.zip` |
-| macOS (Apple Silicon) | ✅ Supported | `.dmg` (see release notes to remove quarantine) |
+| macOS (Apple Silicon / Intel) | ✅ Supported | `.dmg` (see release notes to remove quarantine) |
 | Linux (x86_64 / ARM64) | ✅ Supported | `.AppImage` / `.deb` |
 | Android (ARM64) | ✅ Supported | `.apk` |
 | iOS | ⚠️ Self-build required | See note below |

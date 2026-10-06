@@ -116,7 +116,7 @@ Exameow는 **Windows, macOS, Linux, Android, Web** (iOS는 셀프 빌드)을 지
 | 플랫폼 | 상태 | 다운로드 형식 |
 |--------|------|---------------|
 | Windows | ✅ 지원됨 | `.msi` 설치 파일 / 무설치 `.zip` |
-| macOS (Apple Silicon) | ✅ 지원됨 | `.dmg` (격리 속성 제거 방법은 Release 참조) |
+| macOS (Apple Silicon / Intel) | ✅ 지원됨 | `.dmg` (격리 속성 제거 방법은 Release 참조) |
 | Linux (x86_64 / ARM64) | ✅ 지원됨 | `.AppImage` / `.deb` |
 | Android (ARM64) | ✅ 지원됨 | `.apk` |
 | iOS | ⚠️ 셀프 빌드 필요 | 아래 참고 사항 참조 |

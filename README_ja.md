@@ -116,7 +116,7 @@ Exameowは**Windows、macOS、Linux、Android、Web**（iOSはセルフビルド
 | プラットフォーム | 状態 | ダウンロード形式 |
 |------------------|------|------------------|
 | Windows | ✅ 対応済み | `.msi` インストーラー / ポータブル `.zip` |
-| macOS (Apple Silicon) | ✅ 対応済み | `.dmg`（Quarantine属性の解除方法はリリースノートを参照） |
+| macOS (Apple Silicon / Intel) | ✅ 対応済み | `.dmg`（Quarantine属性の解除方法はリリースノートを参照） |
 | Linux (x86_64 / ARM64) | ✅ 対応済み | `.AppImage` / `.deb` |
 | Android (ARM64) | ✅ 対応済み | `.apk` |
 | iOS | ⚠️ セルフビルドが必要 | 下記の注記を参照 |

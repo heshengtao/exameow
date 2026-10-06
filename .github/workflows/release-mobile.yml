@@ -135,6 +135,8 @@ jobs:
 
             👉 [MacOS-dmg-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-macos_arm64.dmg)
 
+            👉 [MacOS-dmg-X64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-macos_amd64.dmg)
+
             👉 [Linux-AppImage-X86_64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_amd64.AppImage)
 
             👉 [Linux-AppImage-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_arm64.AppImage)

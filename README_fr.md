@@ -116,7 +116,7 @@ Les paquets pré-compilés pour toutes les plateformes sont disponibles sur la p
 | Plateforme | Statut | Téléchargement |
 |------------|--------|----------------|
 | Windows | ✅ Pris en charge | Installateur `.msi` / `.zip` portable |
-| macOS (Apple Silicon) | ✅ Pris en charge | `.dmg` (voir notes de version pour retirer la quarantaine) |
+| macOS (Apple Silicon / Intel) | ✅ Pris en charge | `.dmg` (voir notes de version pour retirer la quarantaine) |
 | Linux (x86_64 / ARM64) | ✅ Pris en charge | `.AppImage` / `.deb` |
 | Android (ARM64) | ✅ Pris en charge | `.apk` |
 | iOS | ⚠️ Compilation autonome requise | Voir note ci-dessous |

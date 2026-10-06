@@ -54,6 +54,10 @@ jobs:
             target: aarch64-apple-darwin
             artifact: macos_arm64
             bundles: --bundles app
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            artifact: macos_amd64
+            bundles: --bundles app
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -124,7 +128,7 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: |
           mkdir -p dist
-          APP_DIR=$(find target -path '*/release/bundle/macos' -type d | head -n 1)
+          APP_DIR="target/${{ matrix.target }}/release/bundle/macos"
           APP=$(find "$APP_DIR" -maxdepth 1 -name "*.app" -type d | head -n 1)
           xattr -cr "$APP"
           python3 -m venv /tmp/dmgenv
@@ -163,11 +167,11 @@ jobs:
           const tag = process.env.TAG;
           const base = 'https://github.com/' + process.env.REPO + '/releases/download/' + tag + '/';
           const files = fs.readdirSync('artifacts');
-          const find = (suffix) => files.find((f) => f.endsWith(suffix));
+          const find = (suffix, mid) => files.find((f) => f.endsWith(suffix) && (!mid || f.includes(mid)));
           const platforms = {};
-          const add = (key, fileSuffix, sigSuffix) => {
-            const f = find(fileSuffix);
-            const s = find(sigSuffix);
+          const add = (key, fileSuffix, sigSuffix, mid) => {
+            const f = find(fileSuffix, mid);
+            const s = find(sigSuffix, mid);
             if (f && s) {
               platforms[key] = {
                 signature: fs.readFileSync('artifacts/' + s, 'utf8').trim(),
@@ -176,7 +180,8 @@ jobs:
             }
           };
           add('windows-x86_64', '-setup.exe', '-setup.exe.sig');
-          add('darwin-aarch64', '.app.tar.gz', '.app.tar.gz.sig');
+          add('darwin-aarch64', '.app.tar.gz', '.app.tar.gz.sig', 'macos_arm64');
+          add('darwin-x86_64', '.app.tar.gz', '.app.tar.gz.sig', 'macos_amd64');
           add('linux-x86_64', 'linux_amd64.AppImage', 'linux_amd64.AppImage.sig');
           fs.writeFileSync('artifacts/latest.json', JSON.stringify({
             version: tag.replace(/^v/, ''),
@@ -207,6 +212,8 @@ jobs:
             👉 [Windows-portable](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-windows_amd64-portable.zip)
 
             👉 [MacOS-dmg-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-macos_arm64.dmg)
+
+            👉 [MacOS-dmg-X64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-macos_amd64.dmg)
 
             👉 [Linux-AppImage-X86_64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_amd64.AppImage)
 

@@ -116,7 +116,7 @@
 | 平台 | 狀態 | 下載格式 |
 |------|------|----------|
 | Windows | ✅ 已支援 | `.msi` 安裝包 / 免安裝 `.zip` |
-| macOS（Apple 晶片） | ✅ 已支援 | `.dmg`（去除隔離屬性見 Release 說明） |
+| macOS（Apple 晶片 / Intel） | ✅ 已支援 | `.dmg`（去除隔離屬性見 Release 說明） |
 | Linux（x86_64 / ARM64） | ✅ 已支援 | `.AppImage` / `.deb` |
 | Android（ARM64） | ✅ 已支援 | `.apk` |
 | iOS | ⚠️ 需自行打包 | 見下方說明 |

@@ -116,7 +116,7 @@ Los paquetes precompilados para todas las plataformas están disponibles en la p
 | Plataforma | Estado | Descarga |
 |------------|--------|----------|
 | Windows | ✅ Soportado | Instalador `.msi` / `.zip` portable |
-| macOS (Apple Silicon) | ✅ Soportado | `.dmg` (ver notas de lanzamiento para quitar cuarentena) |
+| macOS (Apple Silicon / Intel) | ✅ Soportado | `.dmg` (ver notas de lanzamiento para quitar cuarentena) |
 | Linux (x86_64 / ARM64) | ✅ Soportado | `.AppImage` / `.deb` |
 | Android (ARM64) | ✅ Soportado | `.apk` |
 | iOS | ⚠️ Requiere compilación propia | Ver nota a continuación |

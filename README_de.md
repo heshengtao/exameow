@@ -116,7 +116,7 @@ Die vorgebauten Installationspakete für alle Plattformen sind auf der [GitHub R
 | Plattform | Status | Download |
 |-----------|--------|----------|
 | Windows | ✅ Unterstützt | `.msi`-Installer / portable `.zip` |
-| macOS (Apple Silicon) | ✅ Unterstützt | `.dmg` (siehe Release-Notes zur Quarantäne-Entfernung) |
+| macOS (Apple Silicon / Intel) | ✅ Unterstützt | `.dmg` (siehe Release-Notes zur Quarantäne-Entfernung) |
 | Linux (x86_64 / ARM64) | ✅ Unterstützt | `.AppImage` / `.deb` |
 | Android (ARM64) | ✅ Unterstützt | `.apk` |
 | iOS | ⚠️ Selbstkompilierung erforderlich | Siehe Hinweis unten |

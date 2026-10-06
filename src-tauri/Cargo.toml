@@ -1,6 +1,6 @@
 [package]
 name = "exameow"
-version = "1.6.0"
+version = "1.6.1"
 description = "AI-powered exam question generator"
 edition = "2021"
 
