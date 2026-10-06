@@ -1,10 +1,12 @@
 use axum::{
+    body::{Body, Bytes},
     extract::{Multipart, Query, State},
     http::{header, StatusCode},
     response::Response,
     Json,
 };
-use exameow_core::ai::{AIClient, AIRequestOptions, ModelInfo};
+use exameow_core::ai::{AIClient, AIRequestOptions, ChatEvent, ChatMessage, ModelInfo};
+use futures_util::{stream, StreamExt};
 use exameow_core::config::{AIConfigData, ConfigStore};
 use exameow_core::exam::{
     answer_question, explain_question, generate_exam, judge_answer, AnswerResult, ExamParams, ExplainResult, JudgeResult, Question,
@@ -395,6 +397,68 @@ pub async fn explain_handler(
     .await
     .map_err(|e| (StatusCode::BAD_GATEWAY, format!("AI error: {e}")))?;
     Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+pub struct ChatRequest {
+    pub messages: Vec<ChatMessage>,
+    pub endpoint: Option<String>,
+    pub api_key: Option<String>,
+    pub model: Option<String>,
+    pub options: Option<AIRequestOptions>,
+}
+
+/// SSE framing for the normalized chat protocol. A `done` frame is always
+/// appended so clients can finish cleanly even without relying on EOF.
+fn sse_frame(event: &ChatEvent) -> Bytes {
+    let payload = serde_json::to_string(event)
+        .unwrap_or_else(|_| r#"{"type":"error","message":"serialize error"}"#.to_string());
+    Bytes::from(format!("data: {payload}\n\n"))
+}
+
+pub async fn chat_handler(
+    Json(req): Json<ChatRequest>,
+) -> Result<Response, (StatusCode, String)> {
+    if req.messages.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Messages are empty".to_string()));
+    }
+
+    let endpoint = req.endpoint.filter(|s| !s.is_empty()).unwrap_or_else(ai_endpoint);
+    let api_key = req.api_key.filter(|s| !s.is_empty()).unwrap_or_else(ai_api_key);
+    let model = req.model.filter(|s| !s.is_empty()).unwrap_or_else(ai_model);
+
+    if endpoint.is_empty() || api_key.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "No AI config (set AI_ENDPOINT/AI_API_KEY env vars)".to_string(),
+        ));
+    }
+
+    let client = AIClient::new(&endpoint, &api_key)
+        .with_options(req.options)
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid AI options: {e}")))?;
+    let deltas = client
+        .chat_messages_stream(req.messages, &model)
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("AI error: {e}")))?;
+
+    let frames = deltas
+        .map(|item| match item {
+            Ok(text) => Ok::<Bytes, std::convert::Infallible>(sse_frame(&ChatEvent::Delta { text })),
+            Err(e) => Ok(sse_frame(&ChatEvent::Error {
+                message: e.to_string(),
+            })),
+        })
+        .chain(stream::once(async {
+            Ok::<Bytes, std::convert::Infallible>(sse_frame(&ChatEvent::Done))
+        }));
+
+    Response::builder()
+        .header(header::CONTENT_TYPE, "text/event-stream")
+        .header(header::CACHE_CONTROL, "no-cache")
+        .header("X-Accel-Buffering", "no")
+        .body(Body::from_stream(frames))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 #[derive(Serialize)]

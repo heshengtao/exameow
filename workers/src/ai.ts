@@ -169,3 +169,127 @@ export async function aiChat(
   })()
   throw new Error(`AI returned unexpected response: type=${typeof result} keys=${result ? Object.keys(result).join(',') : 'null'} payload=${payload}`)
 }
+
+export interface AIChatStreamInput {
+  model?: string
+  messages: { role: string; content: string }[]
+  maxTokens?: number
+  temperature?: number
+  omitTemperature?: boolean
+  extraPrompt?: string
+}
+
+function mapMessagesWithExtra(
+  messages: { role: string; content: string }[],
+  extra?: string,
+): { role: string; content: string }[] {
+  const out = messages.map((m) => ({
+    role: m.role,
+    content: m.content.slice(0, m.role === 'system' ? MAX_PROMPT_CHARS : MAX_USER_PROMPT_CHARS),
+  }))
+  const trimmed = extra?.trim().slice(0, MAX_PROMPT_CHARS)
+  if (!trimmed) return out
+  const system = out.find((m) => m.role === 'system')
+  const suffix = `\n\n## Additional Instructions (user-provided, highest priority)\n${trimmed}\n\n## Follow the required output format above.`
+  if (system) {
+    system.content = `${system.content}${suffix}`
+  } else {
+    out.unshift({ role: 'system', content: suffix.trimStart() })
+  }
+  return out
+}
+
+function extractCfDelta(line: string): string {
+  const trimmed = line.trim()
+  if (!trimmed.startsWith('data:')) return ''
+  const data = trimmed.slice(5).trim()
+  if (!data || data === '[DONE]') return ''
+  try {
+    const parsed = JSON.parse(data)
+    if (typeof parsed.response === 'string') return parsed.response
+    if (typeof parsed.choices?.[0]?.delta?.content === 'string') return parsed.choices[0].delta.content
+    if (typeof parsed.choices?.[0]?.message?.content === 'string') return parsed.choices[0].message.content
+  } catch {}
+  return ''
+}
+
+function sseFrame(event: Record<string, unknown>): Uint8Array {
+  return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`)
+}
+
+/** Convert a raw provider SSE stream into our normalized chat SSE protocol. */
+function normalizeStream(input: ReadableStream): ReadableStream<Uint8Array> {
+  const decoder = new TextDecoder()
+  const reader = input.getReader()
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let buffer = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            const text = extractCfDelta(line)
+            if (text) controller.enqueue(sseFrame({ type: 'delta', text }))
+          }
+        }
+        const tail = extractCfDelta(buffer)
+        if (tail) controller.enqueue(sseFrame({ type: 'delta', text: tail }))
+        controller.enqueue(sseFrame({ type: 'done' }))
+        controller.close()
+      } catch (e) {
+        controller.enqueue(sseFrame({ type: 'error', message: e instanceof Error ? e.message : String(e) }))
+        controller.close()
+      }
+    },
+    cancel() {
+      reader.cancel().catch(() => {})
+    },
+  })
+}
+
+function singleValueStream(text: string): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      if (text.trim()) {
+        controller.enqueue(sseFrame({ type: 'delta', text }))
+        controller.enqueue(sseFrame({ type: 'done' }))
+      } else {
+        controller.enqueue(sseFrame({ type: 'error', message: 'AI returned empty response' }))
+      }
+      controller.close()
+    },
+  })
+}
+
+/**
+ * Streaming multi-turn chat. Returns a normalized chat SSE stream so all
+ * backends expose the same wire format to the frontend.
+ */
+export async function aiChatStream(ai: Ai, input: AIChatStreamInput): Promise<ReadableStream<Uint8Array>> {
+  const model = input.model || DEFAULT_MODEL
+  const options: Record<string, unknown> = {
+    messages: mapMessagesWithExtra(input.messages, input.extraPrompt),
+    stream: true,
+  }
+  if (!input.omitTemperature) {
+    options.temperature = typeof input.temperature === 'number' ? input.temperature : 0.7
+  }
+  const requestedTokens =
+    typeof input.maxTokens === 'number' && Number.isFinite(input.maxTokens)
+      ? Math.floor(input.maxTokens)
+      : MAX_OUTPUT_TOKENS
+  options.max_tokens = Math.min(Math.max(requestedTokens, 1), MAX_OUTPUT_TOKENS)
+
+  const result: any = await ai.run(model as any, options)
+  if (isReadableStream(result)) return normalizeStream(result)
+  if (typeof result === 'string') return singleValueStream(result)
+  if (result && typeof result === 'object' && typeof result.response === 'string') {
+    return singleValueStream(result.response)
+  }
+  if (isReadableStream(result?.response)) return normalizeStream(result.response)
+  throw new Error('AI returned unexpected streaming response')
+}

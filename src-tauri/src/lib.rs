@@ -1,4 +1,6 @@
-use exameow_core::ai::{AIClient, AIRequestOptions, ModelInfo};
+use exameow_core::ai::{AIClient, AIRequestOptions, ChatEvent, ChatMessage, ModelInfo};
+use futures_util::StreamExt;
+use tauri::ipc::Channel;
 use exameow_core::config::{AIConfigData, ConfigStore};
 use exameow_core::error::CoreError;
 use exameow_core::exam::{
@@ -199,6 +201,75 @@ async fn explain_question(
     )
     .await
     .map_err(|e| CommandError(format!("Explain error: {e}")))
+}
+
+/// Stream a multi-turn chat completion to the frontend over an IPC channel.
+#[tauri::command]
+async fn chat_with_ai(
+    registry: tauri::State<'_, AiRequestRegistry>,
+    on_event: Channel<ChatEvent>,
+    messages: Vec<ChatMessage>,
+    endpoint: String,
+    api_key: String,
+    model: String,
+    options: Option<AIRequestOptions>,
+    request_id: Option<String>,
+) -> Result<(), CommandError> {
+    if messages.is_empty() {
+        return Err(CommandError("Messages are empty".to_string()));
+    }
+    let client = AIClient::new(&endpoint, &api_key)
+        .with_options(options)
+        .map_err(|e| CommandError(format!("Invalid AI options: {e}")))?;
+    let mut stream = client
+        .chat_messages_stream(messages, &model)
+        .await
+        .map_err(|e| CommandError(format!("Chat error: {e}")))?;
+
+    match request_id {
+        Some(id) => {
+            let mut receiver = registry.register(id.clone());
+            loop {
+                tokio::select! {
+                    item = stream.next() => match item {
+                        Some(Ok(text)) => {
+                            let _ = on_event.send(ChatEvent::Delta { text });
+                        }
+                        Some(Err(e)) => {
+                            let _ = on_event.send(ChatEvent::Error { message: e.to_string() });
+                            break;
+                        }
+                        None => {
+                            let _ = on_event.send(ChatEvent::Done);
+                            break;
+                        }
+                    },
+                    _ = &mut receiver => {
+                        let _ = on_event.send(ChatEvent::Error { message: "Cancelled".to_string() });
+                        break;
+                    }
+                }
+            }
+            registry.unregister(&id);
+        }
+        None => loop {
+            match stream.next().await {
+                Some(Ok(text)) => {
+                    let _ = on_event.send(ChatEvent::Delta { text });
+                }
+                Some(Err(e)) => {
+                    let _ = on_event.send(ChatEvent::Error { message: e.to_string() });
+                    break;
+                }
+                None => {
+                    let _ = on_event.send(ChatEvent::Done);
+                    break;
+                }
+            }
+        },
+    }
+
+    Ok(())
 }
 
 /// Run an AI future, aborting it early if the frontend cancels the request id.
@@ -756,6 +827,7 @@ pub fn run() {
             answer_question,
             judge_answer,
             explain_question,
+            chat_with_ai,
             cancel_ai_request,
             parse_file_text,
             parse_file_bytes,

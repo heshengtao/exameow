@@ -6,6 +6,7 @@ import { handlePublish, handleGetExam, handleSubmit, handleResults, handleDelete
 import { answerQuestion } from './answer'
 import { judgeAnswer } from './judge'
 import { explainQuestion } from './explain'
+import { chatStream, normalizeChatMessages } from './chat'
 import { parseFile } from './parser'
 import { generateXlsxBuffer, generateCsvContent } from './export'
 import { Question, ExamParams, AVAILABLE_CF_MODELS, AIRequestOptions, MAX_JSON_BODY_BYTES, MAX_JSON_EXPORT_BYTES, MAX_REQUEST_BYTES, MAX_UPLOAD_BYTES, MAX_DOC_TEXT_CHARS, MAX_STEM_CHARS, MAX_ANSWER_CHARS, MAX_PROMPT_CHARS, MAX_EXAM_PAYLOAD_BYTES } from './types'
@@ -312,6 +313,37 @@ app.post('/api/explain', async (c) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('AI explain error:', msg)
+    const failure = aiErrorPayload(msg)
+    return c.json({ error: failure.error }, failure.status)
+  }
+})
+
+// POST /api/chat - streaming multi-turn chat (normalized SSE protocol)
+app.post('/api/chat', async (c) => {
+  if (!(await allowRequest(c.req.raw, 'chat', 20, 600))) {
+    return c.json({ error: 'Too many requests, please retry later' }, 429)
+  }
+  const parsed = await readJsonCapped(c.req.raw, MAX_JSON_BODY_BYTES)
+  if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status)
+  const body = parsed.value as { messages?: unknown; model?: string; options?: AIRequestOptions }
+
+  const messages = normalizeChatMessages(body.messages)
+  if (messages.length === 0) {
+    return c.json({ error: 'Messages are empty' }, 400)
+  }
+
+  try {
+    const stream = await chatStream(c.env.AI, messages, sanitizeModel(body.model), body.options)
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('AI chat error:', msg)
     const failure = aiErrorPayload(msg)
     return c.json({ error: failure.error }, failure.status)
   }

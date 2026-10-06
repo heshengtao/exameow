@@ -782,3 +782,95 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--md-outline-variant) / 0.8);
 }
+
+/* ===== Learn-with-AI Markdown rendering ===== */
+.learn-markdown {
+  line-height: 1.65;
+  word-break: break-word;
+}
+.learn-markdown > *:first-child {
+  margin-top: 0;
+}
+.learn-markdown > *:last-child {
+  margin-bottom: 0;
+}
+.learn-markdown p {
+  margin: 0.5em 0;
+}
+.learn-markdown h1,
+.learn-markdown h2,
+.learn-markdown h3,
+.learn-markdown h4 {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0.9em 0 0.45em;
+}
+.learn-markdown h1 { font-size: 1.25rem; }
+.learn-markdown h2 { font-size: 1.1rem; }
+.learn-markdown h3 { font-size: 1rem; }
+.learn-markdown h4 { font-size: 0.95rem; }
+.learn-markdown ul,
+.learn-markdown ol {
+  margin: 0.5em 0;
+  padding-left: 1.35em;
+}
+.learn-markdown ul { list-style: disc; }
+.learn-markdown ol { list-style: decimal; }
+.learn-markdown li { margin: 0.2em 0; }
+.learn-markdown li > ul,
+.learn-markdown li > ol { margin: 0.2em 0; }
+.learn-markdown a {
+  color: rgb(var(--md-primary));
+  text-decoration: underline;
+}
+.learn-markdown strong { font-weight: 700; }
+.learn-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  background-color: rgb(var(--md-surface-container-highest));
+}
+.learn-markdown pre {
+  margin: 0.6em 0;
+  padding: 0.8em 1em;
+  border-radius: 12px;
+  overflow-x: auto;
+  background-color: rgb(var(--md-surface-container-highest));
+}
+.learn-markdown pre code {
+  padding: 0;
+  background: transparent;
+  font-size: 0.85em;
+}
+.learn-markdown blockquote {
+  margin: 0.6em 0;
+  padding: 0.3em 0.9em;
+  border-left: 3px solid rgb(var(--md-primary) / 0.5);
+  color: rgb(var(--md-on-surface-variant));
+}
+.learn-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 0.9em;
+}
+.learn-markdown th,
+.learn-markdown td {
+  border: 1px solid rgb(var(--md-outline-variant) / 0.6);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.learn-markdown th {
+  background-color: rgb(var(--md-surface-container-highest));
+  font-weight: 600;
+}
+.learn-markdown hr {
+  margin: 0.9em 0;
+  border: 0;
+  border-top: 1px solid rgb(var(--md-outline-variant) / 0.6);
+}
+.learn-markdown img {
+  max-width: 100%;
+  border-radius: 8px;
+}

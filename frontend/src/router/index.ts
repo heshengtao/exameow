@@ -14,6 +14,12 @@ const router = createRouter({
       meta: { title: 'Practice' },
     },
     {
+      path: '/learn',
+      name: 'learn',
+      component: () => import('@/views/LearnView.vue'),
+      meta: { title: 'Learn with AI' },
+    },
+    {
       path: '/generate',
       name: 'generate',
       component: () => import('@/views/GenerateView.vue'),

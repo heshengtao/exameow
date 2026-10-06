@@ -8,6 +8,7 @@ import {
   XCircleIcon,
   XMarkIcon,
   SparklesIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -37,6 +38,7 @@ const emit = defineEmits<{
   (e: 'aiJudge'): void
   (e: 'aiCancel'): void
   (e: 'aiExplain'): void
+  (e: 'aiAsk'): void
   (e: 'regrade', correct: boolean): void
 }>()
 
@@ -591,6 +593,15 @@ function getBadgeStyle(opt: string) {
             >
               <SparklesIcon class="w-3.5 h-3.5" />
               {{ question.aiAnalysis ? i18n.t('practiceAiRegenerate') : i18n.t('practiceAiExplain') }}
+            </button>
+            <button
+              v-if="!aiExplaining"
+              class="btn-tonal !h-7 !px-3 text-xs shrink-0"
+              :disabled="!aiConfigured"
+              @click="emit('aiAsk')"
+            >
+              <ChatBubbleLeftRightIcon class="w-3.5 h-3.5" />
+              {{ i18n.t('learnAskAi') }}
             </button>
           </div>
         </div>

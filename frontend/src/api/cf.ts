@@ -1,5 +1,6 @@
-import type { AIConfig, AnswerResult, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
+import type { AIConfig, AnswerResult, ChatMessage, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
+import { consumeChatSse, type ChatStreamHandlers } from '@/utils/chatStream'
 import { AVAILABLE_CF_MODELS } from './cf-models'
 
 export interface GenerateResult {
@@ -141,6 +142,36 @@ export const cfApi = {
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
     return res.json()
+  },
+
+  async chatStream(
+    messages: ChatMessage[],
+    config: AIConfig,
+    handlers: ChatStreamHandlers,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    let res: Response
+    try {
+      res = await fetch(`${getBaseUrl()}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, model: config.model, options: resolveAIOptions(config) }),
+        signal,
+      })
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'AbortError') throw error
+      handlers.onError(error)
+      return
+    }
+    if (!res.ok) {
+      handlers.onError(new Error(`HTTP ${res.status}: ${await res.text().catch(() => '')}`))
+      return
+    }
+    if (!res.body) {
+      handlers.onError(new Error('Server returned no response body'))
+      return
+    }
+    await consumeChatSse(res.body, handlers, signal)
   },
 
   async saveConfig(config: AIConfig): Promise<void> {

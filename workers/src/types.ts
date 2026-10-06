@@ -108,6 +108,17 @@ export interface ExplainResult {
   explanation: string
 }
 
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatResult {
+  reply: string
+}
+
+export const MAX_CHAT_MESSAGES = 40
+
 export const DEFAULT_MODEL = '@cf/openai/gpt-oss-120b'
 
 export interface PublicQuestion {

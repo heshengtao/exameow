@@ -1,7 +1,10 @@
 use crate::error::CoreError;
+use super::chat::ChatMessage;
 use super::models::{ModelInfo, ModelsResponse};
 use super::options::AIRequestOptions;
+use futures_util::{Stream, StreamExt};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
+use std::pin::Pin;
 
 /// AI 请求超时(秒),默认 600s 以兼容响应较慢的自托管网关/大文档生成;
 /// 可通过环境变量 AI_TIMEOUT_SECS 覆盖。请求级 options.timeout_seconds 优先。
@@ -127,6 +130,94 @@ impl AIClient {
             "max_tokens": 16384,
         });
         self.post_chat(body).await
+    }
+
+    /// Multi-turn chat completion from a full messages array, reusing the
+    /// existing non-streaming retry / option pipeline.
+    pub async fn chat_messages(
+        &self,
+        messages: &[ChatMessage],
+        model: &str,
+    ) -> Result<String, CoreError> {
+        let body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 16384,
+        });
+        self.post_chat(body).await
+    }
+
+    /// Streaming chat completion. Returns a stream of *text deltas* already
+    /// parsed out of the OpenAI-compatible SSE body. Errors before the first
+    /// byte surface as `Err`; in-stream failures surface as a stream item.
+    pub async fn chat_messages_stream(
+        &self,
+        messages: Vec<ChatMessage>,
+        model: &str,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<String, CoreError>> + Send>>, CoreError> {
+        let mut body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 16384,
+            "stream": true,
+        });
+        if let Some(options) = self.options.as_ref() {
+            options.apply(&mut body);
+        }
+        let timeout = self
+            .options
+            .as_ref()
+            .and_then(|o| o.timeout_seconds)
+            .unwrap_or_else(ai_timeout_secs);
+
+        let url = format!("{}/chat/completions", self.endpoint);
+        let response = self
+            .client
+            .post(&url)
+            .header(AUTHORIZATION, format!("Bearer {}", self.api_key))
+            .header(CONTENT_TYPE, "application/json")
+            .json(&body)
+            .timeout(std::time::Duration::from_secs(timeout))
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let text = response.text().await.unwrap_or_default();
+            return Err(CoreError::AI(format!("HTTP {status}: {text}")));
+        }
+
+        let mut byte_stream = response.bytes_stream();
+        let stream = async_stream::try_stream! {
+            let mut buffer = String::new();
+            while let Some(chunk) = byte_stream.next().await {
+                let chunk = chunk?;
+                buffer.push_str(&String::from_utf8_lossy(&chunk));
+                loop {
+                    let Some(pos) = buffer.find('\n') else { break };
+                    let line = buffer[..pos].trim_end_matches('\r').to_string();
+                    buffer.drain(..=pos);
+                    let Some(data) = line.strip_prefix("data:") else { continue };
+                    let data = data.trim();
+                    if data.is_empty() {
+                        continue;
+                    }
+                    if data == "[DONE]" {
+                        return;
+                    }
+                    let Ok(value) = serde_json::from_str::<serde_json::Value>(data) else { continue };
+                    if let Some(text) = value["choices"][0]["delta"]["content"].as_str() {
+                        if !text.is_empty() {
+                            yield text.to_string();
+                        }
+                    }
+                }
+            }
+        };
+
+        Ok(Box::pin(stream))
     }
 
     async fn post_chat(&self, body: serde_json::Value) -> Result<String, CoreError> {

@@ -146,6 +146,15 @@ export interface ExplainResult {
   explanation: string
 }
 
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatResult {
+  reply: string
+}
+
 export interface PublicQuestion {
   id: string
   type: QuestionType

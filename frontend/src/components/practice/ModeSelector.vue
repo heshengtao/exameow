@@ -7,6 +7,7 @@ import {
   ArrowPathRoundedSquareIcon,
   ClockIcon,
   ExclamationTriangleIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -16,6 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: PracticeMode): void
+  (e: 'select-learn'): void
 }>()
 
 const i18n = useI18nStore()
@@ -41,6 +43,12 @@ const modes = computed(() => {
       icon: ClockIcon,
     },
     {
+      value: 'learn' as const,
+      title: i18n.t('learnModeTitle'),
+      desc: i18n.t('learnModeDesc'),
+      icon: ChatBubbleLeftRightIcon,
+    },
+    {
       value: 'wrong' as PracticeMode,
       title: i18n.t('wrongModeTitle'),
       desc: i18n.t('wrongModeDesc'),
@@ -53,7 +61,11 @@ const modes = computed(() => {
   return all
 })
 
-function select(mode: PracticeMode) {
+function select(mode: PracticeMode | 'learn') {
+  if (mode === 'learn') {
+    emit('select-learn')
+    return
+  }
   emit('update:modelValue', mode)
 }
 

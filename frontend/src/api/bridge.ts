@@ -1,5 +1,12 @@
-import { invoke } from '@tauri-apps/api/core'
-import type { AIConfig, AIRequestOptions, AnswerResult, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
+import { Channel, invoke } from '@tauri-apps/api/core'
+import type { AIConfig, AIRequestOptions, AnswerResult, ChatMessage, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
+import type { ChatStreamHandlers } from '@/utils/chatStream'
+
+interface TauriChatEvent {
+  type?: string
+  text?: string
+  message?: string
+}
 
 export interface GenerateResult {
   questions: Question[]
@@ -192,6 +199,53 @@ export const tauriApi = {
       },
       signal,
     )
+  },
+
+  async chatStream(
+    messages: ChatMessage[],
+    endpoint: string,
+    apiKey: string,
+    model: string,
+    options: AIRequestOptions | undefined,
+    handlers: ChatStreamHandlers,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (signal?.aborted) return
+    const requestId = crypto.randomUUID()
+    let settled = false
+    const channel = new Channel<TauriChatEvent>()
+    channel.onmessage = (event) => {
+      if (signal?.aborted) return
+      if (event?.type === 'delta' && typeof event.text === 'string') {
+        handlers.onDelta(event.text)
+      } else if (event?.type === 'error') {
+        settled = true
+        if (event.message === 'Cancelled') return
+        handlers.onError(new Error(event.message || 'AI error'))
+      } else if (event?.type === 'done') {
+        settled = true
+        handlers.onDone()
+      }
+    }
+    const cancel = () => {
+      void invoke('cancel_ai_request', { requestId }).catch(() => {})
+    }
+    signal?.addEventListener('abort', cancel, { once: true })
+    try {
+      await invoke('chat_with_ai', {
+        onEvent: channel,
+        messages,
+        endpoint,
+        apiKey,
+        model,
+        options,
+        requestId,
+      })
+    } catch (error) {
+      if (!signal?.aborted && !settled) handlers.onError(error)
+    } finally {
+      signal?.removeEventListener('abort', cancel)
+    }
   },
 
   async saveConfig(config: AIConfig): Promise<void> {

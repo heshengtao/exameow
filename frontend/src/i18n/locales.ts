@@ -371,6 +371,17 @@ export interface LocaleMessages {
   practiceAiExplain: string
   practiceAiExplaining: string
   practiceAiRegenerate: string
+  learnModeTitle: string
+  learnModeDesc: string
+  learnAskAi: string
+  learnTitle: string
+  learnQuestionLabel: string
+  learnPlaceholderAnswer: string
+  learnPlaceholderAsk: string
+  learnThinking: string
+  learnStop: string
+  learnSend: string
+  learnComposerHint: string
   cookieBannerText: string
   cookieBannerAccept: string
   updateAvailableTitle: string
@@ -501,6 +512,17 @@ export interface LocaleMessages {
 }
 
 export const zh: LocaleMessages = {
+  learnModeTitle: '和AI一起学',
+  learnModeDesc: '把这道题交给 AI 导师，边答边讲、随时追问',
+  learnAskAi: '向AI提问',
+  learnTitle: '和AI一起学',
+  learnQuestionLabel: '题目',
+  learnPlaceholderAnswer: '输入你的答案…',
+  learnPlaceholderAsk: '继续向 AI 提问…',
+  learnThinking: 'AI 正在思考…',
+  learnStop: '停止',
+  learnSend: '发送',
+  learnComposerHint: 'Enter 发送 · Shift+Enter 换行',
   practiceUnchaptered: "未分章",
   practiceChapterImportHint: "CSV/XLSX 可填写“章节”列，同名自动分组；无章节列仍可正常导入。",
   genAutoChapter: "AI 自动分章",
@@ -1000,6 +1022,17 @@ export const zh: LocaleMessages = {
 }
 
 export const zhTW: LocaleMessages = {
+  learnModeTitle: '和AI一起學',
+  learnModeDesc: '把這道題交給 AI 導師，邊答邊講、隨時追問',
+  learnAskAi: '向AI提問',
+  learnTitle: '和AI一起學',
+  learnQuestionLabel: '題目',
+  learnPlaceholderAnswer: '輸入你的答案…',
+  learnPlaceholderAsk: '繼續向 AI 提問…',
+  learnThinking: 'AI 正在思考…',
+  learnStop: '停止',
+  learnSend: '傳送',
+  learnComposerHint: 'Enter 傳送 · Shift+Enter 換行',
   practiceUnchaptered: "未分章",
   practiceChapterImportHint: "CSV/XLSX 可填寫「章節」欄，同名自動分組；無章節欄仍可正常匯入。",
   genAutoChapter: "AI 自動分章",
@@ -1499,6 +1532,17 @@ export const zhTW: LocaleMessages = {
 }
 
 export const en: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "Unchaptered",
   practiceChapterImportHint: "Add a Chapter column to CSV/XLSX to group questions by name. Files without chapters still work.",
   genAutoChapter: "AI chapter tagging",
@@ -1998,6 +2042,17 @@ export const en: LocaleMessages = {
 }
 
 export const ja: LocaleMessages = {
+  learnModeTitle: 'AIと一緒に学ぶ',
+  learnModeDesc: 'この問題をAIチューターに。答えながら解説を受け、いつでも質問できます',
+  learnAskAi: 'AIに質問',
+  learnTitle: 'AIと一緒に学ぶ',
+  learnQuestionLabel: '問題',
+  learnPlaceholderAnswer: '答えを入力…',
+  learnPlaceholderAsk: '追加で質問する…',
+  learnThinking: 'AIが考えています…',
+  learnStop: '停止',
+  learnSend: '送信',
+  learnComposerHint: 'Enterで送信 · Shift+Enterで改行',
   practiceUnchaptered: "章未設定",
   practiceChapterImportHint: "CSV/XLSX の「Chapter」列で同名の章をまとめます。章のないファイルも読み込めます。",
   genAutoChapter: "AIで章を自動設定",
@@ -2497,6 +2552,17 @@ export const ja: LocaleMessages = {
 }
 
 export const ko: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "미분류",
   practiceChapterImportHint: "CSV/XLSX에 Chapter 열을 추가하면 같은 이름으로 묶습니다. 장이 없는 파일도 가져올 수 있습니다.",
   genAutoChapter: "AI 자동 장 분류",
@@ -2996,6 +3062,17 @@ export const ko: LocaleMessages = {
 }
 
 export const es: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "Sin capítulo",
   practiceChapterImportHint: "Añade una columna Chapter al CSV/XLSX para agrupar por nombre. También se admiten archivos sin capítulos.",
   genAutoChapter: "Capítulos automáticos con IA",
@@ -3495,6 +3572,17 @@ export const es: LocaleMessages = {
 }
 
 export const fr: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "Sans chapitre",
   practiceChapterImportHint: "Ajoutez une colonne Chapter au CSV/XLSX pour regrouper par nom. Les fichiers sans chapitres restent compatibles.",
   genAutoChapter: "Chapitres automatiques par IA",
@@ -3994,6 +4082,17 @@ export const fr: LocaleMessages = {
 }
 
 export const de: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "Ohne Kapitel",
   practiceChapterImportHint: "Eine Chapter-Spalte in CSV/XLSX gruppiert Fragen nach Namen. Dateien ohne Kapitel werden weiterhin unterstützt.",
   genAutoChapter: "KI-Kapitelzuordnung",
@@ -4493,6 +4592,17 @@ export const de: LocaleMessages = {
 }
 
 export const ru: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "Без главы",
   practiceChapterImportHint: "Столбец Chapter в CSV/XLSX группирует вопросы по названию. Файлы без глав также поддерживаются.",
   genAutoChapter: "Главы с помощью ИИ",
@@ -4992,6 +5102,17 @@ export const ru: LocaleMessages = {
 }
 
 export const ar: LocaleMessages = {
+  learnModeTitle: 'Learn with AI',
+  learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
+  learnAskAi: 'Ask AI',
+  learnTitle: 'Learn with AI',
+  learnQuestionLabel: 'Question',
+  learnPlaceholderAnswer: 'Type your answer…',
+  learnPlaceholderAsk: 'Ask a follow-up…',
+  learnThinking: 'AI is thinking…',
+  learnStop: 'Stop',
+  learnSend: 'Send',
+  learnComposerHint: 'Enter to send · Shift+Enter for a new line',
   practiceUnchaptered: "بلا فصل",
   practiceChapterImportHint: "أضف عمود Chapter إلى CSV/XLSX لتجميع الأسئلة حسب الاسم. تبقى الملفات بلا فصول مدعومة.",
   genAutoChapter: "تصنيف الفصول بالذكاء الاصطناعي",

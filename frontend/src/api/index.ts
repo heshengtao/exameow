@@ -1,5 +1,6 @@
-import type { AIConfig, AnswerResult, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo } from '@exameow/shared'
+import type { AIConfig, AnswerResult, ChatMessage, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
+import type { ChatStreamHandlers } from '@/utils/chatStream'
 import { tauriApi, type GenerateResult as TauriGenerateResult } from './bridge'
 import { httpApi, type GenerateResult as HttpGenerateResult, type ServerConfigInfo } from './http'
 import { cfApi } from './cf'
@@ -104,6 +105,29 @@ export const api = {
       return cfApi.explainQuestion(params, language, config, signal)
     }
     return httpApi.explainQuestion(params, language, config, signal)
+  },
+
+  async chatStream(
+    messages: ChatMessage[],
+    config: AIConfig,
+    handlers: ChatStreamHandlers,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (isTauri()) {
+      return tauriApi.chatStream(
+        messages,
+        config.endpoint,
+        config.api_key,
+        config.model,
+        resolveAIOptions(config),
+        handlers,
+        signal,
+      )
+    }
+    if (isCloudflare()) {
+      return cfApi.chatStream(messages, config, handlers, signal)
+    }
+    return httpApi.chatStream(messages, config, handlers, signal)
   },
 
   async exportCsv(

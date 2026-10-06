@@ -1,5 +1,8 @@
-import { applyExtraPrompt, type AIConfig, type AIRequestOptions } from '@exameow/shared'
+import { applyExtraPrompt, type AIConfig, type AIRequestOptions, type ChatMessage } from '@exameow/shared'
 import { normalizeEndpoint } from './endpoint'
+import { consumeOpenAiSse, type ChatStreamHandlers } from './chatStream'
+
+const FALLBACK_MAX_TOKENS = 16384
 
 export class AIHttpError extends Error {
   status: number
@@ -123,4 +126,68 @@ export async function chatRequest(
     }
     return content
   }, options, signal)
+}
+
+/**
+ * Streaming chat through the browser-direct (custom provider) path. Mirrors
+ * `chatRequest`'s option handling but pushes deltas to the handlers as they
+ * arrive instead of returning the full string.
+ */
+export async function chatStreamDirect(
+  messages: ChatMessage[],
+  config: AIConfig,
+  options: AIRequestOptions,
+  handlers: ChatStreamHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  const outgoing = messages.map((m) => ({
+    role: m.role,
+    content: m.role === 'system' ? applyExtraPrompt(m.content, options.extra_prompt) : m.content,
+  }))
+
+  const body: Record<string, unknown> = {
+    model: config.model,
+    messages: outgoing,
+    stream: true,
+  }
+  if (options.max_tokens !== undefined) {
+    body[options.token_parameter] = options.max_tokens
+  } else {
+    body.max_tokens = FALLBACK_MAX_TOKENS
+  }
+  if (!options.omit_temperature && options.temperature !== undefined) {
+    body.temperature = options.temperature
+  }
+  if (options.reasoning_effort) {
+    body.reasoning_effort = options.reasoning_effort
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`${normalizeEndpoint(config.endpoint)}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.api_key}`,
+      },
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') throw error
+    handlers.onError(error)
+    return
+  }
+
+  if (!res.ok) {
+    handlers.onError(
+      new AIHttpError(res.status, `HTTP ${res.status}: ${await res.text().catch(() => '')}`),
+    )
+    return
+  }
+  if (!res.body) {
+    handlers.onError(new Error('AI returned no response body'))
+    return
+  }
+  await consumeOpenAiSse(res.body, handlers, signal)
 }
