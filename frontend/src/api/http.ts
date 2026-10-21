@@ -1,6 +1,7 @@
-import type { AIConfig, AIRequestOptions, AnswerResult, ChatMessage, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
+import type { AIConfig, AIRequestOptions, AnswerResult, ChatMessage, ChatToolOptions, ExamParams, ExplainParams, ExplainResult, FetchResponse, JudgeParams, JudgeResult, ModelInfo, Question, SearchConfig, WebSearchResponse } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
 import { consumeChatSse, type ChatStreamHandlers } from '@/utils/chatStream'
+import { fetchApiKeyOf, searchApiKeyOf } from '@/utils/searchConfig'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
@@ -139,6 +140,46 @@ export const httpApi = {
         api_key: config.api_key,
         model: config.model,
         options: resolveAIOptions(config),
+        search_results: params.search_results ?? [],
+      }),
+      signal,
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+    return res.json()
+  },
+
+  async webSearch(config: SearchConfig, query: string, signal?: AbortSignal): Promise<WebSearchResponse> {
+    const res = await fetch(`${BASE_URL}/api/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: config.provider,
+        api_key: searchApiKeyOf(config),
+        query,
+        max_results: config.max_results,
+      }),
+      signal,
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+    return res.json()
+  },
+
+  async fetchPages(
+    config: SearchConfig,
+    urls: string[],
+    mode: 'extract' | 'crawl',
+    signal?: AbortSignal,
+  ): Promise<FetchResponse> {
+    const res = await fetch(`${BASE_URL}/api/fetch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: config.fetch_provider,
+        api_key: fetchApiKeyOf(config),
+        urls,
+        mode,
+        max_chars: config.max_content_chars,
+        limit: config.crawl_limit,
       }),
       signal,
     })
@@ -151,6 +192,7 @@ export const httpApi = {
     config: AIConfig,
     handlers: ChatStreamHandlers,
     signal?: AbortSignal,
+    toolOptions?: ChatToolOptions | null,
   ): Promise<void> {
     let res: Response
     try {
@@ -163,6 +205,7 @@ export const httpApi = {
           api_key: config.api_key,
           model: config.model,
           options: resolveAIOptions(config),
+          ...(toolOptions ? { tools: toolOptions.names, tool_config: toolOptions.config } : {}),
         }),
         signal,
       })

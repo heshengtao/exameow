@@ -10,7 +10,15 @@ import {
   formatQuestionForDisplay,
   formatUserAnswerForDisplay,
 } from '@/utils/learnPrompt'
-import type { ChatStreamHandlers } from '@/utils/chatStream'
+import { buildSearchQuery, formatSearchContext, searchWithCache } from '@/utils/webSearch'
+import { runToolLoop } from '@/utils/toolLoop'
+import {
+  clearLearnConversation,
+  learnCacheKey,
+  loadLearnConversation,
+  saveLearnConversation,
+} from '@/utils/learnCache'
+import type { ChatStreamHandlers, ChatToolEvent } from '@/utils/chatStream'
 
 export type LearnEntry = 'explain' | 'answer'
 
@@ -19,8 +27,15 @@ export interface LearnMessage {
   role: 'user' | 'assistant'
   content: string
   hidden?: boolean
-  kind?: 'text' | 'question'
+  kind?: 'text' | 'question' | 'search' | 'tool'
   streaming?: boolean
+  searchStatus?: 'searching' | 'done' | 'error'
+  searchCount?: number
+  toolId?: string
+  toolName?: string
+  toolStatus?: 'running' | 'done' | 'error'
+  toolDetail?: string
+  toolCount?: number
 }
 
 const LANGUAGE_NAMES: Record<Locale, string> = {
@@ -39,7 +54,7 @@ const LANGUAGE_NAMES: Record<Locale, string> = {
 let messageSeq = 0
 function nextId(): string {
   messageSeq += 1
-  return `learn-msg-${messageSeq}`
+  return `learn-msg-${Date.now().toString(36)}-${messageSeq}`
 }
 
 export interface LearnStartPayload {
@@ -77,24 +92,63 @@ export const useLearnStore = defineStore('learn', () => {
     return LANGUAGE_NAMES[useI18nStore().locale] ?? 'English'
   }
 
-  function buildApiMessages(): ChatMessage[] {
+  function buildApiMessages(searchContext?: string): ChatMessage[] {
     const question = currentQuestion.value
     if (!question) return []
     const history: ChatMessage[] = messages.value
-      .filter((m) => m.content.trim().length > 0)
+      .filter(
+        (m) =>
+          m.kind !== 'search' &&
+          m.kind !== 'tool' &&
+          m.content.trim().length > 0,
+      )
       .map((m) => ({ role: m.role, content: m.content }))
-    return [{ role: 'system', content: buildTutorSystemPrompt(question, languageName()) }, ...history]
+    let system = buildTutorSystemPrompt(question, languageName())
+    if (searchContext) system += `\n\n${searchContext}`
+    return [{ role: 'system', content: system }, ...history]
   }
 
-  function stop() {
+  function currentCacheKey(): string | null {
+    const question = currentQuestion.value
+    if (!bankId.value || !question) return null
+    return learnCacheKey(bankId.value, question.id)
+  }
+
+  function persistConversation() {
+    const key = currentCacheKey()
+    const question = currentQuestion.value
+    if (!key || !question) return
+    saveLearnConversation(key, question.stem, messages.value)
+  }
+
+  function restoreConversation(): boolean {
+    const key = currentCacheKey()
+    const question = currentQuestion.value
+    if (!key || !question) return false
+    const cached = loadLearnConversation(key, question.stem)
+    if (!cached) return false
+    messages.value = cached
+    const last = cached[cached.length - 1]
+    awaitingAnswer.value = last?.kind === 'question'
+    return true
+  }
+
+  function cancelStream() {
     abortController?.abort()
     abortController = null
     streaming.value = false
   }
 
+  /** User-initiated stop keeps the partial answer in the conversation cache. */
+  function stop() {
+    const wasStreaming = streaming.value
+    cancelStream()
+    if (wasStreaming) persistConversation()
+  }
+
   /** Clear the whole conversation (per question) — the key to resetting model context. */
   function resetConversation() {
-    stop()
+    cancelStream()
     messages.value = []
     error.value = null
     awaitingAnswer.value = false
@@ -141,18 +195,31 @@ export const useLearnStore = defineStore('learn', () => {
   }
 
   function start(payload: LearnStartPayload) {
+    persistConversation()
     bankId.value = payload.bankId
     bankName.value = payload.bankName
     questions.value = payload.questions
     const maxIndex = Math.max(payload.questions.length - 1, 0)
     currentIndex.value = Math.min(Math.max(payload.index, 0), maxIndex)
     resetConversation()
-    seed(payload.entry, payload.userAnswer)
+    if (!restoreConversation()) {
+      seed(payload.entry, payload.userAnswer)
+    }
   }
 
   function goTo(index: number) {
     if (index < 0 || index >= questions.value.length) return
+    persistConversation()
     currentIndex.value = index
+    resetConversation()
+    if (!restoreConversation()) {
+      seed('answer')
+    }
+  }
+
+  function restart() {
+    const key = currentCacheKey()
+    if (key) clearLearnConversation(key)
     resetConversation()
     seed('answer')
   }
@@ -182,20 +249,116 @@ export const useLearnStore = defineStore('learn', () => {
     await streamAssistant()
   }
 
+  function lastVisibleUserText(): string | undefined {
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+      const message = messages.value[i]
+      if (!message || message.role !== 'user' || message.hidden || message.kind === 'search') continue
+      const text = message.content.trim()
+      if (text) return text
+    }
+    return undefined
+  }
+
   async function streamAssistant() {
-    if (!currentQuestion.value) return
+    const question = currentQuestion.value
+    if (!question) return
     error.value = null
     streaming.value = true
     const controller = new AbortController()
     abortController = controller
     const signal = controller.signal
 
+    const finish = () => {
+      if (abortController === controller) {
+        abortController = null
+        streaming.value = false
+      }
+    }
+
+    let searchContext = ''
+    const searchConfig = configStore.getSearchConfig()
+    if (searchConfig) {
+      const searchMessage: LearnMessage = {
+        id: nextId(),
+        role: 'assistant',
+        kind: 'search',
+        content: '',
+        searchStatus: 'searching',
+      }
+      messages.value.push(searchMessage)
+      const liveMessage = messages.value[messages.value.length - 1]!
+      try {
+        const query = buildSearchQuery(question, lastVisibleUserText())
+        const results = await searchWithCache(searchConfig, query, signal)
+        liveMessage.searchStatus = 'done'
+        liveMessage.searchCount = results.length
+        liveMessage.content = query
+        searchContext = formatSearchContext(results)
+      } catch (e) {
+        if ((e as { name?: string })?.name === 'AbortError') {
+          messages.value = messages.value.filter((m) => m.id !== liveMessage.id)
+          finish()
+          return
+        }
+        liveMessage.searchStatus = 'error'
+        liveMessage.content = ''
+      }
+    }
+
+    if (signal.aborted) {
+      finish()
+      return
+    }
+
     // Build the payload BEFORE appending the empty assistant placeholder.
-    const apiMessages = buildApiMessages()
+    const apiMessages = buildApiMessages(searchContext)
+    const toolOptions = configStore.getToolOptions()
+    const toolSettings = configStore.getSearchSettings()
     const assistantId = nextId()
     messages.value.push({ id: assistantId, role: 'assistant', content: '', streaming: true })
     // Read the element back through the reactive array so mutations are tracked.
     const assistant = messages.value[messages.value.length - 1]!
+
+    const handleTool = (event: ChatToolEvent) => {
+      const existing = messages.value.find(
+        (message) => message.kind === 'tool' && message.toolId === event.id,
+      )
+      if (event.phase === 'start') {
+        const chip: LearnMessage = {
+          id: nextId(),
+          role: 'assistant',
+          kind: 'tool',
+          content: event.detail || event.name || 'tool',
+          toolId: event.id,
+          toolName: event.name,
+          toolStatus: 'running',
+          toolDetail: event.detail,
+        }
+        const index = messages.value.findIndex((message) => message.id === assistantId)
+        if (index >= 0) messages.value.splice(index, 0, chip)
+        else messages.value.push(chip)
+        return
+      }
+      if (existing) {
+        existing.toolStatus = event.ok === false ? 'error' : 'done'
+        existing.toolCount = event.count
+        return
+      }
+      if (event.name === 'fallback') {
+        const chip: LearnMessage = {
+          id: nextId(),
+          role: 'assistant',
+          kind: 'tool',
+          content: 'fallback',
+          toolId: event.id,
+          toolName: 'fallback',
+          toolStatus: 'error',
+        }
+        const index = messages.value.findIndex((message) => message.id === assistantId)
+        if (index >= 0) messages.value.splice(index, 0, chip)
+        else messages.value.push(chip)
+      }
+    }
 
     const handlers: ChatStreamHandlers = {
       onDelta: (text) => {
@@ -204,6 +367,7 @@ export const useLearnStore = defineStore('learn', () => {
       onDone: () => {
         assistant.streaming = false
         awaitingAnswer.value = false
+        if (abortController === controller) persistConversation()
       },
       onError: (e) => {
         assistant.streaming = false
@@ -212,28 +376,41 @@ export const useLearnStore = defineStore('learn', () => {
           messages.value = messages.value.filter((m) => m.id !== assistant.id)
         }
         error.value = e instanceof Error ? e.message : String(e)
+        if (abortController === controller) persistConversation()
       },
+      onTool: handleTool,
     }
 
     try {
       const config = configStore.getConfig()
       if (isCloudflare() && configStore.aiProvider === 'custom') {
-        const { chatStreamDirect } = await import('@/utils/chatRequest')
-        await chatStreamDirect(apiMessages, config, resolveAIOptions(config), handlers, signal)
+        const options = resolveAIOptions(config)
+        if (toolOptions) {
+          await runToolLoop({
+            messages: apiMessages,
+            config,
+            options,
+            searchConfig: toolSettings,
+            toolOptions,
+            handlers,
+            signal,
+          })
+        } else {
+          const { chatStreamDirect } = await import('@/utils/chatRequest')
+          await chatStreamDirect(apiMessages, config, options, handlers, signal)
+        }
       } else {
-        await api.chatStream(apiMessages, config, handlers, signal)
+        await api.chatStream(apiMessages, config, handlers, signal, toolOptions)
       }
     } catch (e) {
       if ((e as { name?: string })?.name !== 'AbortError') {
         assistant.streaming = false
         error.value = e instanceof Error ? e.message : String(e)
+        if (abortController === controller) persistConversation()
       }
     } finally {
       assistant.streaming = false
-      if (abortController === controller) {
-        abortController = null
-        streaming.value = false
-      }
+      finish()
     }
   }
 
@@ -258,6 +435,7 @@ export const useLearnStore = defineStore('learn', () => {
     prev,
     send,
     retry,
+    restart,
     stop,
   }
 })

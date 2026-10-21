@@ -9,7 +9,8 @@ import { useLearnStore } from '@/stores/learn'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
 import { getResumedPracticeSettings, matchPracticeFilter, reconcileMockConfig, reconcileMockTypeCounts } from '@/utils/practiceFilter'
-import type { JudgeResult, ExplainResult } from '@exameow/shared'
+import { buildSearchQuery, searchWithCache } from '@/utils/webSearch'
+import type { JudgeResult, ExplainResult, WebSearchResult } from '@exameow/shared'
 import { useSwipeNavigation } from '@/composables/useSwipeNavigation'
 import type { PracticeMode, MockExamConfig, WrongSort, PracticeFilter, QuestionType } from '@exameow/shared'
 import type { LocaleMessages } from '@/i18n/locales'
@@ -250,7 +251,9 @@ function resumeSession() {
 }
 
 function confirmClearSession() {
+  const bankId = practiceStore.session?.bankId ?? selectedBankId.value
   practiceStore.clearSession()
+  if (bankId) practiceStore.clearBankProgress(bankId)
   showClearSessionConfirm.value = false
   viewState.value = 'browse'
   selectedBankId.value = null
@@ -309,6 +312,16 @@ const canStartMockExam = computed(() => {
 const canStartSelectedMode = computed(() => {
   if (!selectedMode.value) return false
   return filteredQuestions.value.length > 0 && (selectedMode.value !== 'mock' || canStartMockExam.value)
+})
+
+const selectedBankQuestions = computed(() => {
+  if (!selectedBankId.value) return []
+  return practiceStore.getBank(selectedBankId.value)?.questions ?? []
+})
+
+const selectedBankCompleted = computed(() => {
+  if (!selectedBankId.value) return 0
+  return practiceStore.getBankCompletedCount(selectedBankId.value, selectedBankQuestions.value)
 })
 
 function selectBank(id: string) {
@@ -496,17 +509,35 @@ async function handleAiExplain() {
 
   aiExplaining.value = true
   aiExplainError.value = null
-  explainAbort = new AbortController()
+  const controller = new AbortController()
+  explainAbort = controller
   const language = i18n.locale === 'zh' ? 'Chinese' : 'English'
   const qIndex = practiceStore.session?.currentIndex
   const q = item.question
   const optionsText = q.options.length
     ? '\n' + q.options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n')
     : ''
+  let searchResults: WebSearchResult[] = []
+  const searchConfig = configStore.getSearchConfig()
+  if (searchConfig) {
+    try {
+      searchResults = await searchWithCache(searchConfig, buildSearchQuery(q), controller.signal)
+    } catch (e: any) {
+      if (e?.name === 'AbortError') {
+        if (explainAbort === controller) {
+          aiExplaining.value = false
+          explainAbort = null
+        }
+        return
+      }
+      console.warn('[explain] web search failed, falling back to model knowledge', e)
+    }
+  }
   const params = {
     stem: q.stem + optionsText,
     reference_answer: q.answer,
     analysis: q.analysis || undefined,
+    search_results: searchResults,
   }
 
   try {
@@ -514,17 +545,19 @@ async function handleAiExplain() {
     let result: ExplainResult
     if (isCloudflare() && configStore.aiProvider === 'custom') {
       const { explainViaCustomAI } = await import('@/utils/answerClient')
-      result = await explainViaCustomAI(params, language, config, explainAbort.signal)
+      result = await explainViaCustomAI(params, language, config, controller.signal)
     } else {
-      result = await api.explainQuestion(params, language, config, explainAbort.signal)
+      result = await api.explainQuestion(params, language, config, controller.signal)
     }
     if (practiceStore.session?.currentIndex !== qIndex) return
     practiceStore.saveAiAnalysis(q.id, result.explanation)
   } catch (e: any) {
     if (e?.name !== 'AbortError') aiExplainError.value = e?.message || String(e)
   } finally {
-    aiExplaining.value = false
-    explainAbort = null
+    if (explainAbort === controller) {
+      aiExplaining.value = false
+      explainAbort = null
+    }
   }
 }
 
@@ -641,7 +674,14 @@ function handleRetry() {
   const retryMockConfig = s.mode === 'mock' && s.mockConfig
     ? reconcileMockConfig(s.mockConfig, retryPool)
     : s.mockConfig
-  const started = practiceStore.startSession(s.bankId, s.mode, retryMockConfig, undefined, s.filter)
+  const started = practiceStore.startSession(
+    s.bankId,
+    s.mode,
+    retryMockConfig,
+    undefined,
+    s.filter,
+    { ignoreProgress: true },
+  )
   if (!started) return
   viewState.value = 'practice'
   autoAdvancing.value = false
@@ -822,6 +862,22 @@ function handleBack() {
           {{ i18n.t('practiceSettingsSummary', { n: filteredQuestions.length }) }}
           <span class="text-sm font-normal opacity-75"> / {{ i18n.t('practiceQuestionUnit', { n: practiceStore.getBank(selectedBankId)!.questions.length }) }}</span>
         </div>
+      </div>
+      <div
+        v-if="selectedBankCompleted > 0"
+        class="flex items-center justify-between gap-3 mb-4 px-4 py-3 rounded-2xl"
+        :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }"
+      >
+        <span class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          {{ i18n.t('practiceDoneCount', { a: selectedBankCompleted, t: selectedBankQuestions.length }) }}
+        </span>
+        <button
+          class="btn-text text-sm shrink-0"
+          :style="{ color: 'rgb(var(--md-error))' }"
+          @click="showClearSessionConfirm = true"
+        >
+          {{ i18n.t('practiceClearRecords') }}
+        </button>
       </div>
       <div class="grid gap-4 lg:grid-cols-2 items-start">
         <ModeSelector
@@ -1016,10 +1072,10 @@ function handleBack() {
         <div class="card-elevated w-full max-w-sm p-5 text-center">
           <TrashIcon class="w-10 h-10 mx-auto mb-3" :style="{ color: 'rgb(var(--md-error))' }" />
           <div class="text-title-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface))' }">
-            {{ i18n.t('practiceClearProgress') }}
+            {{ i18n.t('practiceClearRecords') }}
           </div>
           <p class="text-body-sm mb-4" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-            {{ i18n.t('practiceClearProgressMsg') }}
+            {{ i18n.t('practiceClearRecordsMsg') }}
           </p>
           <div class="flex gap-3">
             <button class="btn-outlined flex-1" @click="showClearSessionConfirm = false">{{ i18n.t('practiceCancel') }}</button>

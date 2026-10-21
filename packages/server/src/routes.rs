@@ -5,13 +5,15 @@ use axum::{
     response::Response,
     Json,
 };
-use exameow_core::ai::{AIClient, AIRequestOptions, ChatEvent, ChatMessage, ModelInfo};
-use futures_util::{stream, StreamExt};
+use exameow_core::ai::{chat_tool_loop_stream, tool_definitions, AIClient, AIRequestOptions, ChatEvent, ChatMessage, ChatToolConfig, ModelInfo};
+use futures_util::StreamExt;
 use exameow_core::config::{AIConfigData, ConfigStore};
 use exameow_core::exam::{
     answer_question, explain_question, generate_exam, judge_answer, AnswerResult, ExamParams, ExplainResult, JudgeResult, Question,
 };
 use exameow_core::parser::parse_file;
+use exameow_core::fetch::{fetch_pages, FetchResponse};
+use exameow_core::search::{search_web, SearchResponse, SearchResult};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
@@ -354,6 +356,8 @@ pub struct ExplainRequest {
     pub api_key: Option<String>,
     pub model: Option<String>,
     pub options: Option<AIRequestOptions>,
+    #[serde(default)]
+    pub search_results: Option<Vec<SearchResult>>,
 }
 
 pub async fn explain_handler(
@@ -386,6 +390,7 @@ pub async fn explain_handler(
     let client = AIClient::new(&endpoint, &api_key)
         .with_options(req.options)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid AI options: {e}")))?;
+    let search_results = req.search_results.unwrap_or_default();
     let result = explain_question(
         &client,
         &req.stem,
@@ -393,9 +398,60 @@ pub async fn explain_handler(
         &analysis,
         &language,
         &model,
+        &search_results,
     )
     .await
     .map_err(|e| (StatusCode::BAD_GATEWAY, format!("AI error: {e}")))?;
+    Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+pub struct SearchRequest {
+    pub provider: String,
+    pub api_key: String,
+    pub query: String,
+    pub max_results: Option<u32>,
+}
+
+pub async fn search_handler(
+    Json(req): Json<SearchRequest>,
+) -> Result<Json<SearchResponse>, (StatusCode, String)> {
+    let result = search_web(
+        &req.provider,
+        &req.api_key,
+        &req.query,
+        req.max_results.unwrap_or(5),
+    )
+    .await
+    .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Search error: {e}")))?;
+    Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+pub struct FetchRequest {
+    pub provider: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub urls: Vec<String>,
+    pub mode: Option<String>,
+    pub max_chars: Option<u32>,
+    pub limit: Option<u32>,
+}
+
+pub async fn fetch_handler(
+    Json(req): Json<FetchRequest>,
+) -> Result<Json<FetchResponse>, (StatusCode, String)> {
+    let result = fetch_pages(
+        &req.provider,
+        &req.api_key,
+        &req.urls,
+        req.mode.as_deref().unwrap_or("extract"),
+        req.max_chars.unwrap_or(4_000),
+        req.limit.unwrap_or(5),
+    )
+    .await
+    .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Fetch error: {e}")))?;
     Ok(Json(result))
 }
 
@@ -406,10 +462,14 @@ pub struct ChatRequest {
     pub api_key: Option<String>,
     pub model: Option<String>,
     pub options: Option<AIRequestOptions>,
+    #[serde(default)]
+    pub tools: Option<Vec<String>>,
+    #[serde(default)]
+    pub tool_config: Option<ChatToolConfig>,
 }
 
-/// SSE framing for the normalized chat protocol. A `done` frame is always
-/// appended so clients can finish cleanly even without relying on EOF.
+/// SSE framing for the normalized chat protocol. The tool loop emits its own
+/// terminal `done` (or `error`) event.
 fn sse_frame(event: &ChatEvent) -> Bytes {
     let payload = serde_json::to_string(event)
         .unwrap_or_else(|_| r#"{"type":"error","message":"serialize error"}"#.to_string());
@@ -437,21 +497,16 @@ pub async fn chat_handler(
     let client = AIClient::new(&endpoint, &api_key)
         .with_options(req.options)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid AI options: {e}")))?;
-    let deltas = client
-        .chat_messages_stream(req.messages, &model)
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("AI error: {e}")))?;
+    let tool_config = req.tool_config.unwrap_or_default();
+    let definitions = tool_definitions(&req.tools.unwrap_or_default(), &tool_config);
+    let events = chat_tool_loop_stream(client, req.messages, model, definitions, tool_config);
 
-    let frames = deltas
-        .map(|item| match item {
-            Ok(text) => Ok::<Bytes, std::convert::Infallible>(sse_frame(&ChatEvent::Delta { text })),
-            Err(e) => Ok(sse_frame(&ChatEvent::Error {
-                message: e.to_string(),
-            })),
-        })
-        .chain(stream::once(async {
-            Ok::<Bytes, std::convert::Infallible>(sse_frame(&ChatEvent::Done))
-        }));
+    let frames = events.map(|item| match item {
+        Ok(event) => Ok::<Bytes, std::convert::Infallible>(sse_frame(&event)),
+        Err(e) => Ok(sse_frame(&ChatEvent::Error {
+            message: e.to_string(),
+        })),
+    });
 
     Response::builder()
         .header(header::CONTENT_TYPE, "text/event-stream")

@@ -8,6 +8,60 @@ import { matchPracticeFilter, reconcileMockConfig } from '@/utils/practiceFilter
 
 const STORAGE_KEY = 'exameow-banks'
 const SESSION_KEY = 'exameow-practice-session'
+const PROGRESS_KEY = 'exameow-practice-progress'
+
+export interface QuestionProgress {
+  userAnswer: string | null
+  userAnswerText?: string
+  isCorrect: boolean | null
+  submitted: boolean
+  updatedAt: number
+}
+
+type BankProgress = Record<string, QuestionProgress>
+type ProgressMap = Record<string, BankProgress>
+
+function loadProgressMap(): ProgressMap {
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveProgressMap(map: ProgressMap) {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(map))
+  } catch {}
+}
+
+/** Seed the per-question progress from a pre-existing session (upgrade path). */
+function migrateSessionProgress(current: PracticeSession | null): ProgressMap {
+  const map = loadProgressMap()
+  if (!current) return map
+  const bank = map[current.bankId] ?? (map[current.bankId] = {})
+  for (const item of current.questions) {
+    const id = originalQuestionId(item.question.id)
+    if (bank[id]) continue
+    if (!item.submitted && item.userAnswer === null) continue
+    bank[id] = {
+      userAnswer: item.userAnswer,
+      userAnswerText: answerTextFor(item.question, item.userAnswer),
+      isCorrect: item.isCorrect,
+      submitted: item.submitted,
+      updatedAt: Date.now(),
+    }
+  }
+  saveProgressMap(map)
+  return map
+}
+
+function originalQuestionId(id: string): string {
+  return id.replace(/-s\d+$/, '')
+}
 
 function loadBanks(): QuestionBank[] {
   try {
@@ -57,32 +111,53 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a
 }
 
-function shuffleOptions(questions: Question[]): Question[] {
-  return questions.map(q => {
-    if (q.type === 'single_choice' || q.type === 'multi_choice') {
-      const indices = q.options.map((_, i) => i)
-      const shuffled = shuffleArray(indices)
-      const newOptions = shuffled.map(i => q.options[i] ?? '')
-      const answerMap: Record<string, number> = {}
-      q.options.forEach((opt, i) => { answerMap[String.fromCharCode(65 + i)] = i })
-      const newAnswer = q.answer
-        .toUpperCase()
-        .split('')
-        .filter(ch => /[A-H]/.test(ch))
-        .map(ch => {
-          const oldIdx = answerMap[ch]
-          if (oldIdx !== undefined) {
-            const newIdx = shuffled.indexOf(oldIdx)
-            return newIdx >= 0 ? String.fromCharCode(65 + newIdx) : ch
-          }
-          return ch
-        })
-        .sort()
-        .join('')
-      return { ...q, options: newOptions, answer: newAnswer }
-    }
-    return q
+function answerTextFor(question: Question, answer: string | null): string | undefined {
+  if (!answer || (question.type !== 'single_choice' && question.type !== 'multi_choice')) return undefined
+  const letters = answer.toUpperCase().replace(/[^A-H]/g, '').split('')
+  const parts = letters
+    .map(letter => question.options[letter.charCodeAt(0) - 65])
+    .filter((option): option is string => !!option)
+  return parts.length ? parts.join('\u0001') : undefined
+}
+
+function answerFromText(question: Question, text: string | undefined): string | null {
+  if (!text) return null
+  const letters = text
+    .split('\u0001')
+    .map(option => question.options.indexOf(option))
+    .filter(index => index >= 0)
+    .map(index => String.fromCharCode(65 + index))
+  return letters.length ? letters.sort().join('') : null
+}
+
+function remapAnswerLetters(answer: string | null, mapping: Record<string, string>): string | null {
+  if (!answer) return null
+  const letters = answer.toUpperCase().split('').filter(ch => /[A-H]/.test(ch))
+  if (!letters.length) return answer
+  return letters.map(ch => mapping[ch] ?? ch).sort().join('')
+}
+
+function shuffleQuestionOptions(
+  question: Question,
+  userAnswer: string | null,
+): { question: Question; userAnswer: string | null } {
+  if (question.type !== 'single_choice' && question.type !== 'multi_choice') {
+    return { question, userAnswer }
+  }
+  const indices = question.options.map((_, i) => i)
+  const shuffled = shuffleArray(indices)
+  const mapping: Record<string, string> = {}
+  shuffled.forEach((oldIndex, newIndex) => {
+    mapping[String.fromCharCode(65 + oldIndex)] = String.fromCharCode(65 + newIndex)
   })
+  return {
+    question: {
+      ...question,
+      options: shuffled.map(i => question.options[i] ?? ''),
+      answer: remapAnswerLetters(question.answer, mapping) ?? question.answer,
+    },
+    userAnswer: remapAnswerLetters(userAnswer, mapping),
+  }
 }
 
 function applyPracticeFilter(questions: Question[], filter?: PracticeFilter): Question[] {
@@ -111,6 +186,7 @@ function generateMockQuestions(bank: QuestionBank, config: MockExamConfig): Ques
 export const usePracticeStore = defineStore('practice', () => {
   const banks = ref<QuestionBank[]>(loadBanks())
   const session = ref<PracticeSession | null>(loadSession())
+  const progressMap = ref<ProgressMap>(migrateSessionProgress(session.value))
   const importing = ref(false)
   const importPreview = ref<Question[] | null>(null)
   const importFileName = ref('')
@@ -160,6 +236,11 @@ export const usePracticeStore = defineStore('practice', () => {
   function removeBank(id: string) {
     banks.value = banks.value.filter(b => b.id !== id)
     saveBanks(banks.value)
+    clearBankProgress(id)
+    if (session.value?.bankId === id) {
+      session.value = null
+      saveSession(null)
+    }
   }
 
   function getBank(id: string): QuestionBank | undefined {
@@ -180,7 +261,45 @@ export const usePracticeStore = defineStore('practice', () => {
     addBank(bank)
   }
 
-  function startSession(bankId: string, mode: PracticeMode, mockConfig?: MockExamConfig, customQuestions?: Question[], filter?: PracticeFilter): boolean {
+  function getQuestionProgress(bankId: string, questionId: string): QuestionProgress | undefined {
+    return progressMap.value[bankId]?.[originalQuestionId(questionId)]
+  }
+
+  function recordQuestionProgress(
+    bankId: string,
+    question: Question,
+    item: { userAnswer: string | null; isCorrect: boolean | null; submitted: boolean },
+  ) {
+    const id = originalQuestionId(question.id)
+    const bank = progressMap.value[bankId] ?? (progressMap.value[bankId] = {})
+    bank[id] = {
+      ...item,
+      userAnswerText: answerTextFor(question, item.userAnswer),
+      updatedAt: Date.now(),
+    }
+    saveProgressMap(progressMap.value)
+  }
+
+  function clearBankProgress(bankId: string) {
+    if (!progressMap.value[bankId]) return
+    delete progressMap.value[bankId]
+    saveProgressMap(progressMap.value)
+  }
+
+  function getBankCompletedCount(bankId: string, questions: Question[]): number {
+    const bank = progressMap.value[bankId]
+    if (!bank) return 0
+    return questions.filter(q => bank[originalQuestionId(q.id)]?.submitted === true).length
+  }
+
+  function startSession(
+    bankId: string,
+    mode: PracticeMode,
+    mockConfig?: MockExamConfig,
+    customQuestions?: Question[],
+    filter?: PracticeFilter,
+    options?: { ignoreProgress?: boolean },
+  ): boolean {
     const bank = getBank(bankId)
     if (!bank) return false
 
@@ -188,6 +307,10 @@ export const usePracticeStore = defineStore('practice', () => {
     const normalizedMockConfig = mockConfig
       ? reconcileMockConfig(mockConfig, baseQuestions)
       : undefined
+    const restoreProgress = !options?.ignoreProgress && (mode === 'sequential' || mode === 'random')
+    const isDone = (q: Question) => restoreProgress
+      && progressMap.value[bankId]?.[originalQuestionId(q.id)]?.submitted === true
+
     let questions: Question[]
     if (customQuestions) {
       questions = customQuestions
@@ -196,27 +319,41 @@ export const usePracticeStore = defineStore('practice', () => {
     } else if (mode === 'sequential') {
       questions = [...baseQuestions]
     } else {
-      questions = shuffleArray([...baseQuestions])
-    }
-
-    if (mode === 'random') {
-      questions = shuffleOptions(questions)
+      const unanswered = baseQuestions.filter(q => !isDone(q))
+      const answered = baseQuestions.filter(q => isDone(q))
+      questions = [...shuffleArray(unanswered), ...shuffleArray(answered)]
     }
 
     if (questions.length === 0) return false
 
-    const sessionQuestions = questions.map((q, i) => ({
-      question: { ...q, id: `${q.id}-s${i}` },
-      userAnswer: null as string | null,
-      isCorrect: null as boolean | null,
-      submitted: false,
-    }))
+    const sessionQuestions = questions.map((q, i) => {
+      const saved = restoreProgress ? progressMap.value[bankId]?.[originalQuestionId(q.id)] : undefined
+      let question: Question = { ...q, id: `${originalQuestionId(q.id)}-s${i}` }
+      let userAnswer = saved?.userAnswerText
+        ? answerFromText(q, saved.userAnswerText)
+        : (saved?.userAnswer ?? null)
+      if (mode === 'random') {
+        const shuffled = shuffleQuestionOptions(question, userAnswer)
+        question = shuffled.question
+        userAnswer = shuffled.userAnswer
+      }
+      return {
+        question,
+        userAnswer,
+        isCorrect: saved?.isCorrect ?? null,
+        submitted: saved?.submitted ?? false,
+      }
+    })
+
+    const firstUnanswered = mode === 'sequential' && !options?.ignoreProgress
+      ? sessionQuestions.findIndex(item => !item.submitted)
+      : -1
 
     session.value = {
       bankId,
       mode,
       questions: sessionQuestions,
-      currentIndex: 0,
+      currentIndex: firstUnanswered > 0 ? firstUnanswered : 0,
       startedAt: Date.now(),
       finishedAt: null,
       mockConfig: mode === 'mock' ? normalizedMockConfig : undefined,
@@ -271,6 +408,7 @@ export const usePracticeStore = defineStore('practice', () => {
       item.isCorrect = userAns !== '' && userAns === correctAns
     }
 
+    recordQuestionProgress(session.value.bankId, item.question, item)
     usePracticeHistoryStore().record(q.type, item.isCorrect)
     saveSession(session.value)
     return item.isCorrect
@@ -282,6 +420,7 @@ export const usePracticeStore = defineStore('practice', () => {
     if (!item) return
     item.isCorrect = isCorrect
     item.submitted = true
+    recordQuestionProgress(session.value.bankId, item.question, item)
     usePracticeHistoryStore().record(item.question.type, isCorrect)
     saveSession(session.value)
   }
@@ -443,6 +582,7 @@ export const usePracticeStore = defineStore('practice', () => {
   return {
     banks,
     session,
+    progressMap,
     importing,
     importPreview,
     importFileName,
@@ -460,6 +600,10 @@ export const usePracticeStore = defineStore('practice', () => {
     removeBank,
     getBank,
     saveGeneratedAsBank,
+    getQuestionProgress,
+    recordQuestionProgress,
+    clearBankProgress,
+    getBankCompletedCount,
     startSession,
     setAnswer,
     submitAnswer,

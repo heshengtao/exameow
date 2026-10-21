@@ -16,6 +16,7 @@ fn test_save_and_load_config() {
             extra_prompt: Some("Be terse".to_string()),
             retries: Some(2),
             timeout_seconds: Some(300),
+            search: None,
         })
         .unwrap();
 

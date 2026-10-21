@@ -3,7 +3,33 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SearchConfigData {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub provider: String,
+    #[serde(default)]
+    pub max_results: u32,
+    #[serde(default)]
+    pub fetch_provider: String,
+    #[serde(default)]
+    pub max_content_chars: u32,
+    #[serde(default)]
+    pub crawl_limit: u32,
+    #[serde(default)]
+    pub keys: HashMap<String, String>,
+    #[serde(default)]
+    pub tools_enabled: bool,
+    #[serde(default)]
+    pub max_tool_rounds: u32,
+    /// Legacy single key from older versions; kept for config migration only.
+    #[serde(default)]
+    pub api_key: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AIConfigData {
@@ -26,6 +52,8 @@ pub struct AIConfigData {
     pub retries: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_seconds: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search: Option<SearchConfigData>,
 }
 
 pub struct ConfigStore {

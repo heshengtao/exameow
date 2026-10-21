@@ -1,4 +1,4 @@
-use exameow_core::ai::{AIClient, AIRequestOptions, ChatEvent, ChatMessage, ModelInfo};
+use exameow_core::ai::{chat_tool_loop_stream, tool_definitions, AIClient, AIRequestOptions, ChatEvent, ChatMessage, ChatToolConfig, ModelInfo};
 use futures_util::StreamExt;
 use tauri::ipc::Channel;
 use exameow_core::config::{AIConfigData, ConfigStore};
@@ -11,6 +11,8 @@ use exameow_core::exam::{
 use exameow_core::export::export_csv as core_export_csv;
 use exameow_core::export::export_xlsx as core_export_xlsx;
 use exameow_core::parser::parse_file;
+use exameow_core::fetch::{fetch_pages as fetch_pages_core, FetchResponse};
+use exameow_core::search::{search_web, SearchResponse, SearchResult};
 use serde::Serialize;
 use std::fmt;
 use std::future::Future;
@@ -186,6 +188,7 @@ async fn explain_question(
     api_key: String,
     model: String,
     options: Option<AIRequestOptions>,
+    search_results: Option<Vec<SearchResult>>,
     request_id: Option<String>,
 ) -> Result<ExplainResult, CommandError> {
     if stem.trim().is_empty() {
@@ -194,13 +197,68 @@ async fn explain_question(
     let client = AIClient::new(&endpoint, &api_key)
         .with_options(options)
         .map_err(|e| CommandError(format!("Invalid AI options: {e}")))?;
+    let search_results = search_results.unwrap_or_default();
     run_cancellable(
         &registry,
         request_id,
-        core_explain_question(&client, &stem, &reference_answer, &analysis, &language, &model),
+        core_explain_question(
+            &client,
+            &stem,
+            &reference_answer,
+            &analysis,
+            &language,
+            &model,
+            &search_results,
+        ),
     )
     .await
     .map_err(|e| CommandError(format!("Explain error: {e}")))
+}
+
+#[tauri::command]
+async fn web_search(
+    registry: tauri::State<'_, AiRequestRegistry>,
+    provider: String,
+    api_key: String,
+    query: String,
+    max_results: Option<u32>,
+    request_id: Option<String>,
+) -> Result<SearchResponse, CommandError> {
+    run_cancellable(
+        &registry,
+        request_id,
+        search_web(&provider, &api_key, &query, max_results.unwrap_or(5)),
+    )
+    .await
+    .map_err(|e| CommandError(format!("Search error: {e}")))
+}
+
+/// Read one or more web pages (or crawl a site) through the configured provider.
+#[tauri::command]
+async fn fetch_pages(
+    registry: tauri::State<'_, AiRequestRegistry>,
+    provider: String,
+    api_key: String,
+    urls: Vec<String>,
+    mode: Option<String>,
+    max_chars: Option<u32>,
+    limit: Option<u32>,
+    request_id: Option<String>,
+) -> Result<FetchResponse, CommandError> {
+    run_cancellable(
+        &registry,
+        request_id,
+        fetch_pages_core(
+            &provider,
+            &api_key,
+            &urls,
+            mode.as_deref().unwrap_or("extract"),
+            max_chars.unwrap_or(4000),
+            limit.unwrap_or(5),
+        ),
+    )
+    .await
+    .map_err(|e| CommandError(format!("Fetch error: {e}")))
 }
 
 /// Stream a multi-turn chat completion to the frontend over an IPC channel.
@@ -213,6 +271,8 @@ async fn chat_with_ai(
     api_key: String,
     model: String,
     options: Option<AIRequestOptions>,
+    tools: Option<Vec<String>>,
+    tool_config: Option<ChatToolConfig>,
     request_id: Option<String>,
 ) -> Result<(), CommandError> {
     if messages.is_empty() {
@@ -221,10 +281,10 @@ async fn chat_with_ai(
     let client = AIClient::new(&endpoint, &api_key)
         .with_options(options)
         .map_err(|e| CommandError(format!("Invalid AI options: {e}")))?;
-    let mut stream = client
-        .chat_messages_stream(messages, &model)
-        .await
-        .map_err(|e| CommandError(format!("Chat error: {e}")))?;
+
+    let config = tool_config.unwrap_or_default();
+    let definitions = tool_definitions(&tools.unwrap_or_default(), &config);
+    let mut stream = chat_tool_loop_stream(client, messages, model, definitions, config);
 
     match request_id {
         Some(id) => {
@@ -232,8 +292,12 @@ async fn chat_with_ai(
             loop {
                 tokio::select! {
                     item = stream.next() => match item {
-                        Some(Ok(text)) => {
-                            let _ = on_event.send(ChatEvent::Delta { text });
+                        Some(Ok(event)) => {
+                            let done = matches!(&event, ChatEvent::Done);
+                            let _ = on_event.send(event);
+                            if done {
+                                break;
+                            }
                         }
                         Some(Err(e)) => {
                             let _ = on_event.send(ChatEvent::Error { message: e.to_string() });
@@ -254,8 +318,12 @@ async fn chat_with_ai(
         }
         None => loop {
             match stream.next().await {
-                Some(Ok(text)) => {
-                    let _ = on_event.send(ChatEvent::Delta { text });
+                Some(Ok(event)) => {
+                    let done = matches!(&event, ChatEvent::Done);
+                    let _ = on_event.send(event);
+                    if done {
+                        break;
+                    }
                 }
                 Some(Err(e)) => {
                     let _ = on_event.send(ChatEvent::Error { message: e.to_string() });
@@ -827,6 +895,8 @@ pub fn run() {
             answer_question,
             judge_answer,
             explain_question,
+            web_search,
+            fetch_pages,
             chat_with_ai,
             cancel_ai_request,
             parse_file_text,

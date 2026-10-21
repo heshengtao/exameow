@@ -57,6 +57,83 @@ export interface AIConfigData {
   endpoint?: string
   api_key?: string
   model: string
+  search?: SearchConfig
+}
+
+export type SearchProvider = 'tavily' | 'deepseek' | 'exa' | 'firecrawl' | 'bocha'
+export type FetchProvider = 'deepseek' | 'tavily' | 'jina' | 'exa' | 'firecrawl'
+export type VendorId = SearchProvider | FetchProvider
+
+export interface SearchConfig {
+  enabled: boolean
+  provider: SearchProvider
+  max_results: number
+  fetch_provider: FetchProvider
+  max_content_chars: number
+  crawl_limit: number
+  keys: Partial<Record<VendorId, string>>
+  tools_enabled: boolean
+  max_tool_rounds: number
+  api_key?: string
+}
+
+export interface WebSearchResult {
+  title: string
+  url: string
+  snippet: string
+}
+
+export interface WebSearchResponse {
+  provider: string
+  query: string
+  results: WebSearchResult[]
+}
+
+export interface FetchedPage {
+  url: string
+  title: string
+  content: string
+}
+
+export interface FetchResponse {
+  provider: string
+  pages: FetchedPage[]
+}
+
+export type ChatToolName = 'web_search' | 'web_fetch' | 'web_crawl'
+
+export interface ToolCall {
+  id: string
+  type: 'function'
+  function: { name: string; arguments: string }
+}
+
+export interface ToolDefinition {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: Record<string, unknown>
+  }
+}
+
+export interface SearchToolConfig {
+  provider: SearchProvider
+  api_key: string
+  max_results: number
+}
+
+export interface FetchToolConfig {
+  provider: FetchProvider
+  api_key: string
+  max_chars: number
+  crawl_limit: number
+}
+
+export interface ChatToolConfig {
+  max_rounds: number
+  search?: SearchToolConfig
+  fetch?: FetchToolConfig
 }
 
 // Free-plan guards: every value here bounds attacker-controlled cost on the public demo Worker.
@@ -109,8 +186,10 @@ export interface ExplainResult {
 }
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
+  role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
+  tool_calls?: ToolCall[]
+  tool_call_id?: string
 }
 
 export interface ChatResult {
@@ -118,6 +197,11 @@ export interface ChatResult {
 }
 
 export const MAX_CHAT_MESSAGES = 40
+export const MAX_TOOL_ROUNDS = 5
+export const MAX_TOOL_CALLS_PER_ROUND = 3
+export const MAX_TOOL_CALLS_TOTAL = 8
+export const MAX_TOOL_RESULT_CHARS = 8000
+export const MAX_TOOL_CONTEXT_CHARS = 20000
 
 export const DEFAULT_MODEL = '@cf/openai/gpt-oss-120b'
 

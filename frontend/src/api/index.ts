@@ -1,4 +1,4 @@
-import type { AIConfig, AnswerResult, ChatMessage, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo } from '@exameow/shared'
+import type { AIConfig, AnswerResult, ChatMessage, ChatToolOptions, ExamParams, ExplainParams, ExplainResult, FetchResponse, JudgeParams, JudgeResult, ModelInfo, SearchConfig, WebSearchResponse } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
 import type { ChatStreamHandlers } from '@/utils/chatStream'
 import { tauriApi, type GenerateResult as TauriGenerateResult } from './bridge'
@@ -107,11 +107,41 @@ export const api = {
     return httpApi.explainQuestion(params, language, config, signal)
   },
 
+  async webSearch(
+    config: SearchConfig,
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<WebSearchResponse> {
+    if (isTauri()) {
+      return tauriApi.webSearch(config, query, signal)
+    }
+    if (isCloudflare()) {
+      return cfApi.webSearch(config, query, signal)
+    }
+    return httpApi.webSearch(config, query, signal)
+  },
+
+  async fetchPages(
+    config: SearchConfig,
+    urls: string[],
+    mode: 'extract' | 'crawl',
+    signal?: AbortSignal,
+  ): Promise<FetchResponse> {
+    if (isTauri()) {
+      return tauriApi.fetchPages(config, urls, mode, signal)
+    }
+    if (isCloudflare()) {
+      return cfApi.fetchPages(config, urls, mode, signal)
+    }
+    return httpApi.fetchPages(config, urls, mode, signal)
+  },
+
   async chatStream(
     messages: ChatMessage[],
     config: AIConfig,
     handlers: ChatStreamHandlers,
     signal?: AbortSignal,
+    toolOptions?: ChatToolOptions | null,
   ): Promise<void> {
     if (isTauri()) {
       return tauriApi.chatStream(
@@ -122,12 +152,13 @@ export const api = {
         resolveAIOptions(config),
         handlers,
         signal,
+        toolOptions,
       )
     }
     if (isCloudflare()) {
-      return cfApi.chatStream(messages, config, handlers, signal)
+      return cfApi.chatStream(messages, config, handlers, signal, toolOptions)
     }
-    return httpApi.chatStream(messages, config, handlers, signal)
+    return httpApi.chatStream(messages, config, handlers, signal, toolOptions)
   },
 
   async exportCsv(

@@ -90,6 +90,89 @@ export type TokenParameter = 'max_tokens' | 'max_completion_tokens'
 
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'none'
 
+export type SearchProvider = 'tavily' | 'deepseek' | 'exa' | 'firecrawl' | 'bocha'
+export type FetchProvider = 'deepseek' | 'tavily' | 'jina' | 'exa' | 'firecrawl'
+export type VendorId = SearchProvider | FetchProvider
+
+export interface SearchConfig {
+  enabled: boolean
+  provider: SearchProvider
+  max_results: number
+  fetch_provider: FetchProvider
+  max_content_chars: number
+  crawl_limit: number
+  /** API keys are stored per vendor so switching providers never overwrites another key. */
+  keys: Partial<Record<VendorId, string>>
+  tools_enabled: boolean
+  max_tool_rounds: number
+  /** Legacy single key from older versions; read-only migration fallback. */
+  api_key?: string
+}
+
+export interface WebSearchResult {
+  title: string
+  url: string
+  snippet: string
+}
+
+export interface WebSearchResponse {
+  provider: string
+  query: string
+  results: WebSearchResult[]
+}
+
+export interface FetchedPage {
+  url: string
+  title: string
+  content: string
+}
+
+export interface FetchResponse {
+  provider: string
+  pages: FetchedPage[]
+}
+
+export type ChatToolName = 'web_search' | 'web_fetch' | 'web_crawl'
+
+export interface SearchToolConfig {
+  provider: SearchProvider
+  api_key: string
+  max_results: number
+}
+
+export interface FetchToolConfig {
+  provider: FetchProvider
+  api_key: string
+  max_chars: number
+  crawl_limit: number
+}
+
+export interface ChatToolConfig {
+  max_rounds: number
+  search?: SearchToolConfig
+  fetch?: FetchToolConfig
+}
+
+export interface ChatToolOptions {
+  names: ChatToolName[]
+  config: ChatToolConfig
+}
+
+export interface ToolCall {
+  id: string
+  type: 'function'
+  function: { name: string; arguments: string }
+}
+
+export interface ToolDefinition {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: Record<string, unknown>
+  }
+}
+
 export interface AIConfig {
   endpoint: string
   api_key: string
@@ -102,6 +185,7 @@ export interface AIConfig {
   extra_prompt?: string
   retries?: number
   timeout_seconds?: number
+  search?: SearchConfig
 }
 
 export interface AIRequestOptions {
@@ -140,6 +224,7 @@ export interface ExplainParams {
   stem: string
   reference_answer: string
   analysis?: string
+  search_results?: WebSearchResult[]
 }
 
 export interface ExplainResult {
@@ -147,8 +232,10 @@ export interface ExplainResult {
 }
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
+  role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
+  tool_calls?: ToolCall[]
+  tool_call_id?: string
 }
 
 export interface ChatResult {

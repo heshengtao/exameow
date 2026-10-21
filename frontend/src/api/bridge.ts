@@ -1,11 +1,18 @@
 import { Channel, invoke } from '@tauri-apps/api/core'
-import type { AIConfig, AIRequestOptions, AnswerResult, ChatMessage, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
+import type { AIConfig, AIRequestOptions, AnswerResult, ChatMessage, ChatToolOptions, ExamParams, ExplainParams, ExplainResult, FetchResponse, JudgeParams, JudgeResult, ModelInfo, Question, SearchConfig, WebSearchResponse } from '@exameow/shared'
 import type { ChatStreamHandlers } from '@/utils/chatStream'
+import { fetchApiKeyOf, searchApiKeyOf } from '@/utils/searchConfig'
 
 interface TauriChatEvent {
   type?: string
   text?: string
   message?: string
+  id?: string
+  phase?: string
+  name?: string
+  detail?: string
+  ok?: boolean
+  count?: number
 }
 
 export interface GenerateResult {
@@ -196,6 +203,40 @@ export const tauriApi = {
         apiKey,
         model,
         options,
+        searchResults: params.search_results ?? [],
+      },
+      signal,
+    )
+  },
+
+  async webSearch(config: SearchConfig, query: string, signal?: AbortSignal): Promise<WebSearchResponse> {
+    return invokeAI<WebSearchResponse>(
+      'web_search',
+      {
+        provider: config.provider,
+        apiKey: searchApiKeyOf(config),
+        query,
+        maxResults: config.max_results,
+      },
+      signal,
+    )
+  },
+
+  async fetchPages(
+    config: SearchConfig,
+    urls: string[],
+    mode: 'extract' | 'crawl',
+    signal?: AbortSignal,
+  ): Promise<FetchResponse> {
+    return invokeAI<FetchResponse>(
+      'fetch_pages',
+      {
+        provider: config.fetch_provider,
+        apiKey: fetchApiKeyOf(config),
+        urls,
+        mode,
+        maxChars: config.max_content_chars,
+        limit: config.crawl_limit,
       },
       signal,
     )
@@ -209,6 +250,7 @@ export const tauriApi = {
     options: AIRequestOptions | undefined,
     handlers: ChatStreamHandlers,
     signal?: AbortSignal,
+    toolOptions?: ChatToolOptions | null,
   ): Promise<void> {
     if (signal?.aborted) return
     const requestId = crypto.randomUUID()
@@ -218,6 +260,15 @@ export const tauriApi = {
       if (signal?.aborted) return
       if (event?.type === 'delta' && typeof event.text === 'string') {
         handlers.onDelta(event.text)
+      } else if (event?.type === 'tool') {
+        handlers.onTool?.({
+          id: typeof event.id === 'string' ? event.id : '',
+          phase: event.phase === 'start' ? 'start' : 'end',
+          name: typeof event.name === 'string' ? event.name : '',
+          detail: typeof event.detail === 'string' ? event.detail : undefined,
+          ok: typeof event.ok === 'boolean' ? event.ok : undefined,
+          count: typeof event.count === 'number' ? event.count : undefined,
+        })
       } else if (event?.type === 'error') {
         settled = true
         if (event.message === 'Cancelled') return
@@ -239,6 +290,8 @@ export const tauriApi = {
         apiKey,
         model,
         options,
+        tools: toolOptions?.names ?? [],
+        toolConfig: toolOptions?.config ?? null,
         requestId,
       })
     } catch (error) {
@@ -262,6 +315,7 @@ export const tauriApi = {
         extra_prompt: config.extra_prompt,
         retries: config.retries,
         timeout_seconds: config.timeout_seconds,
+        search: config.search,
       },
     })
   },

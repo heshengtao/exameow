@@ -1,19 +1,110 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useConfigStore } from '@/stores/config'
 
 import { useI18nStore } from '@/stores/i18n'
 import { isCloudflare, isTauri } from '@/utils/platform'
 import BaseCombobox from '@/components/common/BaseCombobox.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
-import { ServerIcon, KeyIcon, CloudArrowDownIcon, CpuChipIcon, CheckCircleIcon, EyeIcon, EyeSlashIcon, CheckIcon, ArrowRightIcon, ArrowLeftIcon, CloudIcon, AdjustmentsHorizontalIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import BaseSwitch from '@/components/common/BaseSwitch.vue'
+import { ServerIcon, KeyIcon, CloudArrowDownIcon, CpuChipIcon, CheckCircleIcon, EyeIcon, EyeSlashIcon, CheckIcon, ArrowRightIcon, ArrowLeftIcon, CloudIcon, AdjustmentsHorizontalIcon, ChevronDownIcon, GlobeAltIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
 const configStore = useConfigStore()
 const router = useRouter()
+const route = useRoute()
 const i18n = useI18nStore()
 
 const advancedOpen = ref(false)
+const showSearchKey = ref(false)
+const showFetchKey = ref(false)
+const highlightSearch = ref(false)
+
+interface ProviderMeta {
+  label: string
+  url: string
+}
+
+const SEARCH_PROVIDER_META: Record<string, ProviderMeta> = {
+  tavily: { label: 'Tavily', url: 'https://app.tavily.com/home' },
+  deepseek: { label: 'DeepSeek', url: 'https://platform.deepseek.com/api_keys' },
+  exa: { label: 'Exa', url: 'https://dashboard.exa.ai/api-keys' },
+  firecrawl: { label: 'Firecrawl', url: 'https://www.firecrawl.dev/app/api-keys' },
+  bocha: { label: '博查 Bocha', url: 'https://open.bochaai.com' },
+}
+
+const FETCH_PROVIDER_META: Record<string, ProviderMeta> = {
+  jina: { label: 'Jina Reader', url: 'https://jina.ai/reader/' },
+  deepseek: { label: 'DeepSeek', url: 'https://platform.deepseek.com/api_keys' },
+  tavily: { label: 'Tavily', url: 'https://app.tavily.com/home' },
+  exa: { label: 'Exa', url: 'https://dashboard.exa.ai/api-keys' },
+  firecrawl: { label: 'Firecrawl', url: 'https://www.firecrawl.dev/app/api-keys' },
+}
+
+const searchProviderOptions = Object.entries(SEARCH_PROVIDER_META).map(([value, meta]) => ({
+  value,
+  label: meta.label,
+}))
+
+const fetchProviderOptions = Object.entries(FETCH_PROVIDER_META).map(([value, meta]) => ({
+  value,
+  label: meta.label,
+}))
+
+const currentSearchProvider = computed(
+  () => SEARCH_PROVIDER_META[configStore.searchProvider] ?? SEARCH_PROVIDER_META.tavily!,
+)
+const currentFetchProvider = computed(
+  () => FETCH_PROVIDER_META[configStore.fetchProvider] ?? FETCH_PROVIDER_META.jina!,
+)
+const fetchKeyOptional = computed(() => configStore.fetchProvider === 'jina')
+
+const searchResultOptions = [3, 5, 8, 10].map((value) => ({
+  value,
+  label: String(value),
+}))
+
+const contentCharOptions = [2000, 4000, 8000].map((value) => ({
+  value,
+  label: String(value),
+}))
+
+const crawlLimitOptions = [3, 5, 10].map((value) => ({
+  value,
+  label: String(value),
+}))
+
+const toolRoundOptions = [1, 3, 5].map((value) => ({
+  value,
+  label: String(value),
+}))
+
+async function openExternal(url: string) {
+  if (isTauri()) {
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    await openUrl(url)
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+function openSearchConsole() {
+  void openExternal(currentSearchProvider.value.url)
+}
+
+function openFetchConsole() {
+  void openExternal(currentFetchProvider.value.url)
+}
+
+onMounted(async () => {
+  if (route.query.section !== 'search') return
+  await nextTick()
+  document.getElementById('search-settings')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  highlightSearch.value = true
+  setTimeout(() => {
+    highlightSearch.value = false
+  }, 1800)
+})
 
 const tokenParameterOptions = [
   { value: 'max_tokens', label: 'max_tokens' },
@@ -186,6 +277,216 @@ async function handleSave() {
             :placeholder="i18n.t('configEnterModel')"
             class="[&_input]:!pl-11 [&_input]:!rounded-2xl [&_input]:!py-3"
             @update:model-value="configStore.model = $event"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Web search -->
+    <div
+      id="search-settings"
+      class="card-filled p-5 sm:p-6 mb-4 shadow-sm border transition-shadow duration-500"
+      :class="highlightSearch ? 'ring-2 ring-[rgb(var(--md-primary))]' : 'border-[rgb(var(--md-outline-variant)/0.3)]'"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <div
+            class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+            :style="{ backgroundColor: 'rgb(var(--md-secondary-container))' }"
+          >
+            <GlobeAltIcon class="w-5 h-5" :style="{ color: 'rgb(var(--md-on-secondary-container))' }" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-label-md font-semibold" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              {{ i18n.t('configSearchTitle') }}
+            </p>
+            <p class="text-body-sm mt-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              {{ i18n.t('configSearchDesc') }}
+            </p>
+          </div>
+        </div>
+        <BaseSwitch
+          v-model="configStore.searchEnabled"
+          class="mt-1"
+          :aria-label="i18n.t('configSearchEnable')"
+        />
+      </div>
+
+      <Transition name="scale">
+        <div v-if="configStore.searchEnabled" class="mt-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="text-label-md block mb-2">{{ i18n.t('configSearchProvider') }}</label>
+              <BaseSelect
+                :model-value="configStore.searchProvider"
+                :options="searchProviderOptions"
+                @update:model-value="configStore.searchProvider = $event"
+              />
+            </div>
+            <div>
+              <label class="text-label-md block mb-2">{{ i18n.t('configSearchMaxResults') }}</label>
+              <BaseSelect
+                :model-value="configStore.searchMaxResults"
+                :options="searchResultOptions"
+                @update:model-value="configStore.searchMaxResults = $event"
+              />
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="text-label-md block mb-2">{{ i18n.t('configSearchApiKey') }}</label>
+            <div class="relative">
+              <KeyIcon
+                class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 z-10"
+                :style="{ color: 'rgb(var(--md-on-surface-variant))' }"
+              />
+              <input
+                v-model="configStore.searchApiKey"
+                :type="showSearchKey ? 'text' : 'password'"
+                :placeholder="i18n.t('configSearchApiKey')"
+                class="input-outlined !pl-11 !pr-11 !rounded-2xl !py-3"
+              />
+              <button
+                class="absolute right-3 top-1/2 -translate-y-1/2 btn-icon !w-8 !h-8"
+                @click="showSearchKey = !showSearchKey"
+              >
+                <EyeSlashIcon v-if="showSearchKey" class="w-4 h-4" />
+                <EyeIcon v-else class="w-4 h-4" />
+              </button>
+            </div>
+            <p class="text-body-sm mt-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              {{ i18n.t('configSearchKeyHint', { provider: currentSearchProvider.label }) }}
+              <button
+                type="button"
+                class="underline cursor-pointer"
+                :style="{ color: 'rgb(var(--md-primary))' }"
+                @click="openSearchConsole"
+              >{{ i18n.t('configSearchGetKey') }}</button>
+            </p>
+            <p
+              v-if="!configStore.searchConfigured"
+              class="text-body-sm mt-1"
+              :style="{ color: 'rgb(var(--md-error))' }"
+            >
+              {{ i18n.t('configSearchKeyRequired') }}
+            </p>
+          </div>
+        </div>
+      </Transition>
+    </div>
+
+    <!-- Web fetch + AI tools -->
+    <div class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
+      <div class="flex items-start gap-3">
+        <div
+          class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+          :style="{ backgroundColor: 'rgb(var(--md-tertiary-container))' }"
+        >
+          <DocumentTextIcon class="w-5 h-5" :style="{ color: 'rgb(var(--md-on-tertiary-container))' }" />
+        </div>
+        <div class="min-w-0">
+          <p class="text-label-md font-semibold" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+            {{ i18n.t('configFetchTitle') }}
+          </p>
+          <p class="text-body-sm mt-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+            {{ i18n.t('configFetchDesc') }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-md block mb-2">{{ i18n.t('configFetchProvider') }}</label>
+          <BaseSelect
+            :model-value="configStore.fetchProvider"
+            :options="fetchProviderOptions"
+            @update:model-value="configStore.fetchProvider = $event"
+          />
+        </div>
+        <div>
+          <label class="text-label-md block mb-2">{{ i18n.t('configFetchMaxChars') }}</label>
+          <BaseSelect
+            :model-value="configStore.maxContentChars"
+            :options="contentCharOptions"
+            @update:model-value="configStore.maxContentChars = $event"
+          />
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="text-label-md block mb-2">
+          {{ i18n.t('configSearchApiKey') }}
+          <span v-if="fetchKeyOptional" class="font-normal">（{{ i18n.t('configFetchKeyOptional') }}）</span>
+        </label>
+        <div class="relative">
+          <KeyIcon
+            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 z-10"
+            :style="{ color: 'rgb(var(--md-on-surface-variant))' }"
+          />
+          <input
+            v-model="configStore.fetchApiKey"
+            :type="showFetchKey ? 'text' : 'password'"
+            :placeholder="fetchKeyOptional ? i18n.t('configFetchKeyOptional') : i18n.t('configSearchApiKey')"
+            class="input-outlined !pl-11 !pr-11 !rounded-2xl !py-3"
+          />
+          <button
+            class="absolute right-3 top-1/2 -translate-y-1/2 btn-icon !w-8 !h-8"
+            @click="showFetchKey = !showFetchKey"
+          >
+            <EyeSlashIcon v-if="showFetchKey" class="w-4 h-4" />
+            <EyeIcon v-else class="w-4 h-4" />
+          </button>
+        </div>
+        <p class="text-body-sm mt-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          <button
+            type="button"
+            class="underline cursor-pointer"
+            :style="{ color: 'rgb(var(--md-primary))' }"
+            @click="openFetchConsole"
+          >{{ currentFetchProvider.label }}</button>
+          {{ fetchKeyOptional ? i18n.t('configFetchKeyOptional') : '' }}
+        </p>
+        <p
+          v-if="!configStore.fetchConfigured"
+          class="text-body-sm mt-1"
+          :style="{ color: 'rgb(var(--md-error))' }"
+        >
+          {{ i18n.t('configSearchKeyRequired') }}
+        </p>
+      </div>
+
+      <div v-if="configStore.crawlSupported" class="mt-4">
+        <label class="text-label-md block mb-2">{{ i18n.t('configFetchCrawlLimit') }}</label>
+        <BaseSelect
+          :model-value="configStore.crawlLimit"
+          :options="crawlLimitOptions"
+          @update:model-value="configStore.crawlLimit = $event"
+        />
+      </div>
+
+      <div class="mt-6 pt-5 border-t border-[rgb(var(--md-outline-variant)/0.4)]">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-label-md font-semibold" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              {{ i18n.t('configToolsTitle') }}
+            </p>
+            <p class="text-body-sm mt-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              {{ i18n.t('configToolsHint') }}
+            </p>
+          </div>
+          <BaseSwitch
+            v-model="configStore.toolsEnabled"
+            class="mt-1"
+            :aria-label="i18n.t('configToolsEnable')"
+          />
+        </div>
+
+        <div v-if="configStore.toolsEnabled" class="mt-4 max-w-xs">
+          <label class="text-label-md block mb-2">{{ i18n.t('configToolsMaxRounds') }}</label>
+          <BaseSelect
+            :model-value="configStore.maxToolRounds"
+            :options="toolRoundOptions"
+            @update:model-value="configStore.maxToolRounds = $event"
           />
         </div>
       </div>

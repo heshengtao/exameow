@@ -6,10 +6,12 @@ import { handlePublish, handleGetExam, handleSubmit, handleResults, handleDelete
 import { answerQuestion } from './answer'
 import { judgeAnswer } from './judge'
 import { explainQuestion } from './explain'
-import { chatStream, normalizeChatMessages } from './chat'
+import { webSearch } from './search'
+import { fetchPages } from './fetch'
+import { chatStream, chatStreamWithTools, normalizeChatMessages } from './chat'
 import { parseFile } from './parser'
 import { generateXlsxBuffer, generateCsvContent } from './export'
-import { Question, ExamParams, AVAILABLE_CF_MODELS, AIRequestOptions, MAX_JSON_BODY_BYTES, MAX_JSON_EXPORT_BYTES, MAX_REQUEST_BYTES, MAX_UPLOAD_BYTES, MAX_DOC_TEXT_CHARS, MAX_STEM_CHARS, MAX_ANSWER_CHARS, MAX_PROMPT_CHARS, MAX_EXAM_PAYLOAD_BYTES } from './types'
+import { Question, ExamParams, AVAILABLE_CF_MODELS, AIRequestOptions, SearchProvider, FetchProvider, ChatToolConfig, ChatToolName, WebSearchResult, MAX_JSON_BODY_BYTES, MAX_JSON_EXPORT_BYTES, MAX_REQUEST_BYTES, MAX_UPLOAD_BYTES, MAX_DOC_TEXT_CHARS, MAX_STEM_CHARS, MAX_ANSWER_CHARS, MAX_PROMPT_CHARS, MAX_EXAM_PAYLOAD_BYTES } from './types'
 import { allowRequest, bodyTooLarge, clampText, originAllowed, readJsonCapped, sanitizeModel } from './guard'
 
 type Bindings = {
@@ -20,6 +22,65 @@ type Bindings = {
   CF_API_TOKEN?: string
   ADMIN_TOKEN?: string
   ALLOWED_ORIGINS?: string
+}
+
+const SEARCH_PROVIDERS = new Set<SearchProvider>(['tavily', 'deepseek', 'exa', 'firecrawl', 'bocha'])
+const FETCH_PROVIDERS = new Set<FetchProvider>(['deepseek', 'tavily', 'jina', 'exa', 'firecrawl'])
+const TOOL_NAMES = new Set<ChatToolName>(['web_search', 'web_fetch', 'web_crawl'])
+
+function normalizeToolNames(raw: unknown): ChatToolName[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((name): name is ChatToolName => typeof name === 'string' && TOOL_NAMES.has(name as ChatToolName))
+    .slice(0, 3)
+}
+
+function normalizeToolConfig(raw: unknown): ChatToolConfig | null {
+  if (!raw || typeof raw !== 'object') return null
+  const source = raw as Record<string, unknown>
+  const config: ChatToolConfig = {
+    max_rounds:
+      typeof source.max_rounds === 'number'
+        ? Math.min(5, Math.max(1, Math.round(source.max_rounds)))
+        : 3,
+  }
+
+  const search = source.search as Record<string, unknown> | undefined
+  if (search && SEARCH_PROVIDERS.has(search.provider as SearchProvider)) {
+    const apiKey = clampText(search.api_key, 512).trim()
+    if (apiKey) {
+      config.search = {
+        provider: search.provider as SearchProvider,
+        api_key: apiKey,
+        max_results:
+          typeof search.max_results === 'number'
+            ? Math.min(10, Math.max(1, Math.round(search.max_results)))
+            : 5,
+      }
+    }
+  }
+
+  const fetch = source.fetch as Record<string, unknown> | undefined
+  if (fetch && FETCH_PROVIDERS.has(fetch.provider as FetchProvider)) {
+    const provider = fetch.provider as FetchProvider
+    const apiKey = clampText(fetch.api_key, 512).trim()
+    if (apiKey || provider === 'jina') {
+      config.fetch = {
+        provider,
+        api_key: apiKey,
+        max_chars:
+          typeof fetch.max_chars === 'number'
+            ? Math.min(20000, Math.max(500, Math.round(fetch.max_chars)))
+            : 4000,
+        crawl_limit:
+          typeof fetch.crawl_limit === 'number'
+            ? Math.min(10, Math.max(1, Math.round(fetch.crawl_limit)))
+            : 5,
+      }
+    }
+  }
+
+  return config
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -294,12 +355,23 @@ app.post('/api/explain', async (c) => {
     language?: string
     model?: string
     options?: AIRequestOptions
+    search_results?: unknown
   }
 
   const stem = clampText(body.stem, MAX_STEM_CHARS).trim()
   if (!stem) {
     return c.json({ error: 'Question is empty' }, 400)
   }
+
+  const searchResults: WebSearchResult[] = Array.isArray(body.search_results)
+    ? body.search_results.slice(0, 10).flatMap((item) => {
+        const record = item as Record<string, unknown>
+        const title = clampText(record.title as string, 500).trim()
+        const url = clampText(record.url as string, 2000).trim()
+        const snippet = clampText(record.snippet as string, MAX_ANSWER_CHARS).trim()
+        return title && url ? [{ title, url, snippet }] : []
+      })
+    : []
 
   try {
     const result = await explainQuestion(c.env.AI, {
@@ -308,6 +380,7 @@ app.post('/api/explain', async (c) => {
       analysis: clampText(body.analysis, MAX_ANSWER_CHARS),
       language: clampText(body.language, 40) || 'Chinese',
       model: sanitizeModel(body.model),
+      searchResults,
     }, body.options)
     return c.json(result)
   } catch (err) {
@@ -318,6 +391,100 @@ app.post('/api/explain', async (c) => {
   }
 })
 
+// POST /api/search - web search via Tavily or DeepSeek
+app.post('/api/search', async (c) => {
+  if (!(await allowRequest(c.req.raw, 'search', 30, 600))) {
+    return c.json({ error: 'Too many requests, please retry later' }, 429)
+  }
+  const parsed = await readJsonCapped(c.req.raw, MAX_JSON_BODY_BYTES)
+  if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status)
+  const body = parsed.value as {
+    provider?: string
+    api_key?: string
+    query?: string
+    max_results?: number
+  }
+
+  const provider: SearchProvider | null = SEARCH_PROVIDERS.has(body.provider as SearchProvider)
+    ? (body.provider as SearchProvider)
+    : null
+  if (!provider) {
+    return c.json({ error: 'Unsupported search provider' }, 400)
+  }
+  const apiKey = clampText(body.api_key, 512).trim()
+  if (!apiKey) {
+    return c.json({ error: 'Search API key is missing' }, 400)
+  }
+  const query = clampText(body.query, 512).trim()
+  if (!query) {
+    return c.json({ error: 'Search query is empty' }, 400)
+  }
+
+  try {
+    const result = await webSearch(provider, apiKey, query, body.max_results ?? 5)
+    return c.json(result)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('Web search error:', msg)
+    return c.json({ error: 'Web search failed' }, 502)
+  }
+})
+
+// POST /api/fetch - read web page content via DeepSeek/Tavily/Jina/Exa/Firecrawl
+app.post('/api/fetch', async (c) => {
+  if (!(await allowRequest(c.req.raw, 'fetch', 20, 600))) {
+    return c.json({ error: 'Too many requests, please retry later' }, 429)
+  }
+  const parsed = await readJsonCapped(c.req.raw, MAX_JSON_BODY_BYTES)
+  if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status)
+  const body = parsed.value as {
+    provider?: string
+    api_key?: string
+    urls?: unknown
+    mode?: string
+    max_chars?: number
+    limit?: number
+  }
+
+  const provider: FetchProvider | null = FETCH_PROVIDERS.has(body.provider as FetchProvider)
+    ? (body.provider as FetchProvider)
+    : null
+  if (!provider) {
+    return c.json({ error: 'Unsupported fetch provider' }, 400)
+  }
+  const apiKey = clampText(body.api_key, 512).trim()
+  if (provider !== 'jina' && !apiKey) {
+    return c.json({ error: 'Fetch API key is missing' }, 400)
+  }
+  const urls = Array.isArray(body.urls)
+    ? body.urls
+        .filter((url): url is string => typeof url === 'string')
+        .map((url) => clampText(url, 2000).trim())
+        .filter(Boolean)
+        .slice(0, 5)
+    : []
+  if (!urls.length) {
+    return c.json({ error: 'Fetch URL is missing' }, 400)
+  }
+  const mode = body.mode === 'crawl' ? 'crawl' : 'extract'
+
+  try {
+    const result = await fetchPages(
+      provider,
+      apiKey,
+      urls,
+      mode,
+      typeof body.max_chars === 'number' ? body.max_chars : 4000,
+      typeof body.limit === 'number' ? body.limit : 5,
+    )
+    return c.json(result)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('Web fetch error:', msg)
+    return c.json({ error: 'Web fetch failed' }, 502)
+  }
+})
+
 // POST /api/chat - streaming multi-turn chat (normalized SSE protocol)
 app.post('/api/chat', async (c) => {
   if (!(await allowRequest(c.req.raw, 'chat', 20, 600))) {
@@ -325,15 +492,33 @@ app.post('/api/chat', async (c) => {
   }
   const parsed = await readJsonCapped(c.req.raw, MAX_JSON_BODY_BYTES)
   if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status)
-  const body = parsed.value as { messages?: unknown; model?: string; options?: AIRequestOptions }
+  const body = parsed.value as {
+    messages?: unknown
+    model?: string
+    options?: AIRequestOptions
+    tools?: unknown
+    tool_config?: unknown
+  }
 
   const messages = normalizeChatMessages(body.messages)
   if (messages.length === 0) {
     return c.json({ error: 'Messages are empty' }, 400)
   }
+  const toolNames = normalizeToolNames(body.tools)
+  const toolConfig = normalizeToolConfig(body.tool_config)
 
   try {
-    const stream = await chatStream(c.env.AI, messages, sanitizeModel(body.model), body.options)
+    const stream =
+      toolNames.length && toolConfig
+        ? await chatStreamWithTools(
+            c.env.AI,
+            messages,
+            sanitizeModel(body.model),
+            body.options,
+            toolNames,
+            toolConfig,
+          )
+        : await chatStream(c.env.AI, messages, sanitizeModel(body.model), body.options)
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -482,7 +667,7 @@ app.post('/api/exam/admin/code/:code/restore', (c) => {
 
 // GET /api/health - health check
 app.get('/api/health', (c) => {
-  return c.json({ status: 'ok', version: '1.6.1', runtime: 'cloudflare-worker' })
+  return c.json({ status: 'ok', version: '1.6.2', runtime: 'cloudflare-worker' })
 })
 
 // SPA fallback: serve index.html for all non-API, non-asset routes

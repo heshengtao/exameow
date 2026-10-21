@@ -50,6 +50,8 @@ async fn main() {
         .route("/api/answer", post(routes::answer_handler))
         .route("/api/judge", post(routes::judge_handler))
         .route("/api/explain", post(routes::explain_handler))
+        .route("/api/search", post(routes::search_handler))
+        .route("/api/fetch", post(routes::fetch_handler))
         .route("/api/chat", post(routes::chat_handler))
         .route("/api/export", get(routes::export_handler))
         .route("/api/export/xlsx", post(routes::export_xlsx_handler))

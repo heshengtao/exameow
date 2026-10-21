@@ -1,4 +1,4 @@
-import { applyExtraPrompt, type AIConfig, type AIRequestOptions, type ChatMessage } from '@exameow/shared'
+import { applyExtraPrompt, type AIConfig, type AIRequestOptions, type ChatMessage, type ToolCall, type ToolDefinition } from '@exameow/shared'
 import { normalizeEndpoint } from './endpoint'
 import { consumeOpenAiSse, type ChatStreamHandlers } from './chatStream'
 
@@ -131,24 +131,40 @@ export async function chatRequest(
 /**
  * Streaming chat through the browser-direct (custom provider) path. Mirrors
  * `chatRequest`'s option handling but pushes deltas to the handlers as they
- * arrive instead of returning the full string.
+ * arrive instead of returning the full string. Returns tool calls accumulated
+ * during this round so the caller can drive a tool loop.
  */
+function serializeMessage(message: ChatMessage, extra?: string): Record<string, unknown> {
+  const item: Record<string, unknown> = { role: message.role }
+  if (message.role === 'system') {
+    item.content = applyExtraPrompt(message.content, extra)
+  } else if (message.content || !message.tool_calls) {
+    item.content = message.content
+  }
+  if (message.tool_calls) item.tool_calls = message.tool_calls
+  if (message.tool_call_id) item.tool_call_id = message.tool_call_id
+  return item
+}
+
 export async function chatStreamDirect(
   messages: ChatMessage[],
   config: AIConfig,
   options: AIRequestOptions,
   handlers: ChatStreamHandlers,
   signal?: AbortSignal,
-): Promise<void> {
-  const outgoing = messages.map((m) => ({
-    role: m.role,
-    content: m.role === 'system' ? applyExtraPrompt(m.content, options.extra_prompt) : m.content,
-  }))
+  tools?: ToolDefinition[],
+  deferDone = false,
+): Promise<ToolCall[]> {
+  const outgoing = messages.map((message) => serializeMessage(message, options.extra_prompt))
 
   const body: Record<string, unknown> = {
     model: config.model,
     messages: outgoing,
     stream: true,
+  }
+  if (tools && tools.length) {
+    body.tools = tools
+    body.tool_choice = 'auto'
   }
   if (options.max_tokens !== undefined) {
     body[options.token_parameter] = options.max_tokens
@@ -176,18 +192,18 @@ export async function chatStreamDirect(
   } catch (error) {
     if ((error as { name?: string })?.name === 'AbortError') throw error
     handlers.onError(error)
-    return
+    return []
   }
 
   if (!res.ok) {
     handlers.onError(
       new AIHttpError(res.status, `HTTP ${res.status}: ${await res.text().catch(() => '')}`),
     )
-    return
+    return []
   }
   if (!res.body) {
     handlers.onError(new Error('AI returned no response body'))
-    return
+    return []
   }
-  await consumeOpenAiSse(res.body, handlers, signal)
+  return consumeOpenAiSse(res.body, handlers, signal, { deferDone })
 }

@@ -1,10 +1,16 @@
 use crate::error::CoreError;
-use super::chat::ChatMessage;
+use super::chat::{ChatMessage, FunctionCall, ToolCall, ToolDefinition};
 use super::models::{ModelInfo, ModelsResponse};
 use super::options::AIRequestOptions;
 use futures_util::{Stream, StreamExt};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use std::pin::Pin;
+
+#[derive(Debug, Clone)]
+pub enum ChatStreamChunk {
+    Text(String),
+    ToolCalls(Vec<ToolCall>),
+}
 
 /// AI 请求超时(秒),默认 600s 以兼容响应较慢的自托管网关/大文档生成;
 /// 可通过环境变量 AI_TIMEOUT_SECS 覆盖。请求级 options.timeout_seconds 优先。
@@ -156,6 +162,33 @@ impl AIClient {
         messages: Vec<ChatMessage>,
         model: &str,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, CoreError>> + Send>>, CoreError> {
+        let mut stream = self
+            .chat_messages_stream_with_tools(messages, model, Vec::new())
+            .await?;
+        let text = async_stream::try_stream! {
+            while let Some(item) = stream.next().await {
+                match item? {
+                    ChatStreamChunk::Text(text) => {
+                        if !text.is_empty() {
+                            yield text;
+                        }
+                    }
+                    ChatStreamChunk::ToolCalls(_) => {}
+                }
+            }
+        };
+        Ok(Box::pin(text))
+    }
+
+    /// Streaming chat completion with OpenAI-compatible tool definitions.
+    /// Text deltas are yielded as they arrive; a completed `ToolCalls` chunk is
+    /// yielded once the provider finishes the round.
+    pub async fn chat_messages_stream_with_tools(
+        &self,
+        messages: Vec<ChatMessage>,
+        model: &str,
+        tools: Vec<ToolDefinition>,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<ChatStreamChunk, CoreError>> + Send>>, CoreError> {
         let mut body = serde_json::json!({
             "model": model,
             "messages": messages,
@@ -163,6 +196,10 @@ impl AIClient {
             "max_tokens": 16384,
             "stream": true,
         });
+        if !tools.is_empty() {
+            body["tools"] = serde_json::to_value(&tools)?;
+            body["tool_choice"] = serde_json::json!("auto");
+        }
         if let Some(options) = self.options.as_ref() {
             options.apply(&mut body);
         }
@@ -192,6 +229,8 @@ impl AIClient {
         let mut byte_stream = response.bytes_stream();
         let stream = async_stream::try_stream! {
             let mut buffer = String::new();
+            let mut tool_calls: std::collections::BTreeMap<u64, ToolCall> =
+                std::collections::BTreeMap::new();
             while let Some(chunk) = byte_stream.next().await {
                 let chunk = chunk?;
                 buffer.push_str(&String::from_utf8_lossy(&chunk));
@@ -205,15 +244,54 @@ impl AIClient {
                         continue;
                     }
                     if data == "[DONE]" {
+                        let completed = std::mem::take(&mut tool_calls);
+                        if !completed.is_empty() {
+                            yield ChatStreamChunk::ToolCalls(completed.into_values().collect());
+                        }
                         return;
                     }
                     let Ok(value) = serde_json::from_str::<serde_json::Value>(data) else { continue };
                     if let Some(text) = value["choices"][0]["delta"]["content"].as_str() {
                         if !text.is_empty() {
-                            yield text.to_string();
+                            yield ChatStreamChunk::Text(text.to_string());
+                        }
+                    }
+                    if let Some(calls) = value["choices"][0]["delta"]["tool_calls"].as_array() {
+                        for call in calls {
+                            let index = call["index"].as_u64().unwrap_or(0);
+                            let entry = tool_calls.entry(index).or_insert_with(|| ToolCall {
+                                id: String::new(),
+                                kind: "function".to_string(),
+                                function: FunctionCall {
+                                    name: String::new(),
+                                    arguments: String::new(),
+                                },
+                            });
+                            if let Some(id) = call["id"].as_str() {
+                                if !id.is_empty() {
+                                    entry.id = id.to_string();
+                                }
+                            }
+                            if let Some(kind) = call["type"].as_str() {
+                                if !kind.is_empty() {
+                                    entry.kind = kind.to_string();
+                                }
+                            }
+                            if let Some(name) = call["function"]["name"].as_str() {
+                                if !name.is_empty() {
+                                    entry.function.name = name.to_string();
+                                }
+                            }
+                            if let Some(args) = call["function"]["arguments"].as_str() {
+                                entry.function.arguments.push_str(args);
+                            }
                         }
                     }
                 }
+            }
+            let completed = std::mem::take(&mut tool_calls);
+            if !completed.is_empty() {
+                yield ChatStreamChunk::ToolCalls(completed.into_values().collect());
             }
         };
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import { useConfigStore } from '@/stores/config'
@@ -7,7 +7,7 @@ import { usePracticeStore } from '@/stores/practice'
 import { useLearnStore } from '@/stores/learn'
 import ChatBubble from '@/components/learn/ChatBubble.vue'
 import ChatComposer from '@/components/learn/ChatComposer.vue'
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, QueueListIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon, GlobeAltIcon, QueueListIcon, SparklesIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const i18n = useI18nStore()
@@ -16,6 +16,9 @@ const practiceStore = usePracticeStore()
 const learn = useLearnStore()
 
 const listEl = ref<HTMLElement | null>(null)
+const showLlmDialog = ref(false)
+const showSearchDialog = ref(false)
+const SEARCH_TIP_KEY = 'exameow-learn-search-tip-dismissed'
 
 const visibleMessages = computed(() => learn.messages.filter((m) => !m.hidden))
 const notConfigured = computed(() => !configStore.configured)
@@ -44,7 +47,16 @@ onMounted(async () => {
     router.replace('/practice')
     return
   }
+  if (!configStore.configured) {
+    showLlmDialog.value = true
+  } else if (!configStore.searchConfigured && !localStorage.getItem(SEARCH_TIP_KEY)) {
+    showSearchDialog.value = true
+  }
   scrollToBottom()
+})
+
+onUnmounted(() => {
+  learn.stop()
 })
 
 function handleSend(text: string) {
@@ -88,7 +100,20 @@ function backToPractice() {
 }
 
 function goConfig() {
+  showLlmDialog.value = false
+  showSearchDialog.value = false
   router.push('/mine/config')
+}
+
+function goSearchConfig() {
+  showSearchDialog.value = false
+  localStorage.setItem(SEARCH_TIP_KEY, '1')
+  router.push({ path: '/mine/config', query: { section: 'search' } })
+}
+
+function dismissSearchTip() {
+  showSearchDialog.value = false
+  localStorage.setItem(SEARCH_TIP_KEY, '1')
 }
 </script>
 
@@ -108,6 +133,14 @@ function goConfig() {
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
+        <button
+          class="btn-icon"
+          :title="i18n.t('learnRestart')"
+          :aria-label="i18n.t('learnRestart')"
+          @click="learn.restart()"
+        >
+          <ArrowPathIcon class="w-4 h-4" />
+        </button>
         <button
           class="btn-outlined !h-9 !px-3 shrink-0"
           :title="i18n.t('practiceModeSequential')"
@@ -129,7 +162,14 @@ function goConfig() {
 
     <!-- Messages -->
     <div ref="listEl" class="flex-1 overflow-y-auto space-y-4 py-1 pr-1">
-      <ChatBubble v-for="m in visibleMessages" :key="m.id" :message="m" />
+      <ChatBubble
+        v-for="m in visibleMessages"
+        :key="m.id"
+        :message="m"
+        :question="m.kind === 'question' ? learn.currentQuestion : null"
+        :disabled="learn.streaming || notConfigured"
+        @answer="handleSend"
+      />
     </div>
 
     <!-- Error -->
@@ -161,5 +201,59 @@ function goConfig() {
         @stop="learn.stop()"
       />
     </div>
+
+    <Transition name="scale">
+      <div v-if="showLlmDialog" class="scrim flex items-center justify-center p-4">
+        <div class="card-elevated w-full max-w-sm p-6 text-center">
+          <div
+            class="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+            :style="{ backgroundColor: 'rgb(var(--md-primary-container))' }"
+          >
+            <SparklesIcon class="w-6 h-6" :style="{ color: 'rgb(var(--md-on-primary-container))' }" />
+          </div>
+          <div class="text-title-md mb-2" :style="{ color: 'rgb(var(--md-on-surface))' }">
+            {{ i18n.t('learnNeedLlmTitle') }}
+          </div>
+          <p class="text-body-sm mb-5" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+            {{ i18n.t('learnNeedLlmDesc') }}
+          </p>
+          <div class="flex gap-3">
+            <button class="btn-outlined flex-1" @click="goBack">{{ i18n.t('btnBack') }}</button>
+            <button class="btn-filled flex-1" @click="goConfig">{{ i18n.t('learnNeedLlmCta') }}</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="scale">
+      <div
+        v-if="showSearchDialog"
+        class="scrim flex items-center justify-center p-4"
+        @click.self="dismissSearchTip"
+      >
+        <div class="card-elevated w-full max-w-sm p-6 text-center">
+          <div
+            class="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+            :style="{ backgroundColor: 'rgb(var(--md-secondary-container))' }"
+          >
+            <GlobeAltIcon class="w-6 h-6" :style="{ color: 'rgb(var(--md-on-secondary-container))' }" />
+          </div>
+          <div class="text-title-md mb-2" :style="{ color: 'rgb(var(--md-on-surface))' }">
+            {{ i18n.t('learnSearchTipTitle') }}
+          </div>
+          <p class="text-body-sm mb-5" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+            {{ i18n.t('learnSearchTipDesc') }}
+          </p>
+          <div class="flex gap-3">
+            <button class="btn-outlined flex-1" @click="dismissSearchTip">
+              {{ i18n.t('learnSearchTipDismiss') }}
+            </button>
+            <button class="btn-filled flex-1" @click="goSearchConfig">
+              {{ i18n.t('learnSearchTipCta') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
