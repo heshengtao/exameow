@@ -24,6 +24,7 @@ FROM chef AS planner
 COPY Cargo.toml Cargo.lock ./
 COPY packages/core/ packages/core/
 COPY packages/server/ packages/server/
+COPY packages/mcp/ packages/mcp/
 RUN sed -i '/src-tauri/d; /plugins\/screenrecord/d' Cargo.toml
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -34,6 +35,7 @@ RUN cargo chef cook --release --recipe-path recipe.json -p exameow-server
 COPY Cargo.toml Cargo.lock ./
 COPY packages/core/ packages/core/
 COPY packages/server/ packages/server/
+COPY packages/mcp/ packages/mcp/
 RUN sed -i '/src-tauri/d; /plugins\/screenrecord/d' Cargo.toml
 RUN cargo build --release -p exameow-server
 
