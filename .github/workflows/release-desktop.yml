@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-latest
+          - platform: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             artifact: linux_amd64
           - platform: ubuntu-24.04-arm
