@@ -12,6 +12,14 @@ export enum Difficulty {
   Hard = 'hard',
 }
 
+export interface QuestionImage {
+  /** Content hash (sha256 hex). Image bytes live in IndexedDB under this id. */
+  id: string
+  mime: 'image/jpeg' | 'image/png'
+  width: number
+  height: number
+}
+
 export interface Question {
   id: string
   type: QuestionType
@@ -24,6 +32,8 @@ export interface Question {
   subject?: string
   chapter?: string
   difficulty?: Difficulty
+  /** QuestionImage.id[] — bytes are stored locally, never in localStorage. */
+  images?: string[]
 }
 
 export interface PracticeFilter {
@@ -247,6 +257,7 @@ export interface PublicQuestion {
   type: QuestionType
   stem: string
   options: string[]
+  images?: string[]
 }
 
 export interface PublishExamRequest {
@@ -255,6 +266,8 @@ export interface PublishExamRequest {
   startAt: number
   endAt: number
   durationMinutes: number
+  /** Self-hosted relay only: image id → base64 payload. Cloudflare ignores this. */
+  images?: Record<string, { mime: string; data: string }>
 }
 
 export interface PublishExamResponse {
@@ -311,3 +324,18 @@ export interface ExamResultsResponse {
   results: ExamResultEntry[]
   endAt: number
 }
+
+/** Connection info for the built-in MCP server (desktop/mobile/self-hosted). */
+export interface McpInfo {
+  enabled: boolean
+  running?: boolean
+  port?: number
+  allow_lan?: boolean
+  token: string
+  url: string
+  ws_url: string
+  lan_url?: string | null
+  lan_ws_url?: string | null
+  sessions: number
+}
+

@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "packages/core",
     "packages/server",
+    "packages/mcp",
     "src-tauri",
     "plugins/screenrecord",
 ]

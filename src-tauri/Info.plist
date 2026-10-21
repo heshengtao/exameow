@@ -6,5 +6,12 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is needed to scan exam questions in real time</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Local network access lets AI clients on your own network control Exameow over MCP</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

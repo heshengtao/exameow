@@ -57,6 +57,9 @@ jobs:
           sed -i 's/#fff/#EE9D62/' src-tauri/gen/android/app/src/main/res/values/ic_launcher_background.xml
           sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />|' src-tauri/gen/android/app/src/main/AndroidManifest.xml
           grep CAMERA src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          # Allow loopback cleartext for the in-app MCP bridge (release builds block it by default)
+          bash scripts/patch-android-cleartext.sh
+          grep networkSecurityConfig src-tauri/gen/android/app/src/main/AndroidManifest.xml
 
       - name: Build Android APK
         run: pnpm tauri android build --apk --target aarch64

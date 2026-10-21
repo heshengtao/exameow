@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import type { PracticeSession } from '@exameow/shared'
+import QuestionImages from '@/components/practice/QuestionImages.vue'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -133,6 +134,7 @@ const typeLabel = (type: string): string => {
           >{{ item.originalIndex + 1 }}</span>
           <div class="flex-1">
             <div class="text-sm mb-2" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ item.question.stem }}</div>
+            <QuestionImages :ids="item.question.images" compact />
 
             <div class="text-label-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
               {{ i18n.t('practiceReviewYourAnswer') }}

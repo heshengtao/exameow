@@ -2,6 +2,12 @@
 export type Locale = 'zh' | 'zh-TW' | 'en' | 'ja' | 'ko' | 'es' | 'fr' | 'de' | 'ru' | 'ar'
 
 export interface LocaleMessages {
+  mediaCsvOmitted: string
+  mediaImportDropped: string
+  mediaImportCount: string
+  mediaPublishUnsupported: string
+  mediaMissing: string
+  mediaExportMissing: string
   practiceUnchaptered: string
   practiceChapterImportHint: string
   genAutoChapter: string
@@ -554,9 +560,55 @@ export interface LocaleMessages {
   manageColCorrect: string
   manageColDuration: string
   manageColTime: string
+  mcpTitle: string
+  mcpEnable: string
+  mcpEnableHint: string
+  mcpPort: string
+  mcpLan: string
+  mcpLanHint: string
+  mcpToken: string
+  mcpShowToken: string
+  mcpHideToken: string
+  mcpCopy: string
+  mcpCopied: string
+  mcpRegenerate: string
+  mcpEndpoint: string
+  mcpClients: string
+  mcpBridge: string
+  mcpConnected: string
+  mcpDisconnected: string
+  mcpServerManaged: string
+  mcpCopyCommand: string
+  mcpSecurityHint: string
 }
 
 export const zh: LocaleMessages = {
+  mcpTitle: 'MCP / AI 客户端接入',
+  mcpEnable: '允许 AI 客户端通过 MCP 控制 Exameow',
+  mcpEnableHint: '外部 AI 工具（Claude Code、Cursor 等）可读取题库、生成题目、练习并发布考试',
+  mcpPort: '端口',
+  mcpLan: '允许局域网访问',
+  mcpLanHint: '开启后同一网络下的设备可以连接，请妥善保管令牌',
+  mcpToken: '访问令牌',
+  mcpShowToken: '显示',
+  mcpHideToken: '隐藏',
+  mcpCopy: '复制',
+  mcpCopied: '已复制',
+  mcpRegenerate: '重新生成',
+  mcpEndpoint: 'MCP 地址',
+  mcpClients: '已连接客户端',
+  mcpBridge: '应用会话',
+  mcpConnected: '已连接',
+  mcpDisconnected: '未连接',
+  mcpServerManaged: 'MCP 由服务器配置提供（MCP_ENABLED）',
+  mcpCopyCommand: '复制 Claude Code 命令',
+  mcpSecurityHint: '令牌等同于完整控制权，请勿分享。',
+  mediaCsvOmitted: 'CSV 不包含图片，已忽略 {n} 张',
+  mediaImportDropped: '当前平台不支持图片，已忽略 {n} 张',
+  mediaImportCount: '已导入 {n} 张图片',
+  mediaPublishUnsupported: '在线考试暂不支持图片，可导出 XLSX 保留图片',
+  mediaMissing: '图片已丢失',
+  mediaExportMissing: '有 {n} 张图片在本地缺失，未写入文件',
   learnModeTitle: '和AI一起学',
   learnModeDesc: '把这道题交给 AI 导师，边答边讲、随时追问',
   learnAskAi: '向AI提问',
@@ -1113,6 +1165,32 @@ export const zh: LocaleMessages = {
 }
 
 export const zhTW: LocaleMessages = {
+  mcpTitle: 'MCP / AI 用戶端接入',
+  mcpEnable: '允許 AI 用戶端透過 MCP 控制 Exameow',
+  mcpEnableHint: '外部 AI 工具（Claude Code、Cursor 等）可讀取題庫、生成題目、練習並發佈考試',
+  mcpPort: '埠號',
+  mcpLan: '允許區域網路存取',
+  mcpLanHint: '開啟後同一網路下的裝置可以連線，請妥善保管權杖',
+  mcpToken: '存取權杖',
+  mcpShowToken: '顯示',
+  mcpHideToken: '隱藏',
+  mcpCopy: '複製',
+  mcpCopied: '已複製',
+  mcpRegenerate: '重新產生',
+  mcpEndpoint: 'MCP 位址',
+  mcpClients: '已連線用戶端',
+  mcpBridge: '應用程式工作階段',
+  mcpConnected: '已連線',
+  mcpDisconnected: '未連線',
+  mcpServerManaged: 'MCP 由伺服器設定提供（MCP_ENABLED）',
+  mcpCopyCommand: '複製 Claude Code 指令',
+  mcpSecurityHint: '權杖等同於完整控制權，請勿分享。',
+  mediaCsvOmitted: 'CSV 不包含圖片，已忽略 {n} 張',
+  mediaImportDropped: '目前平台不支援圖片，已忽略 {n} 張',
+  mediaImportCount: '已匯入 {n} 張圖片',
+  mediaPublishUnsupported: '線上考試暫不支援圖片，可匯出 XLSX 保留圖片',
+  mediaMissing: '圖片已遺失',
+  mediaExportMissing: '有 {n} 張圖片在本機遺失，未寫入檔案',
   learnModeTitle: '和AI一起學',
   learnModeDesc: '把這道題交給 AI 導師，邊答邊講、隨時追問',
   learnAskAi: '向AI提問',
@@ -1669,6 +1747,32 @@ export const zhTW: LocaleMessages = {
 }
 
 export const en: LocaleMessages = {
+  mcpTitle: 'MCP / AI client access',
+  mcpEnable: 'Let AI clients control Exameow over MCP',
+  mcpEnableHint: 'External AI tools (Claude Code, Cursor, …) can read banks, generate questions, run practice and publish exams',
+  mcpPort: 'Port',
+  mcpLan: 'Allow LAN access',
+  mcpLanHint: 'Other devices on the same network can connect. Keep the token private.',
+  mcpToken: 'Access token',
+  mcpShowToken: 'Show',
+  mcpHideToken: 'Hide',
+  mcpCopy: 'Copy',
+  mcpCopied: 'Copied',
+  mcpRegenerate: 'Regenerate',
+  mcpEndpoint: 'MCP endpoint',
+  mcpClients: 'Connected clients',
+  mcpBridge: 'App session',
+  mcpConnected: 'Connected',
+  mcpDisconnected: 'Disconnected',
+  mcpServerManaged: 'MCP is provided by the server configuration (MCP_ENABLED)',
+  mcpCopyCommand: 'Copy Claude Code command',
+  mcpSecurityHint: 'The token grants full control — never share it.',
+  mediaCsvOmitted: 'CSV cannot include images — {n} image(s) omitted',
+  mediaImportDropped: 'This platform does not support images — {n} image(s) ignored',
+  mediaImportCount: '{n} image(s) imported',
+  mediaPublishUnsupported: 'Online exams do not support images yet. Export to XLSX to keep them.',
+  mediaMissing: 'Image unavailable',
+  mediaExportMissing: '{n} image(s) missing locally and were not written',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',
@@ -2225,6 +2329,32 @@ export const en: LocaleMessages = {
 }
 
 export const ja: LocaleMessages = {
+  mcpTitle: 'MCP / AI クライアント接続',
+  mcpEnable: 'AI クライアントが MCP 経由で Exameow を操作することを許可',
+  mcpEnableHint: '外部 AI ツール（Claude Code、Cursor など）が問題バンクの読み取り、問題生成、演習、試験公開を行えます',
+  mcpPort: 'ポート',
+  mcpLan: 'LAN アクセスを許可',
+  mcpLanHint: '同じネットワーク上の端末から接続できます。トークンは厳重に管理してください。',
+  mcpToken: 'アクセストークン',
+  mcpShowToken: '表示',
+  mcpHideToken: '非表示',
+  mcpCopy: 'コピー',
+  mcpCopied: 'コピーしました',
+  mcpRegenerate: '再生成',
+  mcpEndpoint: 'MCP エンドポイント',
+  mcpClients: '接続中のクライアント',
+  mcpBridge: 'アプリセッション',
+  mcpConnected: '接続済み',
+  mcpDisconnected: '未接続',
+  mcpServerManaged: 'MCP はサーバー設定（MCP_ENABLED）で提供されています',
+  mcpCopyCommand: 'Claude Code コマンドをコピー',
+  mcpSecurityHint: 'トークンは完全な制御権を持ちます。共有しないでください。',
+  mediaCsvOmitted: 'CSV に画像は含まれません（{n} 枚を省略）',
+  mediaImportDropped: 'この環境では画像に対応していないため、{n} 枚を無視しました',
+  mediaImportCount: '{n} 枚の画像を読み込みました',
+  mediaPublishUnsupported: 'オンライン試験は画像に未対応です。XLSX に書き出すと画像を保持できます。',
+  mediaMissing: '画像を読み込めません',
+  mediaExportMissing: 'ローカルにない {n} 枚の画像は書き出されませんでした',
   learnModeTitle: 'AIと一緒に学ぶ',
   learnModeDesc: 'この問題をAIチューターに。答えながら解説を受け、いつでも質問できます',
   learnAskAi: 'AIに質問',
@@ -2781,6 +2911,32 @@ export const ja: LocaleMessages = {
 }
 
 export const ko: LocaleMessages = {
+  mcpTitle: 'MCP / AI 클라이언트 연결',
+  mcpEnable: 'AI 클라이언트가 MCP로 Exameow를 제어하도록 허용',
+  mcpEnableHint: '외부 AI 도구(Claude Code, Cursor 등)가 문제 은행 조회, 문제 생성, 연습, 시험 배포를 수행할 수 있습니다',
+  mcpPort: '포트',
+  mcpLan: 'LAN 접근 허용',
+  mcpLanHint: '같은 네트워크의 다른 기기가 연결할 수 있습니다. 토큰을 안전하게 보관하세요.',
+  mcpToken: '액세스 토큰',
+  mcpShowToken: '표시',
+  mcpHideToken: '숨기기',
+  mcpCopy: '복사',
+  mcpCopied: '복사됨',
+  mcpRegenerate: '재생성',
+  mcpEndpoint: 'MCP 주소',
+  mcpClients: '연결된 클라이언트',
+  mcpBridge: '앱 세션',
+  mcpConnected: '연결됨',
+  mcpDisconnected: '연결되지 않음',
+  mcpServerManaged: 'MCP는 서버 설정(MCP_ENABLED)으로 제공됩니다',
+  mcpCopyCommand: 'Claude Code 명령 복사',
+  mcpSecurityHint: '토큰은 전체 제어 권한을 가집니다. 공유하지 마세요.',
+  mediaCsvOmitted: 'CSV에는 이미지가 포함되지 않습니다 ({n}개 생략)',
+  mediaImportDropped: '이 플랫폼은 이미지를 지원하지 않아 {n}개를 무시했습니다',
+  mediaImportCount: '이미지 {n}개를 가져왔습니다',
+  mediaPublishUnsupported: '온라인 시험은 아직 이미지를 지원하지 않습니다. XLSX로 내보내면 이미지가 유지됩니다.',
+  mediaMissing: '이미지를 불러올 수 없습니다',
+  mediaExportMissing: '로컬에 없는 이미지 {n}개는 포함되지 않았습니다',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',
@@ -3337,6 +3493,32 @@ export const ko: LocaleMessages = {
 }
 
 export const es: LocaleMessages = {
+  mcpTitle: 'MCP / acceso de clientes de IA',
+  mcpEnable: 'Permitir que los clientes de IA controlen Exameow por MCP',
+  mcpEnableHint: 'Herramientas de IA externas (Claude Code, Cursor, …) pueden leer bancos, generar preguntas, practicar y publicar exámenes',
+  mcpPort: 'Puerto',
+  mcpLan: 'Permitir acceso por LAN',
+  mcpLanHint: 'Otros dispositivos de la misma red podrán conectarse. Mantén el token en privado.',
+  mcpToken: 'Token de acceso',
+  mcpShowToken: 'Mostrar',
+  mcpHideToken: 'Ocultar',
+  mcpCopy: 'Copiar',
+  mcpCopied: 'Copiado',
+  mcpRegenerate: 'Regenerar',
+  mcpEndpoint: 'Endpoint MCP',
+  mcpClients: 'Clientes conectados',
+  mcpBridge: 'Sesión de la app',
+  mcpConnected: 'Conectada',
+  mcpDisconnected: 'Desconectada',
+  mcpServerManaged: 'MCP lo proporciona la configuración del servidor (MCP_ENABLED)',
+  mcpCopyCommand: 'Copiar comando de Claude Code',
+  mcpSecurityHint: 'El token otorga control total: no lo compartas.',
+  mediaCsvOmitted: 'CSV no incluye imágenes: se omitieron {n}',
+  mediaImportDropped: 'Esta plataforma no admite imágenes: se ignoraron {n}',
+  mediaImportCount: 'Se importaron {n} imagen(es)',
+  mediaPublishUnsupported: 'Los exámenes en línea aún no admiten imágenes. Exporta a XLSX para conservarlas.',
+  mediaMissing: 'Imagen no disponible',
+  mediaExportMissing: '{n} imagen(es) no encontrada(s) localmente y no se incluyeron',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',
@@ -3893,6 +4075,32 @@ export const es: LocaleMessages = {
 }
 
 export const fr: LocaleMessages = {
+  mcpTitle: 'MCP / accès des clients IA',
+  mcpEnable: "Autoriser les clients IA à contrôler Exameow via MCP",
+  mcpEnableHint: "Les outils IA externes (Claude Code, Cursor, …) peuvent lire les banques, générer des questions, s'entraîner et publier des examens",
+  mcpPort: 'Port',
+  mcpLan: 'Autoriser l’accès au réseau local',
+  mcpLanHint: 'Les autres appareils du même réseau pourront se connecter. Gardez le jeton privé.',
+  mcpToken: 'Jeton d’accès',
+  mcpShowToken: 'Afficher',
+  mcpHideToken: 'Masquer',
+  mcpCopy: 'Copier',
+  mcpCopied: 'Copié',
+  mcpRegenerate: 'Régénérer',
+  mcpEndpoint: 'Point d’accès MCP',
+  mcpClients: 'Clients connectés',
+  mcpBridge: 'Session de l’app',
+  mcpConnected: 'Connectée',
+  mcpDisconnected: 'Déconnectée',
+  mcpServerManaged: 'MCP est fourni par la configuration du serveur (MCP_ENABLED)',
+  mcpCopyCommand: 'Copier la commande Claude Code',
+  mcpSecurityHint: 'Le jeton donne un contrôle total — ne le partagez jamais.',
+  mediaCsvOmitted: 'CSV n’inclut pas les images — {n} ignorée(s)',
+  mediaImportDropped: 'Cette plateforme ne prend pas en charge les images — {n} ignorée(s)',
+  mediaImportCount: '{n} image(s) importée(s)',
+  mediaPublishUnsupported: 'Les examens en ligne ne prennent pas encore en charge les images. Exportez en XLSX pour les conserver.',
+  mediaMissing: 'Image indisponible',
+  mediaExportMissing: '{n} image(s) introuvable(s) localement et non incluse(s)',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',
@@ -4449,6 +4657,32 @@ export const fr: LocaleMessages = {
 }
 
 export const de: LocaleMessages = {
+  mcpTitle: 'MCP / KI-Client-Zugriff',
+  mcpEnable: 'KI-Clients dürfen Exameow über MCP steuern',
+  mcpEnableHint: 'Externe KI-Tools (Claude Code, Cursor, …) können Banken lesen, Fragen erzeugen, üben und Prüfungen veröffentlichen',
+  mcpPort: 'Port',
+  mcpLan: 'LAN-Zugriff erlauben',
+  mcpLanHint: 'Andere Geräte im selben Netzwerk können sich verbinden. Halten Sie das Token geheim.',
+  mcpToken: 'Zugriffstoken',
+  mcpShowToken: 'Anzeigen',
+  mcpHideToken: 'Verbergen',
+  mcpCopy: 'Kopieren',
+  mcpCopied: 'Kopiert',
+  mcpRegenerate: 'Neu erzeugen',
+  mcpEndpoint: 'MCP-Endpunkt',
+  mcpClients: 'Verbundene Clients',
+  mcpBridge: 'App-Sitzung',
+  mcpConnected: 'Verbunden',
+  mcpDisconnected: 'Nicht verbunden',
+  mcpServerManaged: 'MCP wird durch die Serverkonfiguration bereitgestellt (MCP_ENABLED)',
+  mcpCopyCommand: 'Claude-Code-Befehl kopieren',
+  mcpSecurityHint: 'Das Token gewährt volle Kontrolle — niemals weitergeben.',
+  mediaCsvOmitted: 'CSV enthält keine Bilder – {n} ausgelassen',
+  mediaImportDropped: 'Diese Plattform unterstützt keine Bilder – {n} ignoriert',
+  mediaImportCount: '{n} Bild(er) importiert',
+  mediaPublishUnsupported: 'Online-Prüfungen unterstützen noch keine Bilder. Exportiere als XLSX, um sie zu behalten.',
+  mediaMissing: 'Bild nicht verfügbar',
+  mediaExportMissing: '{n} Bild(er) lokal nicht gefunden und nicht eingefügt',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',
@@ -5005,6 +5239,32 @@ export const de: LocaleMessages = {
 }
 
 export const ru: LocaleMessages = {
+  mcpTitle: 'MCP / доступ ИИ-клиентов',
+  mcpEnable: 'Разрешить ИИ-клиентам управлять Exameow через MCP',
+  mcpEnableHint: 'Внешние ИИ-инструменты (Claude Code, Cursor и др.) могут читать банки, генерировать вопросы, проходить практику и публиковать экзамены',
+  mcpPort: 'Порт',
+  mcpLan: 'Разрешить доступ по локальной сети',
+  mcpLanHint: 'Другие устройства в той же сети смогут подключиться. Не передавайте токен третьим лицам.',
+  mcpToken: 'Токен доступа',
+  mcpShowToken: 'Показать',
+  mcpHideToken: 'Скрыть',
+  mcpCopy: 'Копировать',
+  mcpCopied: 'Скопировано',
+  mcpRegenerate: 'Создать заново',
+  mcpEndpoint: 'Адрес MCP',
+  mcpClients: 'Подключённые клиенты',
+  mcpBridge: 'Сессия приложения',
+  mcpConnected: 'Подключена',
+  mcpDisconnected: 'Не подключена',
+  mcpServerManaged: 'MCP предоставляется конфигурацией сервера (MCP_ENABLED)',
+  mcpCopyCommand: 'Копировать команду Claude Code',
+  mcpSecurityHint: 'Токен даёт полный контроль — никому его не передавайте.',
+  mediaCsvOmitted: 'CSV не поддерживает изображения — пропущено: {n}',
+  mediaImportDropped: 'Эта платформа не поддерживает изображения — пропущено: {n}',
+  mediaImportCount: 'Импортировано изображений: {n}',
+  mediaPublishUnsupported: 'Онлайн-экзамены пока не поддерживают изображения. Экспортируйте в XLSX, чтобы их сохранить.',
+  mediaMissing: 'Изображение недоступно',
+  mediaExportMissing: 'Не найдено локально изображений: {n} — не добавлены',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',
@@ -5561,6 +5821,32 @@ export const ru: LocaleMessages = {
 }
 
 export const ar: LocaleMessages = {
+  mcpTitle: 'MCP / وصول عملاء الذكاء الاصطناعي',
+  mcpEnable: 'السماح لعملاء الذكاء الاصطناعي بالتحكم في Exameow عبر MCP',
+  mcpEnableHint: 'يمكن لأدوات الذكاء الاصطناعي الخارجية (Claude Code وCursor وغيرها) قراءة بنوك الأسئلة وإنشاء الأسئلة والتدرب ونشر الاختبارات',
+  mcpPort: 'المنفذ',
+  mcpLan: 'السماح بالوصول عبر الشبكة المحلية',
+  mcpLanHint: 'يمكن لأجهزة أخرى على الشبكة نفسها الاتصال. احتفظ بالرمز سريًا.',
+  mcpToken: 'رمز الوصول',
+  mcpShowToken: 'إظهار',
+  mcpHideToken: 'إخفاء',
+  mcpCopy: 'نسخ',
+  mcpCopied: 'تم النسخ',
+  mcpRegenerate: 'إعادة التوليد',
+  mcpEndpoint: 'عنوان MCP',
+  mcpClients: 'العملاء المتصلون',
+  mcpBridge: 'جلسة التطبيق',
+  mcpConnected: 'متصل',
+  mcpDisconnected: 'غير متصل',
+  mcpServerManaged: 'يتم توفير MCP عبر إعدادات الخادم (MCP_ENABLED)',
+  mcpCopyCommand: 'نسخ أمر Claude Code',
+  mcpSecurityHint: 'يمنح الرمز تحكمًا كاملًا — لا تشاركه.',
+  mediaCsvOmitted: 'لا يدعم CSV الصور — تم تجاهل {n}',
+  mediaImportDropped: 'لا تدعم هذه المنصة الصور — تم تجاهل {n}',
+  mediaImportCount: 'تم استيراد {n} صورة',
+  mediaPublishUnsupported: 'لا تدعم الاختبارات عبر الإنترنت الصور بعد. صدّر إلى XLSX للاحتفاظ بها.',
+  mediaMissing: 'الصورة غير متاحة',
+  mediaExportMissing: 'لم يتم العثور محليًا على {n} صورة ولم تتم إضافتها',
   learnModeTitle: 'Learn with AI',
   learnModeDesc: 'Hand this question to an AI tutor — answer, get it explained, and ask follow-ups',
   learnAskAi: 'Ask AI',

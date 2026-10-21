@@ -13,6 +13,9 @@ services:
       - ADMIN_TOKEN=${ADMIN_TOKEN:-pass}
       - EXAM_DB_PATH=/app/data/exameow.db
       - ADMIN_TOKEN_FILE=/app/data/admin_token.txt
+      - MCP_ENABLED=${MCP_ENABLED:-true}
+      - MCP_TOKEN=${MCP_TOKEN:-}
+      - MCP_TOKEN_FILE=/app/data/mcp_token.txt
     volumes:
       - exameow-data:/app/data
     restart: unless-stopped

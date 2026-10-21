@@ -10,4 +10,6 @@ services:
       - AI_MODEL=${AI_MODEL}
       - PORT=3000
       - RUST_LOG=info
+      - MCP_ENABLED=${MCP_ENABLED:-true}
+      - MCP_TOKEN=${MCP_TOKEN:-}
     restart: unless-stopped

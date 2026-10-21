@@ -1,11 +1,12 @@
 {
   "name": "exameow",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "cd frontend && pnpm dev",
     "build": "cd frontend && pnpm build",
+    "android:patch": "bash scripts/patch-android-cleartext.sh",
     "tauri": "tauri"
   },
   "devDependencies": {

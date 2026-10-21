@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import type { Question, PracticeMode } from '@exameow/shared'
+import QuestionImages from '@/components/practice/QuestionImages.vue'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -289,6 +290,8 @@ function getBadgeStyle(opt: string) {
     <div class="text-body-lg mb-5" :style="{ color: 'rgb(var(--md-on-surface))' }">
       {{ question.stem }}
     </div>
+
+    <QuestionImages :ids="question.images" />
 
     <!-- Wrong count badge -->
     <div

@@ -135,7 +135,21 @@ export async function handlePublish(
   ) {
     return json({ error: 'Invalid time window or duration' }, 400)
   }
-  const payload = JSON.stringify(questions)
+  // Cloudflare has no media storage: strip image references (and any other
+  // unexpected fields) so nothing image-related ever reaches D1.
+  const sanitizedQuestions = questions.map((q) => ({
+    id: q.id,
+    type: q.type,
+    stem: q.stem,
+    options: Array.isArray(q.options) ? q.options : [],
+    answer: q.answer,
+    analysis: typeof q.analysis === 'string' ? q.analysis : '',
+    ...(typeof q.score === 'number' ? { score: q.score } : {}),
+    ...(q.subject ? { subject: q.subject } : {}),
+    ...(q.chapter ? { chapter: q.chapter } : {}),
+    ...(q.difficulty ? { difficulty: q.difficulty } : {}),
+  }))
+  const payload = JSON.stringify(sanitizedQuestions)
   if (payload.length > MAX_EXAM_PAYLOAD_BYTES) {
     return json({ error: 'Payload too large' }, 400)
   }

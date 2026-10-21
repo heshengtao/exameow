@@ -5,6 +5,8 @@ import { analyzeCSV, analyzeExcel, parseWithMapping } from '@/utils/importParser
 import type { ColumnMapping, ImportAnalysis } from '@/utils/importParser'
 import { usePracticeHistoryStore } from '@/stores/practiceHistory'
 import { matchPracticeFilter, reconcileMockConfig } from '@/utils/practiceFilter'
+import { isMediaAvailable, putImage, pruneUnreferenced } from '@/utils/mediaStore'
+import { supportsLocalMedia } from '@/utils/capabilities'
 
 const STORAGE_KEY = 'exameow-banks'
 const SESSION_KEY = 'exameow-practice-session'
@@ -192,6 +194,9 @@ export const usePracticeStore = defineStore('practice', () => {
   const importFileName = ref('')
   const importAnalysis = ref<ImportAnalysis | null>(null)
   const importSource = ref('csv')
+  const importImageIds = ref<Map<number, string[]> | null>(null)
+  const importImagesStored = ref(0)
+  const importImagesDropped = ref(0)
 
   const hasSession = computed(() => session.value !== null)
   const currentQuestion = computed(() => {
@@ -241,10 +246,28 @@ export const usePracticeStore = defineStore('practice', () => {
       session.value = null
       saveSession(null)
     }
+    const referenced = new Set<string>()
+    for (const bank of banks.value) {
+      for (const question of bank.questions) {
+        for (const imageId of question.images ?? []) referenced.add(imageId)
+      }
+    }
+    for (const item of session.value?.questions ?? []) {
+      for (const imageId of item.question.images ?? []) referenced.add(imageId)
+    }
+    void pruneUnreferenced(referenced).catch(() => {})
   }
 
   function getBank(id: string): QuestionBank | undefined {
     return banks.value.find(b => b.id === id)
+  }
+
+  function updateBank(id: string, updates: Partial<QuestionBank>): boolean {
+    const index = banks.value.findIndex(b => b.id === id)
+    if (index < 0) return false
+    banks.value[index] = { ...banks.value[index]!, ...updates }
+    saveBanks(banks.value)
+    return true
   }
 
   function saveGeneratedAsBank(questions: Question[], sourceName: string) {
@@ -509,9 +532,55 @@ export const usePracticeStore = defineStore('practice', () => {
     return `${s}s`
   }
 
-  function handleAnalysis(analysis: ImportAnalysis | null, fileName: string, source: string): number {
+  async function storeImportImages(analysis: ImportAnalysis): Promise<Map<number, string[]>> {
+    const idsByRow = new Map<number, string[]>()
+    const entries = analysis.imagesByRow
+    importImagesStored.value = 0
+    importImagesDropped.value = 0
+    if (!entries || entries.size === 0) return idsByRow
+
+    let stored = 0
+    let dropped = 0
+    if (!supportsLocalMedia() || !isMediaAvailable()) {
+      for (const list of entries.values()) dropped += list.length
+      importImagesDropped.value = dropped
+      return idsByRow
+    }
+
+    const MAX_TOTAL_BYTES = 100 * 1024 * 1024
+    let total = 0
+    for (const [row, list] of entries) {
+      const ids: string[] = []
+      for (const entry of list) {
+        if (total + entry.blob.size > MAX_TOTAL_BYTES) {
+          dropped++
+          continue
+        }
+        try {
+          const image = await putImage(entry.blob)
+          total += entry.blob.size
+          ids.push(image.id)
+          stored++
+        } catch {
+          dropped++
+        }
+      }
+      if (ids.length > 0) idsByRow.set(row, ids)
+    }
+    importImagesStored.value = stored
+    importImagesDropped.value = dropped
+    return idsByRow
+  }
+
+  function handleAnalysis(
+    analysis: ImportAnalysis | null,
+    fileName: string,
+    source: string,
+    imageIdsByRow?: Map<number, string[]>,
+  ): number {
     importFileName.value = fileName
     importSource.value = source
+    importImageIds.value = imageIdsByRow ?? null
     if (!analysis) {
       importAnalysis.value = null
       importPreview.value = []
@@ -523,7 +592,7 @@ export const usePracticeStore = defineStore('practice', () => {
       return 0
     }
     importAnalysis.value = null
-    const questions = parseWithMapping(analysis, analysis.mapping, source)
+    const questions = parseWithMapping(analysis, analysis.mapping, source, imageIdsByRow)
     importPreview.value = questions
     return questions.length
   }
@@ -541,7 +610,9 @@ export const usePracticeStore = defineStore('practice', () => {
     importing.value = true
     try {
       const source = fileName.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'excel'
-      return handleAnalysis(analyzeExcel(buffer), fileName, source)
+      const analysis = analyzeExcel(buffer)
+      const imageIdsByRow = analysis ? await storeImportImages(analysis) : undefined
+      return handleAnalysis(analysis, fileName, source, imageIdsByRow)
     } finally {
       importing.value = false
     }
@@ -549,7 +620,12 @@ export const usePracticeStore = defineStore('practice', () => {
 
   function applyImportMapping(mapping: ColumnMapping): number {
     if (!importAnalysis.value) return 0
-    const questions = parseWithMapping(importAnalysis.value, mapping, importSource.value)
+    const questions = parseWithMapping(
+      importAnalysis.value,
+      mapping,
+      importSource.value,
+      importImageIds.value ?? undefined,
+    )
     importPreview.value = questions
     importAnalysis.value = null
     return questions.length
@@ -570,6 +646,7 @@ export const usePracticeStore = defineStore('practice', () => {
     importPreview.value = null
     importFileName.value = ''
     importAnalysis.value = null
+    importImageIds.value = null
     return bank.id
   }
 
@@ -577,6 +654,9 @@ export const usePracticeStore = defineStore('practice', () => {
     importPreview.value = null
     importFileName.value = ''
     importAnalysis.value = null
+    importImageIds.value = null
+    importImagesStored.value = 0
+    importImagesDropped.value = 0
   }
 
   return {
@@ -599,6 +679,7 @@ export const usePracticeStore = defineStore('practice', () => {
     addBank,
     removeBank,
     getBank,
+    updateBank,
     saveGeneratedAsBank,
     getQuestionProgress,
     recordQuestionProgress,
@@ -621,6 +702,8 @@ export const usePracticeStore = defineStore('practice', () => {
     importExcelFile,
     applyImportMapping,
     importAnalysis,
+    importImagesStored,
+    importImagesDropped,
     confirmImport,
     cancelImport,
   }

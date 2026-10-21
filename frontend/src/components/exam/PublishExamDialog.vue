@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
-import { usePublishedStore } from '@/stores/published'
-import { publishExam, examLinkFor } from '@/api/relay'
+import { examLinkFor } from '@/api/relay'
 import ScheduleFields from '@/components/exam/ScheduleFields.vue'
 import type { Question } from '@exameow/shared'
+import { useExamPublish } from '@/composables/useExamPublish'
 
 const props = defineProps<{ questions: Question[] }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const i18n = useI18nStore()
-const publishedStore = usePublishedStore()
+const { publish } = useExamPublish()
 
 function toLocalInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -30,24 +30,27 @@ const examLink = computed(() => examLinkFor(result.value?.code ?? ''))
 async function handlePublish() {
   error.value = ''
   const start = new Date(startAt.value).getTime()
-  const end = start + durationMinutes.value * 60000
   if (!title.value.trim() || !start || !(durationMinutes.value > 0)) {
     error.value = i18n.t('pubErrorInvalid')
     return
   }
   publishing.value = true
   try {
-    const res = await publishExam({
-      title: title.value.trim(),
+    const res = await publish({
+      title: title.value,
       questions: props.questions,
       startAt: start,
-      endAt: end,
       durationMinutes: durationMinutes.value,
     })
     result.value = { code: res.code, manageUrl: res.manageUrl }
-    publishedStore.add({ code: res.code, title: title.value.trim(), manageUrl: res.manageUrl, publishedAt: Date.now() })
   } catch (e: any) {
-    error.value = e?.code === 'rate_limited' ? i18n.t('pubRateLimited') : e.message || String(e)
+    error.value = e?.code === 'rate_limited'
+      ? i18n.t('pubRateLimited')
+      : e?.code === 'media_unsupported'
+        ? i18n.t('mediaPublishUnsupported')
+        : e?.code === 'no_questions'
+          ? i18n.t('launchErrorNoQuestions')
+          : e.message || String(e)
   } finally {
     publishing.value = false
   }

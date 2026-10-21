@@ -62,7 +62,7 @@ Exameow parses study materials in **10+ file formats** — PDF, DOCX, XLSX, PPTX
 - **Fine-Tuned Control** — Difficulty (easy/medium/hard), output language, and topic/chapter filtering
 - **Smart Batching** — Large documents are automatically split and generated in batches with deduplication
 - **Any OpenAI-Compatible API** — OpenAI, DeepSeek, Qwen, GLM, etc.; or use the built-in free Cloudflare AI on the demo site
-- **Export** — Download results as XLSX or CSV
+- **Export** — XLSX (embeds question images on desktop, mobile and self-hosted Docker), CSV (text only), and Word papers. The Cloudflare build is text-only.
 
 ### 📚 Practice Modes — Study Smarter, Not Harder
 
@@ -74,7 +74,7 @@ Turn generated questions into interactive study sessions. Practice sequentially,
 - **Wrong-Question Review** — Track mistakes, practice only what you got wrong, and watch them clear as you improve
 - **Exam / Flashcard Modes** — Answer blind, or flip through questions with answers visible
 - **AI Grading** — Short-answer questions graded by AI against reference answers, with feedback; manual regrading supported
-- **Question Bank Management** — Import banks from XLSX/CSV with smart column mapping; export anytime
+- **Question Bank Management** — Import banks from XLSX/CSV with smart column mapping; export anytime. Images embedded in the XLSX image column (P) are imported on desktop, mobile and self-hosted Docker; CSV export warns when images are omitted.
 - **Chapter Practice** — Add a `Chapter` column to CSV/XLSX; matching names are grouped automatically. Select one or more chapters, including unchaptered questions, before practice. Banks without chapters continue to work.
 - **AI Chapter Tagging** — Enable the optional switch when generating new questions to use source chapters or knowledge topics. It is off by default and uses the existing generation requests.
 
@@ -99,6 +99,21 @@ Search local question banks by typing or pasting a question — optional AI answ
 - **Photo Search** — Snap or upload a photo of a question; on-device OCR (runs locally in your browser, no upload)
 - **Camera Live Search** — Point your camera at the screen/paper; AI watches and matches questions in real time
 - **Screen Record Search** — Draw a capture frame over any window; AI monitors it and matches questions live, with a floating answer overlay (Windows / macOS / Linux / Android; not available on iOS due to system restrictions)
+
+### 🤖 MCP — Let Other AI Harnesses Drive Exameow
+
+Exameow ships a built-in **Model Context Protocol** server. Connect Claude Code, Cursor, Codex or any MCP client and it can read your banks, generate questions from a document, run practice, grade answers, export CSV/XLSX and publish online exams — while you watch the UI update.
+
+- **One endpoint, three builds** — `http://127.0.0.1:5274/mcp` on desktop, `http://<phone-ip>:5274/mcp` on mobile, `http://<host>:3000/mcp` when self-hosted
+- **27 tools** — parsing, generation, answering, judging, explanations, export, web search, bank/practice/wrong-question management, exam publishing and UI navigation
+- **Secure by default** — auto-generated bearer token, loopback-only binding on desktop, origin checks, no API-key leakage
+
+```bash
+claude mcp add --transport http exameow http://127.0.0.1:5274/mcp \
+  --header "Authorization: Bearer <token>"
+```
+
+Setup and the full tool list: **[MCP.md](MCP.md)**.
 
 ### 🌐 Cross-Platform & Privacy — Your Data, Your Device
 
@@ -181,6 +196,9 @@ If `ADMIN_TOKEN` is not set, it defaults to `pass` and must be changed on first 
 | `ADMIN_TOKEN` | `pass` | Admin page token; `pass` forces a change on first login at `/#/admin` |
 | `EXAM_DB_PATH` | `/app/data/exameow.db` | SQLite path for the online-exam relay |
 | `ADMIN_TOKEN_FILE` | `/app/data/admin_token.txt` | Where a changed admin token is persisted |
+| `MCP_ENABLED` | `true` | Expose the MCP endpoint at `/mcp` |
+| `MCP_TOKEN` | — | Bearer token for MCP clients |
+| `MCP_TOKEN_FILE` | `/app/data/mcp_token.txt` | Where the generated MCP token is stored |
 | `RUST_LOG` | `info` | Log level |
 
 ## API Endpoints
@@ -193,6 +211,7 @@ If `ADMIN_TOKEN` is not set, it defaults to `pass` and must be changed on first 
 | `POST` | `/api/export/xlsx` | Export questions as XLSX |
 | `POST` | `/api/config/save` | Save AI configuration |
 | `GET` | `/api/config/load` | Load saved AI configuration |
+| `POST` | `/mcp` | MCP JSON-RPC endpoint (Bearer token) |
 
 ### Generate Exam
 

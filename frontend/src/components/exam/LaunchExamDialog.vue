@@ -2,26 +2,24 @@
 import { ref, computed, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { usePracticeStore } from '@/stores/practice'
-import { usePublishedStore } from '@/stores/published'
-import { publishExam, examLinkFor } from '@/api/relay'
+import { examLinkFor } from '@/api/relay'
 import ScheduleFields from '@/components/exam/ScheduleFields.vue'
 import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
 import { exportQuestionsToWord } from '@/utils/wordExport'
 import { QuestionType, type Question } from '@exameow/shared'
+import {
+  EXAM_TYPE_ORDER,
+  composeExamQuestions,
+  useExamPublish,
+} from '@/composables/useExamPublish'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const i18n = useI18nStore()
 const practiceStore = usePracticeStore()
-const publishedStore = usePublishedStore()
+const { publish } = useExamPublish()
 
-const TYPE_ORDER: QuestionType[] = [
-  QuestionType.SingleChoice,
-  QuestionType.MultiChoice,
-  QuestionType.TrueFalse,
-  QuestionType.FillBlank,
-  QuestionType.ShortAnswer,
-]
+const TYPE_ORDER: QuestionType[] = EXAM_TYPE_ORDER
 
 const TYPE_LABEL_KEYS: Record<string, 'typeSingle' | 'typeMulti' | 'typeTrueFalse' | 'typeFillBlank' | 'typeShortAnswer'> = {
   single_choice: 'typeSingle',
@@ -34,17 +32,6 @@ const TYPE_LABEL_KEYS: Record<string, 'typeSingle' | 'typeMulti' | 'typeTrueFals
 function toLocalInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const t = a[i]!
-    a[i] = a[j]!
-    a[j] = t
-  }
-  return a
 }
 
 const selectedBankIds = ref<Set<string>>(new Set())
@@ -98,21 +85,12 @@ const totalSelected = computed(() =>
 )
 
 function composeQuestions(): Question[] {
-  const picked: Question[] = []
-  for (const t of TYPE_ORDER) {
-    const want = Math.min(Math.max(0, counts.value[t] ?? 0), availableByType.value[t] ?? 0)
-    if (want <= 0) continue
-    const pool = selectedBanks.value.flatMap((b) => b.questions.filter((q) => q.type === t))
-    const pts = Math.max(1, points.value[t] ?? 1)
-    picked.push(...shuffle(pool).slice(0, want).map((q) => ({ ...q, score: pts })))
-  }
-  return picked.map((q, i) => ({ ...q, id: `q${i + 1}` }))
+  return composeExamQuestions(selectedBanks.value, counts.value, points.value)
 }
 
 async function handlePublish() {
   error.value = ''
   const start = new Date(startAt.value).getTime()
-  const end = start + durationMinutes.value * 60000
   if (!title.value.trim() || !start || !(durationMinutes.value > 0)) {
     error.value = i18n.t('pubErrorInvalid')
     return
@@ -125,17 +103,21 @@ async function handlePublish() {
   lastComposed.value = questions
   publishing.value = true
   try {
-    const res = await publishExam({
-      title: title.value.trim(),
+    const res = await publish({
+      title: title.value,
       questions,
       startAt: start,
-      endAt: end,
       durationMinutes: durationMinutes.value,
     })
     result.value = { code: res.code, manageUrl: res.manageUrl }
-    publishedStore.add({ code: res.code, title: title.value.trim(), manageUrl: res.manageUrl, publishedAt: Date.now() })
   } catch (e: any) {
-    error.value = e?.code === 'rate_limited' ? i18n.t('pubRateLimited') : e.message || String(e)
+    error.value = e?.code === 'rate_limited'
+      ? i18n.t('pubRateLimited')
+      : e?.code === 'media_unsupported'
+        ? i18n.t('mediaPublishUnsupported')
+        : e?.code === 'no_questions'
+          ? i18n.t('launchErrorNoQuestions')
+          : e.message || String(e)
   } finally {
     publishing.value = false
   }

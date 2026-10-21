@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
+import { useMcpStore } from '@/stores/mcp'
 import { SUPPORTED_LOCALES } from '@/i18n/locales'
 import { useTheme, type Theme, type AccentColor } from '@/composables/useTheme'
 import { useDesktopUpdater } from '@/composables/useDesktopUpdater'
 import { isTauri, isMobileDevice, isDesktopTauri } from '@/utils/platform'
 import BaseSelect from '@/components/common/BaseSelect.vue'
+import BaseSwitch from '@/components/common/BaseSwitch.vue'
 import {
   ArrowLeftIcon,
   LanguageIcon,
@@ -15,6 +17,7 @@ import {
   CheckIcon,
   SwatchIcon,
   SparklesIcon,
+  ServerStackIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -51,7 +54,85 @@ const otaBusy = ref(false)
 const showDesktopUpdate = isDesktopTauri()
 const updater = useDesktopUpdater()
 
+// MCP
+const mcp = useMcpStore()
+const mcpPort = ref(5274)
+const mcpAllowLan = ref(false)
+const mcpShowToken = ref(false)
+const mcpCopied = ref('')
+const mcpActionError = ref('')
+
+const mcpEndpoint = computed(() => {
+  const info = mcp.info
+  if (!info) return ''
+  return mcpAllowLan.value && info.lan_url ? info.lan_url : info.url
+})
+
+const mcpCommand = computed(
+  () =>
+    `claude mcp add --transport http exameow ${mcpEndpoint.value} --header "Authorization: Bearer ${mcp.info?.token ?? ''}"`,
+)
+
+async function syncMcpSettings() {
+  await mcp.load()
+  if (mcp.info) {
+    mcpPort.value = mcp.info.port ?? 5274
+    mcpAllowLan.value = !!mcp.info.allow_lan
+  }
+}
+
+async function handleMcpToggle(value: boolean) {
+  mcpActionError.value = ''
+  try {
+    await mcp.setEnabled(value, mcpPort.value, mcpAllowLan.value)
+  } catch (e: any) {
+    mcpActionError.value = e?.message ?? String(e)
+  }
+}
+
+async function handleMcpPort() {
+  if (!mcp.isNative || !mcp.info?.enabled) return
+  mcpActionError.value = ''
+  try {
+    await mcp.setEnabled(true, mcpPort.value, mcpAllowLan.value)
+  } catch (e: any) {
+    mcpActionError.value = e?.message ?? String(e)
+  }
+}
+
+async function handleMcpLan(value: boolean) {
+  mcpAllowLan.value = value
+  if (!mcp.isNative || !mcp.info?.enabled) return
+  mcpActionError.value = ''
+  try {
+    await mcp.setEnabled(true, mcpPort.value, value)
+  } catch (e: any) {
+    mcpActionError.value = e?.message ?? String(e)
+  }
+}
+
+async function handleMcpRegenerate() {
+  mcpActionError.value = ''
+  try {
+    await mcp.regenerateToken()
+  } catch (e: any) {
+    mcpActionError.value = e?.message ?? String(e)
+  }
+}
+
+async function copyToClipboard(text: string, key: string) {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+    mcpCopied.value = key
+    window.setTimeout(() => {
+      if (mcpCopied.value === key) mcpCopied.value = ''
+    }, 1500)
+  } catch {}
+}
+
 onMounted(async () => {
+  await syncMcpSettings()
   if (!showOta) return
   try {
     const { tauriApi } = await import('@/api/bridge')
@@ -192,6 +273,108 @@ async function handleOtaCheck() {
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- MCP / AI client access -->
+    <div v-if="mcp.available" class="card-filled p-5 sm:p-6 mb-4">
+      <div class="flex items-center justify-between gap-4">
+        <label class="text-label-md font-semibold flex items-center gap-2" style="color: rgb(var(--md-on-surface-variant))">
+          <ServerStackIcon class="w-4 h-4" />
+          {{ i18n.t('mcpTitle') }}
+        </label>
+        <BaseSwitch
+          v-if="mcp.isNative"
+          :model-value="mcp.info?.enabled ?? false"
+          :disabled="mcp.loading"
+          @update:model-value="handleMcpToggle"
+        />
+      </div>
+      <p class="text-body-sm mt-2" style="color: rgb(var(--md-on-surface-variant))">
+        {{ i18n.t('mcpEnableHint') }}
+      </p>
+
+      <div v-if="mcp.info?.enabled" class="mt-5 space-y-5">
+        <div v-if="mcp.isNative" class="flex items-center justify-between gap-4">
+          <span class="text-label-sm">{{ i18n.t('mcpPort') }}</span>
+          <input
+            v-model.number="mcpPort"
+            type="number"
+            min="1024"
+            max="65535"
+            class="input-outlined w-28 text-center no-spinner"
+            @change="handleMcpPort"
+          />
+        </div>
+
+        <div v-if="mcp.isNative" class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-label-sm">{{ i18n.t('mcpLan') }}</div>
+            <p class="text-xs mt-1" style="color: rgb(var(--md-on-surface-variant))">
+              {{ i18n.t('mcpLanHint') }}
+            </p>
+          </div>
+          <BaseSwitch :model-value="mcpAllowLan" @update:model-value="handleMcpLan" />
+        </div>
+
+        <div>
+          <div class="text-label-sm mb-1.5">{{ i18n.t('mcpEndpoint') }}</div>
+          <div class="flex gap-2">
+            <input :value="mcpEndpoint" readonly class="input-outlined flex-1 text-xs" />
+            <button class="btn-tonal text-sm shrink-0" @click="copyToClipboard(mcpEndpoint, 'endpoint')">
+              {{ mcpCopied === 'endpoint' ? i18n.t('mcpCopied') : i18n.t('mcpCopy') }}
+            </button>
+          </div>
+          <input
+            v-if="mcpAllowLan && mcp.info?.lan_url"
+            :value="mcp.info.url"
+            readonly
+            class="input-outlined w-full text-xs mt-2"
+          />
+        </div>
+
+        <div>
+          <div class="text-label-sm mb-1.5">{{ i18n.t('mcpToken') }}</div>
+          <div class="flex flex-wrap gap-2">
+            <input
+              :value="mcpShowToken ? mcp.info?.token : '••••••••••••••••'"
+              readonly
+              class="input-outlined flex-1 min-w-[160px] text-xs font-mono"
+            />
+            <button class="btn-outlined text-sm shrink-0" @click="mcpShowToken = !mcpShowToken">
+              {{ mcpShowToken ? i18n.t('mcpHideToken') : i18n.t('mcpShowToken') }}
+            </button>
+            <button class="btn-outlined text-sm shrink-0" @click="copyToClipboard(mcp.info?.token ?? '', 'token')">
+              {{ mcpCopied === 'token' ? i18n.t('mcpCopied') : i18n.t('mcpCopy') }}
+            </button>
+            <button v-if="mcp.isNative" class="btn-outlined text-sm shrink-0" @click="handleMcpRegenerate">
+              {{ i18n.t('mcpRegenerate') }}
+            </button>
+          </div>
+          <p class="text-xs mt-1.5" style="color: rgb(var(--md-error))">{{ i18n.t('mcpSecurityHint') }}</p>
+        </div>
+
+        <button class="btn-tonal w-full text-sm" @click="copyToClipboard(mcpCommand, 'command')">
+          {{ mcpCopied === 'command' ? i18n.t('mcpCopied') : i18n.t('mcpCopyCommand') }}
+        </button>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs" style="color: rgb(var(--md-on-surface-variant))">
+          <span>{{ i18n.t('mcpClients') }}: {{ mcp.info?.sessions ?? 0 }}</span>
+          <span>
+            {{ i18n.t('mcpBridge') }}:
+            <span :style="{ color: mcp.connected ? 'rgb(var(--md-primary))' : 'rgb(var(--md-on-surface-variant))' }">
+              {{ mcp.connected ? i18n.t('mcpConnected') : i18n.t('mcpDisconnected') }}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <p v-else-if="!mcp.isNative" class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
+        {{ i18n.t('mcpServerManaged') }}
+      </p>
+
+      <p v-if="mcpActionError || mcp.error" class="text-sm mt-3 break-all" style="color: rgb(var(--md-error))">
+        {{ mcpActionError || mcp.error }}
+      </p>
     </div>
 
     <!-- Version update -->

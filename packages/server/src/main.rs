@@ -1,3 +1,4 @@
+mod mcp;
 mod relay;
 mod routes;
 
@@ -30,6 +31,15 @@ async fn main() {
         admin_token: Mutex::new(admin_token),
     });
 
+    let mcp_service = if mcp::enabled() {
+        Some(mcp::build(
+            state.config_store.clone(),
+            env!("CARGO_PKG_VERSION"),
+        ))
+    } else {
+        None
+    };
+
     {
         let state = state.clone();
         tokio::spawn(async move {
@@ -60,6 +70,7 @@ async fn main() {
         .route("/api/config/server", get(routes::server_config_info_handler))
         .route("/api/exam/publish", post(relay::publish_handler))
         .route("/api/exam/code/{code}", get(relay::get_exam_handler).delete(relay::delete_exam_handler))
+        .route("/api/exam/code/{code}/media/{id}", get(relay::get_media_handler))
         .route("/api/exam/code/{code}/submit", post(relay::submit_handler))
         .route("/api/exam/code/{code}/results", get(relay::results_handler))
         .route("/api/exam/code/{code}/report", post(relay::report_handler))
@@ -70,6 +81,14 @@ async fn main() {
         .fallback_service(ServeDir::new(&static_dir))
         .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
         .with_state(state);
+
+    let app = match mcp_service {
+        Some(service) => {
+            println!("MCP endpoint enabled at /mcp (bearer token: MCP_TOKEN or MCP_TOKEN_FILE)");
+            app.merge(exameow_mcp::router(service))
+        }
+        None => app,
+    };
 
     let port: u16 = std::env::var("PORT")
         .ok()

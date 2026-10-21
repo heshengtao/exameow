@@ -1,6 +1,7 @@
 import type { Question } from '@exameow/shared'
 import { Difficulty, QuestionType as QT } from '@exameow/shared'
 import * as XLSX from 'xlsx'
+import { extractXlsxImages, groupImagesByRow, type XlsxImageEntry } from '@/utils/xlsxMediaParser'
 
 type QuestionType = typeof QT[keyof typeof QT]
 
@@ -31,6 +32,10 @@ export interface ImportAnalysis {
   hasHeader: boolean
   mapping: ColumnMapping
   missing: MissingField[]
+  /** Embedded XLSX images grouped by absolute zero-based sheet row. */
+  imagesByRow?: Map<number, XlsxImageEntry[]>
+  /** Absolute sheet row of `rows[0]` (used to align drawing anchors). */
+  rowOffset?: number
 }
 
 function normalize(s: string): string {
@@ -378,9 +383,15 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
   return { headers, rows, hasHeader, mapping, missing }
 }
 
-export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMapping, source: string): Question[] {
+export function parseWithMapping(
+  analysis: ImportAnalysis,
+  mapping: ColumnMapping,
+  source: string,
+  imageIdsByRow?: Map<number, string[]>,
+): Question[] {
   const questions: Question[] = []
   const rows = analysis.rows
+  const sheetRowOffset = (analysis.hasHeader ? 1 : 0) + (analysis.rowOffset ?? 0)
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -421,6 +432,8 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
       if (inferred) qtype = inferred
     }
 
+    const images = imageIdsByRow?.get(i + sheetRowOffset)
+
     questions.push({
       id: `${source}-${i + 1}`,
       type: qtype,
@@ -431,6 +444,7 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
       subject: mapping.subject !== null ? (row[mapping.subject] ?? '').trim() || undefined : undefined,
       chapter: mapping.chapter !== null ? (row[mapping.chapter] ?? '').trim() || undefined : undefined,
       difficulty,
+      ...(images && images.length > 0 ? { images } : {}),
     })
   }
 
@@ -455,19 +469,34 @@ export function analyzeCSV(text: string): ImportAnalysis | null {
 }
 
 export function analyzeExcel(buffer: ArrayBuffer): ImportAnalysis | null {
-  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' })
+  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array', bookFiles: true })
   const sheetName = workbook.SheetNames[0]
   if (!sheetName) return null
 
   const sheet = workbook.Sheets[sheetName]
   if (!sheet) return null
 
-  const rawRows: (string[] | undefined)[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false })
+  const rawRows: (string[] | undefined)[] = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: '',
+    blankrows: true,
+  })
   const rows = rawRows.filter((r): r is string[] => r !== undefined).map(r => r.map(c => String(c ?? '')))
   if (rows.length === 0) return null
 
   const headers = rows[0] ?? []
-  return analyzeRows(rows, detectXlsxFormat(headers))
+  const analysis = analyzeRows(rows, detectXlsxFormat(headers))
+  if (!analysis) return null
+
+  const rangeStartRow = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']).s.r : 0
+  analysis.rowOffset = rangeStartRow
+  const files = (workbook as unknown as { files?: Record<string, unknown> }).files
+  if (files) {
+    analysis.imagesByRow = groupImagesByRow(
+      extractXlsxImages(files as Parameters<typeof extractXlsxImages>[0]),
+    )
+  }
+  return analysis
 }
 
 export function parseCSV(text: string): { questions: Question[]; source: string } {

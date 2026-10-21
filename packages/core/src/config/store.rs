@@ -56,6 +56,7 @@ pub struct AIConfigData {
     pub search: Option<SearchConfigData>,
 }
 
+#[derive(Clone)]
 pub struct ConfigStore {
     config_path: PathBuf,
     key: [u8; 32],
@@ -101,14 +102,19 @@ fn open_sealed(key: &[u8; 32], encoded: &str) -> Result<Vec<u8>, CoreError> {
     Ok(plaintext.to_vec())
 }
 
+/// Resolves (and creates) the per-app configuration directory.
+pub fn config_dir(app_name: &str) -> Result<PathBuf, CoreError> {
+    let base = dirs_next()
+        .ok_or_else(|| CoreError::Config("cannot determine config directory".to_string()))?;
+    let app_dir = base.join(app_name);
+    std::fs::create_dir_all(&app_dir)
+        .map_err(|e| CoreError::Config(format!("cannot create config dir: {e}")))?;
+    Ok(app_dir)
+}
+
 impl ConfigStore {
     pub fn new(app_name: &str) -> Result<Self, CoreError> {
-        let config_dir = dirs_next().ok_or_else(|| {
-            CoreError::Config("cannot determine config directory".to_string())
-        })?;
-        let app_dir = config_dir.join(app_name);
-        std::fs::create_dir_all(&app_dir)
-            .map_err(|e| CoreError::Config(format!("cannot create config dir: {e}")))?;
+        let app_dir = config_dir(app_name)?;
 
         let config_path = app_dir.join("config.enc");
         let key_path = app_dir.join("key.bin");

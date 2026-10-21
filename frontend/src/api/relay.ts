@@ -17,6 +17,10 @@ export function examLinkFor(code: string): string {
   return `${RELAY_BASE}/#/take/${encodeURIComponent(code)}`
 }
 
+export function examMediaUrl(code: string, imageId: string): string {
+  return `${RELAY_BASE}/api/exam/code/${encodeURIComponent(code)}/media/${encodeURIComponent(imageId)}`
+}
+
 export class RelayError extends Error {
   constructor(
     public status: number,

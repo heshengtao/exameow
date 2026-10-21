@@ -1,3 +1,3 @@
 mod store;
 
-pub use store::{AIConfigData, ConfigStore};
+pub use store::{config_dir, AIConfigData, ConfigStore};

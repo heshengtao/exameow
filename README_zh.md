@@ -62,7 +62,7 @@
 - **精细化控制** — 难度（简单/中等/困难）、出题语言、知识点/章节定向出题
 - **智能分批生成** — 大文档自动拆分分批生成，题目去重
 - **兼容任意 OpenAI 格式 API** — OpenAI、DeepSeek、通义千问、智谱 GLM 等；也可直接使用演示站内置的 Cloudflare 免费 AI
-- **导出** — 支持 XLSX / CSV 下载
+- **导出** — 支持 XLSX（桌面端、移动端与自部署 Docker 版会内嵌题目图片）、CSV（仅文本）与 Word 试卷；Cloudflare 版为纯文本。
 
 ### 📚 刷题模式 — 聪明练习，高效记忆
 
@@ -74,7 +74,7 @@
 - **错题练习** — 自动记录错题，只练做错的题，连续答对自动移出
 - **做题 / 背题模式** — 先答后对答案，或直接翻看题目和答案
 - **AI 判卷** — 简答题由 AI 对照参考答案自动评判并给出评语，支持人工改判
-- **题库管理** — 支持 XLSX/CSV 导入（智能列映射）与导出
+- **题库管理** — 支持 XLSX/CSV 导入（智能列映射）与导出。XLSX「图片」列（P 列）里的内嵌图片会在桌面端、移动端与自部署 Docker 版导入；导出 CSV 时会提示图片已被忽略。
 - **章节练习** — CSV/XLSX 填写“章节”列即可按同名章节分组，练习前可多选章节或单选“未分章”；没有章节的旧题库照常使用。
 - **AI 自动分章** — 生成新题时可开启，根据资料章节或知识主题标注题目；默认关闭，沿用现有生成请求。
 
@@ -99,6 +99,21 @@
 - **拍照搜题** — 拍摄或上传题目照片，本地 OCR 识别（浏览器端运行，无需上传）
 - **拍屏搜题** — 摄像头对准屏幕或试卷，AI 实时监听并匹配题目
 - **录屏搜题** — 框选屏幕任意区域，AI 实时识别并搜索本地题库，悬浮窗展示答案（支持 Windows / macOS / Linux / Android；iOS 因系统限制暂不支持）
+
+### 🤖 MCP — 让其他 AI 工具直接驱动过了喵
+
+内置 **MCP（Model Context Protocol）** 服务端。接入 Claude Code、Cursor、Codex 或任意 MCP 客户端后，它可以读取题库、从文档出题、开始练习、判分、导出 CSV/XLSX、发布在线考试——而且你能在界面上看到实时变化。
+
+- **一套端点，三种形态** — 桌面端 `http://127.0.0.1:5274/mcp`，移动端 `http://<手机IP>:5274/mcp`，自托管 `http://<host>:3000/mcp`
+- **27 个工具** — 解析、出题、答题、判分、讲解、导出、联网搜索、题库/练习/错题管理、考试发布与界面跳转
+- **默认安全** — 自动生成 Bearer Token、桌面端仅监听回环、Origin 校验、绝不回传 API Key
+
+```bash
+claude mcp add --transport http exameow http://127.0.0.1:5274/mcp \
+  --header "Authorization: Bearer <token>"
+```
+
+开启方式与完整工具清单：[MCP.md](MCP.md)。
 
 ### 🌐 跨平台与隐私 — 你的数据，你做主
 
@@ -181,6 +196,9 @@ docker run -d -p 3000:3000 \
 | `ADMIN_TOKEN` | `pass` | 管理员页密钥;`pass` 时首次访问 `/#/admin` 强制修改 |
 | `EXAM_DB_PATH` | `/app/data/exameow.db` | 在线考试 SQLite 路径 |
 | `ADMIN_TOKEN_FILE` | `/app/data/admin_token.txt` | 修改后的密钥持久化文件 |
+| `MCP_ENABLED` | `true` | 是否开放 `/mcp` 端点 |
+| `MCP_TOKEN` | — | MCP 客户端使用的 Bearer Token |
+| `MCP_TOKEN_FILE` | `/app/data/mcp_token.txt` | 自动生成的 MCP Token 存放位置 |
 | `RUST_LOG` | `info` | 日志级别 |
 
 ## API 接口
@@ -193,6 +211,7 @@ docker run -d -p 3000:3000 \
 | `POST` | `/api/export/xlsx` | 导出 XLSX |
 | `POST` | `/api/config/save` | 保存 AI 配置 |
 | `GET` | `/api/config/load` | 读取已保存的 AI 配置 |
+| `POST` | `/mcp` | MCP JSON-RPC 端点（Bearer Token） |
 
 ### 生成考题示例
 

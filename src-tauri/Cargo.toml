@@ -1,6 +1,6 @@
 [package]
 name = "exameow"
-version = "1.6.2"
+version = "1.7.0"
 description = "AI-powered exam question generator"
 edition = "2021"
 
@@ -13,7 +13,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
-tokio = { version = "1", features = ["sync", "macros"] }
+tokio = { version = "1", features = ["sync", "macros", "rt", "net", "time"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
@@ -21,6 +21,8 @@ tauri-plugin-opener = "2"
 tauri-plugin-sharekit = "0.3"
 tauri-plugin-screenrecord = { path = "../plugins/screenrecord" }
 exameow-core = { path = "../packages/core" }
+exameow-mcp = { path = "../packages/mcp" }
+rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"

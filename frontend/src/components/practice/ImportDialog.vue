@@ -180,6 +180,21 @@ function handleConfirm() {
         </button>
       </div>
 
+      <div
+        v-if="practiceStore.importImagesStored > 0"
+        class="text-body-sm"
+        :style="{ color: 'rgb(var(--md-on-surface-variant))' }"
+      >
+        {{ i18n.t('mediaImportCount', { n: practiceStore.importImagesStored }) }}
+      </div>
+      <div
+        v-if="practiceStore.importImagesDropped > 0"
+        class="text-body-sm"
+        :style="{ color: 'rgb(var(--md-error))' }"
+      >
+        {{ i18n.t('mediaImportDropped', { n: practiceStore.importImagesDropped }) }}
+      </div>
+
       <div v-if="chapterGroups.some(group => group.chapter !== null)" class="flex flex-wrap gap-2 text-body-sm">
         <span v-for="group in chapterGroups" :key="JSON.stringify(group.chapter)" class="rounded-xl px-3 py-2 break-words max-w-full"
           :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">

@@ -2,7 +2,8 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
-import { fetchExam, submitExam, reportExam, RelayError } from '@/api/relay'
+import { fetchExam, submitExam, reportExam, RelayError, examMediaUrl } from '@/api/relay'
+import QuestionImages from '@/components/practice/QuestionImages.vue'
 import { useJoinedStore } from '@/stores/joined'
 import type { JoinedRecord } from '@/stores/joined'
 import ProgressBar from '@/components/practice/ProgressBar.vue'
@@ -396,6 +397,11 @@ onUnmounted(() => {
 
         <div class="text-body-lg mb-5" style="color: rgb(var(--md-on-surface))">{{ currentQuestion.stem }}</div>
 
+        <QuestionImages
+          :ids="currentQuestion.images"
+          :url-for="(id: string) => examMediaUrl(code, id)"
+        />
+
         <div v-if="isChoice(currentQuestion.type)" class="space-y-2">
           <button
             v-for="(opt, oi) in currentQuestion.options"
@@ -492,6 +498,11 @@ onUnmounted(() => {
             >{{ i + 1 }}</span>
             <div class="flex-1 min-w-0">
               <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">{{ g.question.stem }}</div>
+              <QuestionImages
+                :ids="g.question.images"
+                compact
+                :url-for="(id: string) => examMediaUrl(code, id)"
+              />
               <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeYourAnswer') }}</div>
               <div class="text-sm mb-2" :style="{ color: g.isCorrect === false ? 'rgb(var(--md-error))' : 'rgb(var(--md-on-surface))' }">
                 {{ g.userAnswer || i18n.t('takeUnanswered') }}

@@ -18,8 +18,10 @@ use std::fmt;
 use std::future::Future;
 
 mod ai_requests;
+mod mcp_host;
 mod ota;
 use ai_requests::AiRequestRegistry;
+use mcp_host::{McpHost, McpInfoDto};
 #[cfg(target_os = "macos")]
 fn make_webview_transparent(win: &tauri::WebviewWindow) {
     use objc::runtime::{Class, Object, NO};
@@ -506,6 +508,29 @@ fn load_config() -> Result<Option<AIConfigData>, CommandError> {
 }
 
 #[tauri::command]
+fn mcp_info(host: tauri::State<'_, McpHost>) -> McpInfoDto {
+    host.info()
+}
+
+#[tauri::command]
+fn mcp_set_enabled(
+    host: tauri::State<'_, McpHost>,
+    enabled: bool,
+    port: Option<u16>,
+    allow_lan: Option<bool>,
+) -> Result<McpInfoDto, CommandError> {
+    host.configure(enabled, port, allow_lan)
+        .map_err(CommandError)?;
+    Ok(host.info())
+}
+
+#[tauri::command]
+fn mcp_regenerate_token(host: tauri::State<'_, McpHost>) -> Result<McpInfoDto, CommandError> {
+    host.regenerate_token().map_err(CommandError)?;
+    Ok(host.info())
+}
+
+#[tauri::command]
 fn open_app_settings() -> Result<(), CommandError> {
     #[cfg(target_os = "android")]
     {
@@ -862,6 +887,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init());
     builder
         .manage(AiRequestRegistry::new())
+        .manage(McpHost::new(env!("CARGO_PKG_VERSION")))
         .setup(|app| {
             let config = &app.config().app.windows[0];
             let mut builder = tauri::WebviewWindowBuilder::from_config(app.handle(), config)?;
@@ -886,6 +912,10 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             setup_dock_icon();
 
+            if let Err(error) = app.state::<McpHost>().start_if_enabled() {
+                eprintln!("[mcp] failed to start: {error}");
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -909,6 +939,9 @@ pub fn run() {
             save_to_downloads,
             save_config,
             load_config,
+            mcp_info,
+            mcp_set_enabled,
+            mcp_regenerate_token,
             open_app_settings,
             capture_screen,
             check_screen_permission,

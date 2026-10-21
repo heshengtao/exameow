@@ -1,13 +1,17 @@
 use axum::{
+    body::Body,
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode},
+    http::{header, HeaderMap, StatusCode},
+    response::Response,
     Json,
 };
+use base64::Engine as _;
 use exameow_core::exam::Question;
 use rand::Rng;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 const CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -16,6 +20,8 @@ const MAX_QUESTIONS: usize = 500;
 const MAX_PUBLISH_PER_DAY: i64 = 20;
 const REPORT_SUSPEND_THRESHOLD: i64 = 3;
 const MAX_WINDOW_MS: i64 = 7 * 24 * 60 * 60 * 1000;
+const MAX_MEDIA_BYTES_PER_IMAGE: usize = 8 * 1024 * 1024;
+const MAX_MEDIA_BYTES_TOTAL: usize = 60 * 1024 * 1024;
 
 pub struct RelayState {
     pub conn: Mutex<Connection>,
@@ -122,6 +128,13 @@ pub fn init_db(path: &str) -> Result<RelayState, String> {
           day TEXT NOT NULL,
           count INTEGER NOT NULL,
           PRIMARY KEY (ip, day)
+        );
+        CREATE TABLE IF NOT EXISTS exam_media (
+          code TEXT NOT NULL,
+          image_id TEXT NOT NULL,
+          mime TEXT NOT NULL,
+          bytes BLOB NOT NULL,
+          PRIMARY KEY (code, image_id)
         );",
     )
     .map_err(|e| e.to_string())?;
@@ -143,6 +156,7 @@ pub fn cleanup_expired(state: &RelayState) {
         let _ = conn.execute("DELETE FROM results WHERE submitted_at < ?1", params![cutoff]);
         let _ = conn.execute("DELETE FROM reports WHERE created_at < ?1", params![cutoff]);
         let _ = conn.execute("DELETE FROM publish_limits WHERE day < ?1", params![day_cutoff]);
+        let _ = conn.execute("DELETE FROM exam_media WHERE code NOT IN (SELECT code FROM exams)", []);
     }
 }
 
@@ -183,6 +197,7 @@ fn read_exam(conn: &Connection, code: &str) -> Result<Option<StoredExam>, Err> {
         let _ = conn.execute("DELETE FROM exams WHERE code = ?1", params![code]);
         let _ = conn.execute("DELETE FROM results WHERE code = ?1", params![code]);
         let _ = conn.execute("DELETE FROM reports WHERE code = ?1", params![code]);
+        let _ = conn.execute("DELETE FROM exam_media WHERE code = ?1", params![code]);
         return Ok(None);
     }
     let questions: Vec<Question> = serde_json::from_str(&questions)
@@ -284,6 +299,14 @@ pub struct PublishReq {
     end_at: Option<i64>,
     #[serde(rename = "durationMinutes")]
     duration_minutes: Option<i64>,
+    /// image_id -> base64 payload. Only ids referenced by `questions` are stored.
+    images: Option<HashMap<String, MediaPayload>>,
+}
+
+#[derive(Deserialize)]
+pub struct MediaPayload {
+    mime: Option<String>,
+    data: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -350,6 +373,39 @@ pub async fn publish_handler(
     )
     .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()))?;
 
+    if let Some(images) = req.images {
+        let referenced: HashSet<String> = questions
+            .iter()
+            .flat_map(|q| q.images.clone().unwrap_or_default())
+            .collect();
+        let mut total_bytes = 0usize;
+        for (image_id, payload) in images {
+            if !referenced.contains(&image_id) {
+                continue;
+            }
+            let Some(data) = payload.data else { continue };
+            let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(data) else {
+                continue;
+            };
+            if bytes.is_empty()
+                || bytes.len() > MAX_MEDIA_BYTES_PER_IMAGE
+                || total_bytes + bytes.len() > MAX_MEDIA_BYTES_TOTAL
+            {
+                continue;
+            }
+            let mime = payload.mime.unwrap_or_else(|| "image/png".to_string());
+            if mime != "image/png" && mime != "image/jpeg" {
+                continue;
+            }
+            total_bytes += bytes.len();
+            conn.execute(
+                "INSERT OR REPLACE INTO exam_media (code, image_id, mime, bytes) VALUES (?1, ?2, ?3, ?4)",
+                params![code, image_id, mime, bytes],
+            )
+            .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()))?;
+        }
+    }
+
     Ok(Json(PublishRes {
         manage_url: format!("/#/manage/{code}?token={admin_token}"),
         code,
@@ -380,6 +436,7 @@ pub async fn get_exam_handler(
                 "type": q.qtype,
                 "stem": q.stem,
                 "options": q.options,
+                "images": q.images.clone().unwrap_or_default(),
             })
         })
         .collect();
@@ -550,7 +607,31 @@ pub async fn delete_exam_handler(
     let _ = conn.execute("DELETE FROM exams WHERE code = ?1", params![code]);
     let _ = conn.execute("DELETE FROM results WHERE code = ?1", params![code]);
     let _ = conn.execute("DELETE FROM reports WHERE code = ?1", params![code]);
+    let _ = conn.execute("DELETE FROM exam_media WHERE code = ?1", params![code]);
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+pub async fn get_media_handler(
+    State(state): State<Arc<crate::routes::AppState>>,
+    Path((code, image_id)): Path<(String, String)>,
+) -> Result<Response, Err> {
+    let conn = state.relay.conn.lock().map_err(|_| err(StatusCode::INTERNAL_SERVER_ERROR, "db lock"))?;
+    let row: Option<(String, Vec<u8>)> = conn
+        .query_row(
+            "SELECT mime, bytes FROM exam_media WHERE code = ?1 AND image_id = ?2",
+            params![code, image_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .ok();
+    let Some((mime, bytes)) = row else {
+        return Err(err(StatusCode::NOT_FOUND, "not_found"));
+    };
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, mime)
+        .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
+        .body(Body::from(bytes))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 #[derive(Deserialize)]
@@ -633,6 +714,7 @@ pub async fn admin_delete_handler(
     let _ = conn.execute("DELETE FROM exams WHERE code = ?1", params![code]);
     let _ = conn.execute("DELETE FROM results WHERE code = ?1", params![code]);
     let _ = conn.execute("DELETE FROM reports WHERE code = ?1", params![code]);
+    let _ = conn.execute("DELETE FROM exam_media WHERE code = ?1", params![code]);
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 

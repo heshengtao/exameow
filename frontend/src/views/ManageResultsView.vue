@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
-import { fetchResults, RelayError } from '@/api/relay'
+import { fetchResults, RelayError, examMediaUrl } from '@/api/relay'
 import type { ExamResultEntry, ExamResultsResponse, Question } from '@exameow/shared'
+import QuestionImages from '@/components/practice/QuestionImages.vue'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -158,6 +159,7 @@ function fmtDuration(sec: number): string {
                       <span v-else class="text-body-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takePendingShort') }}</span>
                       <div class="flex-1">
                         <p class="font-medium">{{ qi + 1 }}. {{ q.stem }}</p>
+                        <QuestionImages :ids="q.images" compact :url-for="(id: string) => examMediaUrl(code, id)" />
                         <p class="text-body-sm" style="color: rgb(var(--md-on-surface-variant))">
                           {{ i18n.t('takeYourAnswer') }}: {{ answerFor(r, q) }} · {{ i18n.t('takeCorrectAnswer') }}: {{ q.answer }}
                         </p>

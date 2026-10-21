@@ -79,7 +79,15 @@ async function handleExportBank(bank: QuestionBank, format: BankExportFormat) {
   try {
     const result = await exportBank(bank, format)
     if (result.ok && result.path) {
-      templateExportSuccess.value = i18n.t('previewExportSaved') + result.path
+      const notes: string[] = []
+      if (result.imagesOmitted) {
+        notes.push(i18n.t('mediaCsvOmitted', { n: result.imagesOmitted }))
+      }
+      if (result.imagesMissing) {
+        notes.push(i18n.t('mediaExportMissing', { n: result.imagesMissing }))
+      }
+      const suffix = notes.length > 0 ? ` · ${notes.join(' · ')}` : ''
+      templateExportSuccess.value = i18n.t('previewExportSaved') + result.path + suffix
       templateExportFilePath.value = result.path
     } else if (!result.cancelled) {
       templateExportError.value = 'Export failed: ' + (result.error ?? 'unknown')

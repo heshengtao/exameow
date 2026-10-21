@@ -1,7 +1,10 @@
 import { api } from '@/api'
 import { generateCsvContent } from '@/api/http'
 import { exportBankToWord } from '@/utils/wordExport'
-import type { QuestionBank } from '@exameow/shared'
+import type { QuestionBank, Question } from '@exameow/shared'
+import { buildXlsx, type XlsxMedia } from '@/utils/xlsxWriter'
+import { getImage } from '@/utils/mediaStore'
+import { countQuestionImages, supportsLocalMedia } from '@/utils/capabilities'
 
 export type BankExportFormat = 'csv' | 'xlsx' | 'word'
 
@@ -10,6 +13,9 @@ export interface BankExportResult {
   path?: string
   error?: string
   cancelled?: boolean
+  imagesOmitted?: number
+  imagesIncluded?: number
+  imagesMissing?: number
 }
 
 function isTauriPlatform(): boolean {
@@ -21,7 +27,52 @@ function sanitizeFilename(name: string): string {
   return cleaned || 'exameow_bank'
 }
 
-async function saveTauri(filename: string, questions: QuestionBank['questions'], format: BankExportFormat): Promise<string | null> {
+function toBase64(bytes: Uint8Array): string {
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+async function loadBankMedia(questions: Question[]): Promise<Map<string, XlsxMedia>> {
+  const media = new Map<string, XlsxMedia>()
+  const uniqueIds = new Set<string>()
+  for (const q of questions) {
+    for (const id of q.images ?? []) uniqueIds.add(id)
+  }
+  await Promise.all(
+    [...uniqueIds].map(async (id) => {
+      const record = await getImage(id)
+      if (!record) return
+      const bytes = new Uint8Array(await record.blob.arrayBuffer())
+      media.set(id, {
+        id,
+        mime: record.mime,
+        width: record.width,
+        height: record.height,
+        bytes,
+      })
+    }),
+  )
+  return media
+}
+
+async function saveTauri(
+  filename: string,
+  questions: QuestionBank['questions'],
+  format: 'csv' | 'xlsx',
+): Promise<string | null> {
   try {
     const mod: any = await import('@tauri-apps/plugin-dialog')
     const path = await mod.save({
@@ -45,6 +96,32 @@ async function saveTauri(filename: string, questions: QuestionBank['questions'],
   return tauriApi.saveToDownloads(filename, b64)
 }
 
+async function saveXlsxWithMedia(filename: string, buffer: Uint8Array): Promise<string | null> {
+  const { tauriApi } = await import('@/api/bridge')
+  if (!isTauriPlatform()) {
+    downloadBlob(
+      new Blob([buffer as unknown as BlobPart], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+      filename,
+    )
+    return filename
+  }
+
+  try {
+    const mod: any = await import('@tauri-apps/plugin-dialog')
+    const path = await mod.save({
+      defaultPath: filename,
+      filters: [{ name: 'File', extensions: ['xlsx'] }],
+    })
+    if (!path) return null
+    await tauriApi.writeFile(path, toBase64(buffer))
+    return path
+  } catch {
+    return tauriApi.saveToDownloads(filename, toBase64(buffer))
+  }
+}
+
 export async function exportBank(bank: QuestionBank, format: BankExportFormat): Promise<BankExportResult> {
   if (format === 'word') {
     try {
@@ -54,19 +131,37 @@ export async function exportBank(bank: QuestionBank, format: BankExportFormat): 
       return { ok: false, error: String(e?.message ?? e) }
     }
   }
+
   const filename = `${sanitizeFilename(bank.name)}.${format}`
+  const imageCount = countQuestionImages(bank.questions)
+
   try {
+    if (format === 'xlsx' && imageCount > 0 && supportsLocalMedia()) {
+      const media = await loadBankMedia(bank.questions)
+      const built = buildXlsx(bank.questions, { media, includeImageColumn: true })
+      const path = await saveXlsxWithMedia(filename, built.buffer)
+      if (path === null) return { ok: false, cancelled: true }
+      return {
+        ok: true,
+        path,
+        imagesIncluded: built.imagesIncluded,
+        imagesMissing: built.imagesMissing,
+      }
+    }
+
     if (isTauriPlatform()) {
       const path = await saveTauri(filename, bank.questions, format)
       if (path === null) return { ok: false, cancelled: true }
-      return { ok: true, path }
+      const omitted = format === 'csv' || (format === 'xlsx' && imageCount > 0) ? imageCount : undefined
+      return { ok: true, path, imagesOmitted: omitted }
     }
     if (format === 'csv') {
       await api.exportCsv(bank.questions, undefined, filename)
     } else {
       await api.exportXlsx(bank.questions, undefined, filename)
     }
-    return { ok: true, path: filename }
+    const omitted = format === 'csv' || (format === 'xlsx' && imageCount > 0) ? imageCount : undefined
+    return { ok: true, path: filename, imagesOmitted: omitted }
   } catch (e: any) {
     return { ok: false, error: String(e?.message ?? e) }
   }

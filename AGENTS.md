@@ -40,6 +40,20 @@ Platform detection lives in `frontend/src/utils/platform.ts`.
 
 **Important consequence**: Core logic (file parsing, prompt building, export) is **duplicated** in Rust (`packages/core`) and TypeScript (`workers/src/*`, `frontend/src/utils/*`). When changing generation prompts, parsing, or export format, update BOTH the Rust and TS implementations to keep parity.
 
+## MCP Server (external AI harness control)
+
+A built-in MCP server lets other AI agents drive the app. One implementation, three mounts:
+
+- **Crate**: `packages/mcp` (`exameow-mcp`) — hand-rolled JSON-RPC 2.0 subset (`initialize` / `ping` / `tools/list` / `tools/call`), Streamable HTTP returning JSON, plus a WebSocket session bridge at `/api/mcp/session`.
+- **Tool catalog**: `packages/mcp/src/catalog.rs` is the single source of truth for names, descriptions and JSON Schemas (27 tools). The frontend only registers handlers by name in `frontend/src/mcp/handlers/*` — never duplicate schemas in TS.
+- **Stateless tools** run in Rust against `exameow-core` (`core_tools.rs`).
+- **Stateful tools** (banks, practice, wrong questions, publish, navigate) are forwarded over the WS bridge to the frontend registry; with no connected window/tab they return `app_not_connected`.
+- **Mounts**: `src-tauri/src/mcp_host.rs` (in-process listener: `127.0.0.1:5274`, LAN opt-in, mobile LAN on by default) and `packages/server/src/mcp.rs` (`/mcp`, `MCP_ENABLED`/`MCP_TOKEN`/`MCP_TOKEN_FILE`).
+- **Auth**: auto-generated bearer token on every `/mcp` call and WS handshake, constant-time compare, `Origin`/`Host` checks. `get_config` never returns `api_key`.
+- **Not supported**: Cloudflare Worker build (per-request billing, no persistent bridge), MCP resources/prompts/sampling, OAuth.
+- New native commands (`mcp_info`, `mcp_set_enabled`, `mcp_regenerate_token`) are invoked by the frontend, so `ota.json.minShell` must be ≥ the released version.
+- Docs: `MCP.md`.
+
 ## Directory Map
 
 ```
@@ -59,7 +73,8 @@ packages/
     src/exam/          types.rs (Question/ExamParams), prompt.rs (generate_exam + prompts)
     src/export/        writer.rs (CSV), xlsx.rs (manual ZIP+XML, no lib)
     src/config/        store.rs (AES-256-GCM encrypted config persistence)
-  server/              Axum HTTP server; routes.rs (AI 端点) + relay.rs (在线考试,SQLite via rusqlite)
+  server/              Axum HTTP server; routes.rs (AI 端点) + relay.rs (在线考试,SQLite via rusqlite) + mcp.rs (MCP 挂载)
+  mcp/                 Rust crate `exameow-mcp`; catalog.rs (27 工具 schema)、core_tools.rs、bridge.rs、http.rs
   shared/              TS shared types (@exameow/shared) src/types.ts
 
 src-tauri/             Tauri app; src/lib.rs = all Tauri commands; tauri.conf.json; capabilities/

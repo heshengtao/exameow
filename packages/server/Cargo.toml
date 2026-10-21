@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 exameow-core = { path = "../core" }
+exameow-mcp = { path = "../mcp" }
 axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -14,5 +15,6 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 tempfile = "3"
 rusqlite = { version = "0.31", features = ["bundled"] }
 sha2 = "0.10"
+base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 rand = "0.8"

@@ -44,6 +44,10 @@ onMounted(async () => {
   }
   await configStore.loadSaved()
 
+  const { registerDefaultMcpTools, startMcpBridge } = await import('@/mcp')
+  registerDefaultMcpTools()
+  startMcpBridge()
+
   const { isTauri, isMobileDevice } = await import('@/utils/platform')
   if (isTauri() && isMobileDevice()) {
     try {
