@@ -39,7 +39,7 @@ fn question_schema() -> Value {
             "subject": { "type": "string" },
             "chapter": { "type": "string" },
             "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
-            "images": { "type": "array", "items": { "type": "string" } }
+            "media": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "target": { "type": "string", "enum": ["stem", "option"] }, "optionIndex": { "type": "number" } }, "required": ["id", "target"] } }
         },
         "required": ["type", "stem", "answer"]
     })

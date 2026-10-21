@@ -1,3 +1,4 @@
+import type { QuestionMedia } from '@exameow/shared'
 import { isCloudflare, isTauri } from '@/utils/platform'
 
 /**
@@ -19,6 +20,6 @@ export function relaySupportsMedia(): boolean {
   return !isCloudflare() && !isTauri()
 }
 
-export function countQuestionImages(questions: { images?: string[] }[]): number {
-  return questions.reduce((sum, q) => sum + (q.images?.length ?? 0), 0)
+export function countQuestionImages(questions: { media?: QuestionMedia[] }[]): number {
+  return questions.reduce((sum, q) => sum + (q.media?.length ?? 0), 0)
 }

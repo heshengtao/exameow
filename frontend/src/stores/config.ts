@@ -11,7 +11,7 @@ import { normalizeEndpoint, withV1Suffix } from '@/utils/endpoint'
 
 export type AIProvider = 'cf-free' | 'custom' | 'server'
 
-const SEARCH_PROVIDERS: SearchProvider[] = ['tavily', 'deepseek', 'exa', 'firecrawl', 'bocha']
+const SEARCH_PROVIDERS: SearchProvider[] = ['deepseek', 'tavily', 'exa', 'firecrawl', 'bocha']
 const FETCH_PROVIDERS: FetchProvider[] = ['deepseek', 'tavily', 'jina', 'exa', 'firecrawl']
 const CRAWL_PROVIDERS: FetchProvider[] = ['tavily']
 
@@ -45,7 +45,7 @@ export const useConfigStore = defineStore('config', () => {
   const aiProvider = ref<AIProvider>('cf-free')
   const serverInfo = ref<ServerConfigInfo | null>(null)
   const searchEnabled = ref(false)
-  const searchProvider = ref<SearchProvider>('tavily')
+  const searchProvider = ref<SearchProvider>('deepseek')
   const searchKeys = ref<Partial<Record<VendorId, string>>>({})
   const searchMaxResults = ref(5)
   const fetchProvider = ref<FetchProvider>('jina')
@@ -107,7 +107,7 @@ export const useConfigStore = defineStore('config', () => {
         searchEnabled.value = saved.search.enabled === true
         searchProvider.value = SEARCH_PROVIDERS.includes(saved.search.provider as SearchProvider)
           ? (saved.search.provider as SearchProvider)
-          : 'tavily'
+          : 'deepseek'
         searchKeys.value = sanitizeKeys(saved.search.keys)
         if (!searchKeys.value[searchProvider.value] && saved.search.api_key) {
           searchKeys.value = {

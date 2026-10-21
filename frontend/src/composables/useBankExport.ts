@@ -5,6 +5,8 @@ import type { QuestionBank, Question } from '@exameow/shared'
 import { buildXlsx, type XlsxMedia } from '@/utils/xlsxWriter'
 import { getImage } from '@/utils/mediaStore'
 import { countQuestionImages, supportsLocalMedia } from '@/utils/capabilities'
+import { useI18nStore } from '@/stores/i18n'
+import { TEMPLATE_COPY } from '@/utils/templateSchema'
 
 export type BankExportFormat = 'csv' | 'xlsx' | 'word'
 
@@ -49,7 +51,7 @@ async function loadBankMedia(questions: Question[]): Promise<Map<string, XlsxMed
   const media = new Map<string, XlsxMedia>()
   const uniqueIds = new Set<string>()
   for (const q of questions) {
-    for (const id of q.images ?? []) uniqueIds.add(id)
+    for (const item of q.media ?? []) uniqueIds.add(item.id)
   }
   await Promise.all(
     [...uniqueIds].map(async (id) => {
@@ -136,9 +138,16 @@ export async function exportBank(bank: QuestionBank, format: BankExportFormat): 
   const imageCount = countQuestionImages(bank.questions)
 
   try {
-    if (format === 'xlsx' && imageCount > 0 && supportsLocalMedia()) {
-      const media = await loadBankMedia(bank.questions)
-      const built = buildXlsx(bank.questions, { media, includeImageColumn: true })
+    if (format === 'xlsx' && supportsLocalMedia()) {
+      const media = imageCount > 0 ? await loadBankMedia(bank.questions) : new Map<string, XlsxMedia>()
+      const i18n = useI18nStore()
+      const built = buildXlsx(bank.questions, {
+        media,
+        // Always emit the image columns so exported banks match the template
+        // and can be filled in with pictures later.
+        includeMediaColumns: true,
+        headers: TEMPLATE_COPY[i18n.locale].headers,
+      })
       const path = await saveXlsxWithMedia(filename, built.buffer)
       if (path === null) return { ok: false, cancelled: true }
       return {

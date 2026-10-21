@@ -19,7 +19,7 @@ export async function collectRelayImages(
 ): Promise<Record<string, { mime: string; data: string }>> {
   const ids = new Set<string>()
   for (const q of questions) {
-    for (const id of q.images ?? []) ids.add(id)
+    for (const item of q.media ?? []) ids.add(item.id)
   }
 
   const images: Record<string, { mime: string; data: string }> = {}

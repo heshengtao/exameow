@@ -23,7 +23,6 @@ export interface Question {
   subject?: string
   chapter?: string
   difficulty?: Difficulty
-  images?: string[]
 }
 
 export interface ExamParams {

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import type { GradedQuestion } from '@exameow/shared'
+import { normalizeQuestion } from '@/utils/dataCompat'
 
 export interface JoinedRecord {
   code: string
@@ -17,7 +18,20 @@ const KEY = 'exameow-joined'
 
 function load(): JoinedRecord[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '[]')
+    const parsed = JSON.parse(localStorage.getItem(KEY) || '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((record) => {
+      if (!record || typeof record !== 'object' || !Array.isArray(record.graded)) return record
+      return {
+        ...record,
+        graded: record.graded.map((entry: GradedQuestion, index: number) => ({
+          ...entry,
+          question: normalizeQuestion(entry?.question, `${record.code ?? 'joined'}-${index + 1}`),
+          userAnswer: entry?.userAnswer ?? null,
+          isCorrect: typeof entry?.isCorrect === 'boolean' ? entry.isCorrect : null,
+        })),
+      }
+    })
   } catch {
     return []
   }

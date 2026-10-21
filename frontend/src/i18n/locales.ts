@@ -433,6 +433,8 @@ export interface LocaleMessages {
   learnStop: string
   learnSend: string
   learnComposerHint: string
+  learnDeepThinking: string
+  learnWebSearch: string
   cookieBannerText: string
   cookieBannerAccept: string
   updateAvailableTitle: string
@@ -620,6 +622,8 @@ export const zh: LocaleMessages = {
   learnStop: '停止',
   learnSend: '发送',
   learnComposerHint: 'Enter 发送 · Shift+Enter 换行',
+  learnDeepThinking: '深度思考',
+  learnWebSearch: '联网搜索',
   practiceUnchaptered: "未分章",
   practiceChapterImportHint: "CSV/XLSX 可填写“章节”列，同名自动分组；无章节列仍可正常导入。",
   genAutoChapter: "AI 自动分章",
@@ -1202,6 +1206,8 @@ export const zhTW: LocaleMessages = {
   learnStop: '停止',
   learnSend: '傳送',
   learnComposerHint: 'Enter 傳送 · Shift+Enter 換行',
+  learnDeepThinking: '深度思考',
+  learnWebSearch: '聯網搜尋',
   practiceUnchaptered: "未分章",
   practiceChapterImportHint: "CSV/XLSX 可填寫「章節」欄，同名自動分組；無章節欄仍可正常匯入。",
   genAutoChapter: "AI 自動分章",
@@ -1784,6 +1790,8 @@ export const en: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: 'Deep thinking',
+  learnWebSearch: 'Web search',
   practiceUnchaptered: "Unchaptered",
   practiceChapterImportHint: "Add a Chapter column to CSV/XLSX to group questions by name. Files without chapters still work.",
   genAutoChapter: "AI chapter tagging",
@@ -2366,6 +2374,8 @@ export const ja: LocaleMessages = {
   learnStop: '停止',
   learnSend: '送信',
   learnComposerHint: 'Enterで送信 · Shift+Enterで改行',
+  learnDeepThinking: '深く考える',
+  learnWebSearch: 'Web検索',
   practiceUnchaptered: "章未設定",
   practiceChapterImportHint: "CSV/XLSX の「Chapter」列で同名の章をまとめます。章のないファイルも読み込めます。",
   genAutoChapter: "AIで章を自動設定",
@@ -2948,6 +2958,8 @@ export const ko: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: '심층 사고',
+  learnWebSearch: '웹 검색',
   practiceUnchaptered: "미분류",
   practiceChapterImportHint: "CSV/XLSX에 Chapter 열을 추가하면 같은 이름으로 묶습니다. 장이 없는 파일도 가져올 수 있습니다.",
   genAutoChapter: "AI 자동 장 분류",
@@ -3530,6 +3542,8 @@ export const es: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: 'Pensamiento profundo',
+  learnWebSearch: 'Búsqueda web',
   practiceUnchaptered: "Sin capítulo",
   practiceChapterImportHint: "Añade una columna Chapter al CSV/XLSX para agrupar por nombre. También se admiten archivos sin capítulos.",
   genAutoChapter: "Capítulos automáticos con IA",
@@ -4112,6 +4126,8 @@ export const fr: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: 'Réflexion approfondie',
+  learnWebSearch: 'Recherche web',
   practiceUnchaptered: "Sans chapitre",
   practiceChapterImportHint: "Ajoutez une colonne Chapter au CSV/XLSX pour regrouper par nom. Les fichiers sans chapitres restent compatibles.",
   genAutoChapter: "Chapitres automatiques par IA",
@@ -4694,6 +4710,8 @@ export const de: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: 'Tiefes Denken',
+  learnWebSearch: 'Websuche',
   practiceUnchaptered: "Ohne Kapitel",
   practiceChapterImportHint: "Eine Chapter-Spalte in CSV/XLSX gruppiert Fragen nach Namen. Dateien ohne Kapitel werden weiterhin unterstützt.",
   genAutoChapter: "KI-Kapitelzuordnung",
@@ -5276,6 +5294,8 @@ export const ru: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: 'Глубокое мышление',
+  learnWebSearch: 'Веб-поиск',
   practiceUnchaptered: "Без главы",
   practiceChapterImportHint: "Столбец Chapter в CSV/XLSX группирует вопросы по названию. Файлы без глав также поддерживаются.",
   genAutoChapter: "Главы с помощью ИИ",
@@ -5858,6 +5878,8 @@ export const ar: LocaleMessages = {
   learnStop: 'Stop',
   learnSend: 'Send',
   learnComposerHint: 'Enter to send · Shift+Enter for a new line',
+  learnDeepThinking: 'تفكير عميق',
+  learnWebSearch: 'بحث الويب',
   practiceUnchaptered: "بلا فصل",
   practiceChapterImportHint: "أضف عمود Chapter إلى CSV/XLSX لتجميع الأسئلة حسب الاسم. تبقى الملفات بلا فصول مدعومة.",
   genAutoChapter: "تصنيف الفصول بالذكاء الاصطناعي",

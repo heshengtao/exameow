@@ -9,6 +9,7 @@ import type { ParseProgressReport } from '@/utils/fileParser'
 import { isTauri, isCloudflare } from '@/utils/platform'
 import { tagQuestions } from '@/utils/questionMetadata'
 import { computeBatchSpecs, splitTextChunk } from '@/utils/chunking'
+import { normalizeQuestion } from '@/utils/dataCompat'
 
 const ALL_TYPES: QuestionType[] = [
   'single_choice' as QuestionType,
@@ -82,7 +83,12 @@ export const useExamStore = defineStore('exam', () => {
   function loadCachedQuestions(): Question[] {
     try {
       const cached = localStorage.getItem('exameow-questions')
-      if (cached) return JSON.parse(cached)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        return Array.isArray(parsed)
+          ? parsed.map((question, index) => normalizeQuestion(question, `cached-${index + 1}`))
+          : []
+      }
     } catch {}
     return []
   }

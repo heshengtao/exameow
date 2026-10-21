@@ -54,14 +54,14 @@ watch(
 </script>
 
 <template>
-  <div v-if="(ids ?? []).length > 0" class="space-y-2 mb-4" :class="compact ? 'mt-1' : 'mt-3'">
+  <div v-if="(ids ?? []).length > 0" class="space-y-2" :class="compact ? 'mt-2' : 'mt-3 mb-4'">
     <template v-for="id in ids" :key="id">
       <img
         v-if="urls[id]"
         :src="urls[id]"
         loading="lazy"
         class="rounded-xl border object-contain bg-white"
-        :class="compact ? 'max-h-20' : 'max-h-[360px] w-auto max-w-full'"
+        :class="compact ? 'max-h-32' : 'max-h-[360px] w-auto max-w-full'"
         :style="{ borderColor: 'rgb(var(--md-outline-variant))' }"
         alt=""
       />

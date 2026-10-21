@@ -26,8 +26,8 @@ interface ProviderMeta {
 }
 
 const SEARCH_PROVIDER_META: Record<string, ProviderMeta> = {
-  tavily: { label: 'Tavily', url: 'https://app.tavily.com/home' },
   deepseek: { label: 'DeepSeek', url: 'https://platform.deepseek.com/api_keys' },
+  tavily: { label: 'Tavily', url: 'https://app.tavily.com/home' },
   exa: { label: 'Exa', url: 'https://dashboard.exa.ai/api-keys' },
   firecrawl: { label: 'Firecrawl', url: 'https://www.firecrawl.dev/app/api-keys' },
   bocha: { label: '博查 Bocha', url: 'https://open.bochaai.com' },
@@ -52,7 +52,7 @@ const fetchProviderOptions = Object.entries(FETCH_PROVIDER_META).map(([value, me
 }))
 
 const currentSearchProvider = computed(
-  () => SEARCH_PROVIDER_META[configStore.searchProvider] ?? SEARCH_PROVIDER_META.tavily!,
+  () => SEARCH_PROVIDER_META[configStore.searchProvider] ?? SEARCH_PROVIDER_META.deepseek!,
 )
 const currentFetchProvider = computed(
   () => FETCH_PROVIDER_META[configStore.fetchProvider] ?? FETCH_PROVIDER_META.jina!,

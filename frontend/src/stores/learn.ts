@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { resolveAIOptions, type ChatMessage, type Question } from '@exameow/shared'
+import { resolveAIOptions, type AIConfig, type ChatMessage, type Question } from '@exameow/shared'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
 import { useConfigStore } from '@/stores/config'
@@ -78,6 +78,17 @@ export const useLearnStore = defineStore('learn', () => {
   const streaming = ref(false)
   const awaitingAnswer = ref(false)
   const error = ref<string | null>(null)
+
+  // Composer toggles kept for the app session. Search follows the saved config
+  // until the user flips it, so an already-configured setup keeps working.
+  const searchToggle = ref<boolean | null>(null)
+  const webSearchEnabled = computed({
+    get: () => searchToggle.value ?? configStore.searchConfigured,
+    set: (value: boolean) => {
+      searchToggle.value = value
+    },
+  })
+  const deepThinkingEnabled = ref(false)
 
   let abortController: AbortController | null = null
 
@@ -259,6 +270,15 @@ export const useLearnStore = defineStore('learn', () => {
     return undefined
   }
 
+  /** Deep thinking overrides the saved reasoning effort for this message only. */
+  function requestConfig(): AIConfig {
+    const config = configStore.getConfig()
+    if (!deepThinkingEnabled.value) return config
+    const effort = config.reasoning_effort
+    if (effort === 'high' || effort === 'xhigh' || effort === 'max') return config
+    return { ...config, reasoning_effort: 'high' }
+  }
+
   async function streamAssistant() {
     const question = currentQuestion.value
     if (!question) return
@@ -276,7 +296,7 @@ export const useLearnStore = defineStore('learn', () => {
     }
 
     let searchContext = ''
-    const searchConfig = configStore.getSearchConfig()
+    const searchConfig = webSearchEnabled.value ? configStore.getSearchConfig() : null
     if (searchConfig) {
       const searchMessage: LearnMessage = {
         id: nextId(),
@@ -312,7 +332,7 @@ export const useLearnStore = defineStore('learn', () => {
 
     // Build the payload BEFORE appending the empty assistant placeholder.
     const apiMessages = buildApiMessages(searchContext)
-    const toolOptions = configStore.getToolOptions()
+    const toolOptions = webSearchEnabled.value ? configStore.getToolOptions() : null
     const toolSettings = configStore.getSearchSettings()
     const assistantId = nextId()
     messages.value.push({ id: assistantId, role: 'assistant', content: '', streaming: true })
@@ -382,7 +402,7 @@ export const useLearnStore = defineStore('learn', () => {
     }
 
     try {
-      const config = configStore.getConfig()
+      const config = requestConfig()
       if (isCloudflare() && configStore.aiProvider === 'custom') {
         const options = resolveAIOptions(config)
         if (toolOptions) {
@@ -423,6 +443,8 @@ export const useLearnStore = defineStore('learn', () => {
     streaming,
     awaitingAnswer,
     error,
+    webSearchEnabled,
+    deepThinkingEnabled,
     currentQuestion,
     total,
     progress,

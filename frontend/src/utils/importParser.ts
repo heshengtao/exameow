@@ -1,7 +1,15 @@
-import type { Question } from '@exameow/shared'
+import type { Question, QuestionMedia } from '@exameow/shared'
 import { Difficulty, QuestionType as QT } from '@exameow/shared'
 import * as XLSX from 'xlsx'
 import { extractXlsxImages, groupImagesByRow, type XlsxImageEntry } from '@/utils/xlsxMediaParser'
+import {
+  MEDIA_COLUMNS,
+  headerRole,
+  imageTargetForColumn,
+  imageTargetForHeader,
+  type ImageColumnTarget,
+} from '@/utils/questionMedia'
+import { normalizeDifficultyLabel, normalizeQuestionTypeLabel } from '@/utils/questionLabels'
 
 type QuestionType = typeof QT[keyof typeof QT]
 
@@ -34,6 +42,8 @@ export interface ImportAnalysis {
   missing: MissingField[]
   /** Embedded XLSX images grouped by absolute zero-based sheet row. */
   imagesByRow?: Map<number, XlsxImageEntry[]>
+  /** Absolute column index → field the image column belongs to. */
+  imageColumns?: Map<number, ImageColumnTarget>
   /** Absolute sheet row of `rows[0]` (used to align drawing anchors). */
   rowOffset?: number
 }
@@ -42,36 +52,14 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
-export function normalizeDifficulty(value: string): Difficulty | undefined {
-  switch (normalize(value)) {
-    case '简单':
-    case 'easy': return Difficulty.Easy
-    case '中等':
-    case '适中':
-    case 'medium': return Difficulty.Medium
-    case '困难':
-    case 'hard': return Difficulty.Hard
-    default: return undefined
-  }
-}
+export const normalizeDifficulty = normalizeDifficultyLabel
 
 function looksLikeHeader(cell: string): boolean {
   if (!cell || cell.trim().length === 0) return false
   const t = cell.trim()
   if (/^\d+$/.test(t)) return false
   if (t.length > 30) return false
-  const keywords = [
-    '题干', '题目', '题', 'stem', 'question', 'title',
-    '题型', '类型', 'type',
-    '选项', 'option', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
-    '答案', '正确答案', 'answer',
-    '解析', '分析', 'analysis', '章节', '难度', '難度', '难易度', '難易度', 'difficulty',
-    'dificultad', 'difficulté', 'schwierigkeit', 'сложность', 'مستوى الصعوبة', '난이도',
-    'questiontype', 'singlechoice', 'multichoice', 'truefalse',
-    '单选题', '多选题', '判断题', '填空题', '简答题', '判断',
-    '对错', '正确', '正确选项',
-  ]
-  return keywords.some(k => normalize(t).includes(normalize(k)))
+  return headerRole(t) !== null || normalizeQuestionTypeLabel(t) !== null
 }
 
 function isHeaderRow(row: unknown[]): boolean {
@@ -86,13 +74,7 @@ function isHeaderRow(row: unknown[]): boolean {
 }
 
 function detectColumnType(val: string): QuestionType | null {
-  const v = normalize(val)
-  if (v.includes('单选') || (v.includes('single') && !v.includes('multi'))) return ST
-  if (v.includes('多选') || v.includes('multi') || v.includes('多项')) return MT
-  if (v.includes('判断') || v.includes('true') || v.includes('false') || v.includes('对错') || v === '是非' || v.includes('是非')) return TF
-  if (v.includes('填空') || v.includes('fill') || v.includes('blank') || v.includes('blanks')) return FB
-  if (v.includes('简答') || v.includes('问答') || v.includes('short') || v.includes('essay') || v.includes('主观')) return SA
-  return null
+  return normalizeQuestionTypeLabel(val)
 }
 
 function detectColumnTypeFromQA(stem: string, answer: string, hasOptions: boolean): QuestionType | null {
@@ -111,11 +93,6 @@ function detectColumnTypeFromQA(stem: string, answer: string, hasOptions: boolea
   return FB
 }
 
-function isCombinedOptionsHeader(n: string): boolean {
-  return n === '选项' || n === 'options' || n === 'option' || n === '所有选项' || n === '全部选项'
-    || n === '选项内容' || n === 'optionscontent' || n === 'choices' || n === 'choice'
-}
-
 function buildColumnMap(headers: string[]): ColumnMapping {
   const map: ColumnMapping = {
     stem: null, type: null, options: [], combinedOptions: null,
@@ -123,73 +100,40 @@ function buildColumnMap(headers: string[]): ColumnMapping {
   }
 
   for (let i = 0; i < headers.length; i++) {
-    const h = headers[i]
-    if (!h) continue
-    const n = normalize(h)
-
-    if (map.stem === null && (
-      n.includes('题干') || n.includes('题目') || n === '题' || n.includes('stem') || n.includes('question') || n === 'title' || n.includes('内容') || n === 'q'
-    )) {
-      map.stem = i
-      continue
-    }
-
-    if (map.type === null && (
-      n.includes('题型') || n.includes('类型') || n.includes('type') || n === 'qt' || n.includes('种类')
-    )) {
-      map.type = i
-      continue
-    }
-
-    if (map.answer === null && (
-      n.includes('答案') || n.includes('正确') || n.includes('answer') || n === 'ans' || n.includes('标准') || n.includes('key')
-    )) {
-      map.answer = i
-      continue
-    }
-
-    if (map.analysis === null && (
-      n.includes('解析') || n.includes('分析') || n.includes('analysis') || n.includes('explanation') || n.includes('详解') || n.includes('解释')
-    )) {
-      map.analysis = i
-      continue
-    }
-
-    if (map.subject === null && (
-      n.includes('学科') || n.includes('科目') || n.includes('课程') || n.includes('subject') || n.includes('course') || n.includes('discipline')
-    )) {
-      map.subject = i
-      continue
-    }
-
-    if (map.chapter === null && (
-      n.includes('章节') || n.includes('chapter') || n.includes('unit') || n.includes('模块')
-    )) {
-      map.chapter = i
-      continue
-    }
-
-    if (map.difficulty === null && (
-      n.includes('难度') || n.includes('難度') || n.includes('難易度') || n.includes('难易度') || n.includes('difficulty')
-      || n.includes('dificultad') || n.includes('difficulté') || n.includes('schwierigkeit')
-      || n.includes('сложность') || n.includes('مستوىالصعوبة') || n.includes('난이도')
-    )) {
-      map.difficulty = i
-      continue
-    }
-
-    if (isCombinedOptionsHeader(n)) {
-      if (map.combinedOptions === null) map.combinedOptions = i
-      continue
-    }
-
-    if (/^[a-h]$/i.test(n) || n.includes('选项') || n.includes('option')) {
-      map.options.push(i)
-      continue
-    }
-
-    if (/^选项\s*[a-h]$/i.test(n) || /^option\s*[a-h]$/i.test(n)) {
-      map.options.push(i)
+    const role = headerRole(headers[i] ?? '')
+    if (!role) continue
+    switch (role) {
+      case 'stem':
+        if (map.stem === null) map.stem = i
+        break
+      case 'type':
+        if (map.type === null) map.type = i
+        break
+      case 'answer':
+        if (map.answer === null) map.answer = i
+        break
+      case 'analysis':
+        if (map.analysis === null) map.analysis = i
+        break
+      case 'subject':
+        if (map.subject === null) map.subject = i
+        break
+      case 'chapter':
+        if (map.chapter === null) map.chapter = i
+        break
+      case 'difficulty':
+        if (map.difficulty === null) map.difficulty = i
+        break
+      case 'combinedOptions':
+        if (map.combinedOptions === null) map.combinedOptions = i
+        break
+      case 'option':
+        map.options.push(i)
+        break
+      case 'stemImage':
+        break
+      default:
+        break
     }
   }
 
@@ -197,6 +141,11 @@ function buildColumnMap(headers: string[]): ColumnMapping {
 }
 
 function applyPositionalFallback(map: ColumnMapping, columnCount: number): void {
+  if (columnCount === 2) {
+    map.stem = 0
+    map.answer = 1
+    return
+  }
   if (columnCount >= 3) {
     map.stem = 0
     map.answer = columnCount - 2
@@ -223,13 +172,7 @@ function applyCanonicalHeaderlessFallback(map: ColumnMapping): void {
 }
 
 function typeLabelToEnum(label: string): QuestionType {
-  const n = normalize(label)
-  if (n.includes('单选') || n.includes('single')) return ST
-  if (n.includes('多选') || n.includes('multi')) return MT
-  if (n.includes('判断') || n.includes('true') || n.includes('false') || n.includes('对错')) return TF
-  if (n.includes('填空') || n.includes('fill') || n.includes('blank')) return FB
-  if (n.includes('简答') || n.includes('问答') || n.includes('short') || n.includes('essay')) return SA
-  return SA
+  return normalizeQuestionTypeLabel(label) ?? SA
 }
 
 const OPTION_PREFIX_SPLIT = /\s*[A-Ha-h][.、．:：)）]\s*/
@@ -383,11 +326,32 @@ function analyzeRows(rawRows: string[][], forceNativeXlsx: boolean): ImportAnaly
   return { headers, rows, hasHeader, mapping, missing }
 }
 
+export interface StoredImportImage {
+  id: string
+  col: number
+}
+
+function buildImageColumnMap(headers: string[], forceNativeXlsx: boolean): Map<number, ImageColumnTarget> {
+  const map = new Map<number, ImageColumnTarget>()
+  headers.forEach((header, index) => {
+    const target = imageTargetForHeader(header)
+    if (target) map.set(index, target)
+  })
+  if (map.size > 0) return map
+
+  if (forceNativeXlsx || headers.length > MEDIA_COLUMNS[0]!.index) {
+    for (const column of MEDIA_COLUMNS) {
+      map.set(column.index, imageTargetForColumn(column.index))
+    }
+  }
+  return map
+}
+
 export function parseWithMapping(
   analysis: ImportAnalysis,
   mapping: ColumnMapping,
   source: string,
-  imageIdsByRow?: Map<number, string[]>,
+  storedImagesByRow?: Map<number, StoredImportImage[]>,
 ): Question[] {
   const questions: Question[] = []
   const rows = analysis.rows
@@ -422,7 +386,7 @@ export function parseWithMapping(
     }
 
     const answer = mapping.answer !== null ? (row[mapping.answer] ?? '').trim() : ''
-    const analysis = mapping.analysis !== null ? (row[mapping.analysis] ?? '').trim() : ''
+    const analysisText = mapping.analysis !== null ? (row[mapping.analysis] ?? '').trim() : ''
     const difficulty = mapping.difficulty !== null
       ? normalizeDifficulty(row[mapping.difficulty] ?? '')
       : undefined
@@ -432,7 +396,14 @@ export function parseWithMapping(
       if (inferred) qtype = inferred
     }
 
-    const images = imageIdsByRow?.get(i + sheetRowOffset)
+    const media: QuestionMedia[] = (storedImagesByRow?.get(i + sheetRowOffset) ?? []).map((image) => {
+      const target = analysis.imageColumns?.get(image.col) ?? imageTargetForColumn(image.col)
+      return {
+        id: image.id,
+        target: target.target,
+        ...(target.optionIndex !== undefined ? { optionIndex: target.optionIndex } : {}),
+      }
+    })
 
     questions.push({
       id: `${source}-${i + 1}`,
@@ -440,11 +411,11 @@ export function parseWithMapping(
       stem,
       options,
       answer,
-      analysis,
+      analysis: analysisText,
       subject: mapping.subject !== null ? (row[mapping.subject] ?? '').trim() || undefined : undefined,
       chapter: mapping.chapter !== null ? (row[mapping.chapter] ?? '').trim() || undefined : undefined,
       difficulty,
-      ...(images && images.length > 0 ? { images } : {}),
+      ...(media.length > 0 ? { media } : {}),
     })
   }
 
@@ -485,9 +456,11 @@ export function analyzeExcel(buffer: ArrayBuffer): ImportAnalysis | null {
   if (rows.length === 0) return null
 
   const headers = rows[0] ?? []
-  const analysis = analyzeRows(rows, detectXlsxFormat(headers))
+  const forceNativeXlsx = detectXlsxFormat(headers)
+  const analysis = analyzeRows(rows, forceNativeXlsx)
   if (!analysis) return null
 
+  analysis.imageColumns = buildImageColumnMap(headers, forceNativeXlsx)
   const rangeStartRow = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']).s.r : 0
   analysis.rowOffset = rangeStartRow
   const files = (workbook as unknown as { files?: Record<string, unknown> }).files

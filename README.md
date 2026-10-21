@@ -74,7 +74,7 @@ Turn generated questions into interactive study sessions. Practice sequentially,
 - **Wrong-Question Review** — Track mistakes, practice only what you got wrong, and watch them clear as you improve
 - **Exam / Flashcard Modes** — Answer blind, or flip through questions with answers visible
 - **AI Grading** — Short-answer questions graded by AI against reference answers, with feedback; manual regrading supported
-- **Question Bank Management** — Import banks from XLSX/CSV with smart column mapping; export anytime. Images embedded in the XLSX image column (P) are imported on desktop, mobile and self-hosted Docker; CSV export warns when images are omitted.
+- **Question Bank Management** — Import banks from XLSX/CSV with smart column mapping; export anytime. XLSX has one image column per field (`Stem image`, `Option A image` … `Option H image`), so the stem and each option can carry their own pictures on desktop, mobile and self-hosted Docker; CSV export warns when images are omitted.
 - **Chapter Practice** — Add a `Chapter` column to CSV/XLSX; matching names are grouped automatically. Select one or more chapters, including unchaptered questions, before practice. Banks without chapters continue to work.
 - **AI Chapter Tagging** — Enable the optional switch when generating new questions to use source chapters or knowledge topics. It is off by default and uses the existing generation requests.
 

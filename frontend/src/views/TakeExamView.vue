@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import { fetchExam, submitExam, reportExam, RelayError, examMediaUrl } from '@/api/relay'
 import QuestionImages from '@/components/practice/QuestionImages.vue'
+import { allMediaIds, mediaIds } from '@/utils/questionMedia'
 import { useJoinedStore } from '@/stores/joined'
 import type { JoinedRecord } from '@/stores/joined'
 import ProgressBar from '@/components/practice/ProgressBar.vue'
@@ -398,7 +399,7 @@ onUnmounted(() => {
         <div class="text-body-lg mb-5" style="color: rgb(var(--md-on-surface))">{{ currentQuestion.stem }}</div>
 
         <QuestionImages
-          :ids="currentQuestion.images"
+          :ids="mediaIds(currentQuestion.media, 'stem')"
           :url-for="(id: string) => examMediaUrl(code, id)"
         />
 
@@ -414,7 +415,14 @@ onUnmounted(() => {
               class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               :style="badgeStyle(currentQuestion.id, optionLabels[oi]!, isMulti(currentQuestion.type))"
             >{{ optionLabels[oi] }}</div>
-            <span class="text-sm" style="color: rgb(var(--md-on-surface))">{{ opt }}</span>
+            <div class="flex-1 min-w-0">
+              <span class="text-sm" style="color: rgb(var(--md-on-surface))">{{ opt }}</span>
+              <QuestionImages
+                :ids="mediaIds(currentQuestion.media, 'option', oi)"
+                compact
+                :url-for="(id: string) => examMediaUrl(code, id)"
+              />
+            </div>
           </button>
         </div>
         <input
@@ -499,7 +507,7 @@ onUnmounted(() => {
             <div class="flex-1 min-w-0">
               <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">{{ g.question.stem }}</div>
               <QuestionImages
-                :ids="g.question.images"
+                :ids="allMediaIds(g.question.media)"
                 compact
                 :url-for="(id: string) => examMediaUrl(code, id)"
               />

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import type { Question, PracticeMode } from '@exameow/shared'
 import QuestionImages from '@/components/practice/QuestionImages.vue'
+import { mediaIds } from '@/utils/questionMedia'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -291,7 +292,7 @@ function getBadgeStyle(opt: string) {
       {{ question.stem }}
     </div>
 
-    <QuestionImages :ids="question.images" />
+    <QuestionImages :ids="mediaIds(question.media, 'stem')" />
 
     <!-- Wrong count badge -->
     <div
@@ -349,7 +350,10 @@ function getBadgeStyle(opt: string) {
             class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
             :style="getBadgeStyle(optionLabels[idx]!)"
           >{{ optionLabels[idx] }}</div>
-          <span class="text-sm font-medium flex-1" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ opt }}</span>
+          <div class="flex-1 min-w-0">
+            <span class="text-sm font-medium" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ opt }}</span>
+            <QuestionImages :ids="mediaIds(question.media, 'option', idx)" compact />
+          </div>
           <CheckCircleIcon
             v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(optionLabels[idx]!)"
             class="w-5 h-5 ml-auto animate-spring-pop shrink-0"

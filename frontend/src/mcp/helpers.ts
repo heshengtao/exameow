@@ -1,13 +1,6 @@
-import { QuestionType, type Question } from '@exameow/shared'
+import type { Question } from '@exameow/shared'
 import { McpToolError } from './registry'
-
-const QUESTION_TYPES: QuestionType[] = [
-  QuestionType.SingleChoice,
-  QuestionType.MultiChoice,
-  QuestionType.TrueFalse,
-  QuestionType.FillBlank,
-  QuestionType.ShortAnswer,
-]
+import { normalizeQuestion } from '@/utils/dataCompat'
 
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -40,30 +33,8 @@ export function normalizeQuestions(input: unknown, prefix = 'mcp'): Question[] {
   if (!Array.isArray(input)) {
     throw new McpToolError('invalid_args', '`questions` must be an array')
   }
-  return input.map((raw, index) => {
-    const source = (raw ?? {}) as Record<string, any>
-    const type = QUESTION_TYPES.includes(source.type) ? (source.type as QuestionType) : QuestionType.SingleChoice
-    const id =
-      typeof source.id === 'string' && source.id.trim() !== ''
-        ? source.id.trim()
-        : `${prefix}-${Date.now().toString(36)}-${index}`
-    return {
-      id,
-      type,
-      stem: String(source.stem ?? ''),
-      options: Array.isArray(source.options) ? source.options.map((item: unknown) => String(item)) : [],
-      answer: String(source.answer ?? ''),
-      analysis: String(source.analysis ?? ''),
-      ...(typeof source.aiAnalysis === 'string' ? { aiAnalysis: source.aiAnalysis } : {}),
-      ...(typeof source.score === 'number' ? { score: source.score } : {}),
-      ...(typeof source.subject === 'string' ? { subject: source.subject } : {}),
-      ...(typeof source.chapter === 'string' ? { chapter: source.chapter } : {}),
-      ...(source.difficulty === 'easy' || source.difficulty === 'medium' || source.difficulty === 'hard'
-        ? { difficulty: source.difficulty }
-        : {}),
-      ...(Array.isArray(source.images) ? { images: source.images.map((item: unknown) => String(item)) } : {}),
-    } as Question
-  })
+  const stamp = Date.now().toString(36)
+  return input.map((raw, index) => normalizeQuestion(raw, `${prefix}-${stamp}-${index}`))
 }
 
 /** Strips the answer so an agent can be quizzed without seeing the solution. */
@@ -73,7 +44,7 @@ export function publicQuestion(question: Question) {
     type: question.type,
     stem: question.stem,
     options: question.options,
-    images: question.images ?? [],
+    media: question.media ?? [],
   }
 }
 

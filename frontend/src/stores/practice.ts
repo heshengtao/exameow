@@ -2,11 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Question, PracticeFilter } from '@exameow/shared'
 import { analyzeCSV, analyzeExcel, parseWithMapping } from '@/utils/importParser'
-import type { ColumnMapping, ImportAnalysis } from '@/utils/importParser'
+import type { ColumnMapping, ImportAnalysis, StoredImportImage } from '@/utils/importParser'
 import { usePracticeHistoryStore } from '@/stores/practiceHistory'
 import { matchPracticeFilter, reconcileMockConfig } from '@/utils/practiceFilter'
 import { isMediaAvailable, putImage, pruneUnreferenced } from '@/utils/mediaStore'
 import { supportsLocalMedia } from '@/utils/capabilities'
+import { normalizeBanks, normalizeSession } from '@/utils/dataCompat'
 
 const STORAGE_KEY = 'exameow-banks'
 const SESSION_KEY = 'exameow-practice-session'
@@ -68,7 +69,7 @@ function originalQuestionId(id: string): string {
 function loadBanks(): QuestionBank[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    return raw ? normalizeBanks(JSON.parse(raw)) : []
   } catch {
     return []
   }
@@ -83,7 +84,7 @@ function saveBanks(banks: QuestionBank[]) {
 function loadSession(): PracticeSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
+    return raw ? normalizeSession(JSON.parse(raw)) : null
   } catch {
     return null
   }
@@ -194,7 +195,7 @@ export const usePracticeStore = defineStore('practice', () => {
   const importFileName = ref('')
   const importAnalysis = ref<ImportAnalysis | null>(null)
   const importSource = ref('csv')
-  const importImageIds = ref<Map<number, string[]> | null>(null)
+  const importImageIds = ref<Map<number, StoredImportImage[]> | null>(null)
   const importImagesStored = ref(0)
   const importImagesDropped = ref(0)
 
@@ -249,11 +250,11 @@ export const usePracticeStore = defineStore('practice', () => {
     const referenced = new Set<string>()
     for (const bank of banks.value) {
       for (const question of bank.questions) {
-        for (const imageId of question.images ?? []) referenced.add(imageId)
+        for (const item of question.media ?? []) referenced.add(item.id)
       }
     }
     for (const item of session.value?.questions ?? []) {
-      for (const imageId of item.question.images ?? []) referenced.add(imageId)
+      for (const media of item.question.media ?? []) referenced.add(media.id)
     }
     void pruneUnreferenced(referenced).catch(() => {})
   }
@@ -532,25 +533,25 @@ export const usePracticeStore = defineStore('practice', () => {
     return `${s}s`
   }
 
-  async function storeImportImages(analysis: ImportAnalysis): Promise<Map<number, string[]>> {
-    const idsByRow = new Map<number, string[]>()
+  async function storeImportImages(analysis: ImportAnalysis): Promise<Map<number, StoredImportImage[]>> {
+    const storedByRow = new Map<number, StoredImportImage[]>()
     const entries = analysis.imagesByRow
     importImagesStored.value = 0
     importImagesDropped.value = 0
-    if (!entries || entries.size === 0) return idsByRow
+    if (!entries || entries.size === 0) return storedByRow
 
     let stored = 0
     let dropped = 0
     if (!supportsLocalMedia() || !isMediaAvailable()) {
       for (const list of entries.values()) dropped += list.length
       importImagesDropped.value = dropped
-      return idsByRow
+      return storedByRow
     }
 
     const MAX_TOTAL_BYTES = 100 * 1024 * 1024
     let total = 0
     for (const [row, list] of entries) {
-      const ids: string[] = []
+      const images: StoredImportImage[] = []
       for (const entry of list) {
         if (total + entry.blob.size > MAX_TOTAL_BYTES) {
           dropped++
@@ -559,28 +560,28 @@ export const usePracticeStore = defineStore('practice', () => {
         try {
           const image = await putImage(entry.blob)
           total += entry.blob.size
-          ids.push(image.id)
+          images.push({ id: image.id, col: entry.col })
           stored++
         } catch {
           dropped++
         }
       }
-      if (ids.length > 0) idsByRow.set(row, ids)
+      if (images.length > 0) storedByRow.set(row, images)
     }
     importImagesStored.value = stored
     importImagesDropped.value = dropped
-    return idsByRow
+    return storedByRow
   }
 
   function handleAnalysis(
     analysis: ImportAnalysis | null,
     fileName: string,
     source: string,
-    imageIdsByRow?: Map<number, string[]>,
+    imagesByRow?: Map<number, StoredImportImage[]>,
   ): number {
     importFileName.value = fileName
     importSource.value = source
-    importImageIds.value = imageIdsByRow ?? null
+    importImageIds.value = imagesByRow ?? null
     if (!analysis) {
       importAnalysis.value = null
       importPreview.value = []
@@ -592,7 +593,7 @@ export const usePracticeStore = defineStore('practice', () => {
       return 0
     }
     importAnalysis.value = null
-    const questions = parseWithMapping(analysis, analysis.mapping, source, imageIdsByRow)
+    const questions = parseWithMapping(analysis, analysis.mapping, source, imagesByRow)
     importPreview.value = questions
     return questions.length
   }

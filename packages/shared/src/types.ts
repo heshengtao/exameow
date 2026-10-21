@@ -20,6 +20,15 @@ export interface QuestionImage {
   height: number
 }
 
+export interface QuestionMedia {
+  /** QuestionImage.id — bytes are stored locally, never in localStorage. */
+  id: string
+  /** Which field the image belongs to. */
+  target: 'stem' | 'option'
+  /** Zero-based option index when target === 'option'. */
+  optionIndex?: number
+}
+
 export interface Question {
   id: string
   type: QuestionType
@@ -32,8 +41,7 @@ export interface Question {
   subject?: string
   chapter?: string
   difficulty?: Difficulty
-  /** QuestionImage.id[] — bytes are stored locally, never in localStorage. */
-  images?: string[]
+  media?: QuestionMedia[]
 }
 
 export interface PracticeFilter {
@@ -257,7 +265,7 @@ export interface PublicQuestion {
   type: QuestionType
   stem: string
   options: string[]
-  images?: string[]
+  media?: QuestionMedia[]
 }
 
 export interface PublishExamRequest {

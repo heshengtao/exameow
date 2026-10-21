@@ -15,6 +15,7 @@ import {
   ShareIcon,
 } from '@heroicons/vue/24/outline'
 import { isAndroid } from '@/utils/platform'
+import { TEMPLATE_COPY } from '@/utils/templateSchema'
 
 const props = defineProps<{
   banks: QuestionBank[]
@@ -123,43 +124,51 @@ async function handleDownloadTemplate() {
 
   try {
     const XLSX = await import('xlsx')
-    const isZh = i18n.locale === 'zh'
-    const sample = isZh
-      ? {
-          '题型 （必填）': '单选题',
-          '题干（必填）': 'Exameow 的 AI 接口协议是什么类型？',
-          '选项 A': 'OpenAI 兼容 API',
-          '选项 B': 'WebSocket',
-          '选项 C': 'gRPC',
-          '选项 D': 'GraphQL',
-          '选项 E': '',
-          '选项 F': '',
-          '选项 G': '',
-          '选项 H': '',
-          '正确答案': 'A',
-          '解析': 'Exameow 兼容所有 OpenAI 格式的 API，支持对接任何 OpenAI 兼容的服务商。',
-          '学科': '',
-          '章节': '第一章 基础',
-          '难度': '',
-        }
-      : {
-          'Type (required)': 'Single Choice',
-          'Question (required)': 'What type of AI API protocol does Exameow use?',
-          'Option A': 'OpenAI-compatible API',
-          'Option B': 'WebSocket',
-          'Option C': 'gRPC',
-          'Option D': 'GraphQL',
-          'Option E': '',
-          'Option F': '',
-          'Option G': '',
-          'Option H': '',
-          'Answer': 'A',
-          'Analysis': 'Exameow works with any OpenAI-compatible API provider.',
-          'Subject': '',
-          'Chapter': 'Chapter 1 Basics',
-          'Difficulty': '',
-        }
-    const ws = XLSX.utils.json_to_sheet([sample])
+    const copy = TEMPLATE_COPY[i18n.locale] ?? TEMPLATE_COPY.en
+    const h = copy.headers
+    const headerRow = [
+      h.stem,
+      h.type,
+      ...h.options,
+      h.answer,
+      h.analysis,
+      h.subject,
+      h.chapter,
+      h.difficulty,
+      h.stemImage,
+      ...h.optionImages,
+    ]
+    const dataRow = [
+      copy.sample.stem,
+      copy.sample.typeValue,
+      copy.sample.optionA,
+      copy.sample.optionB,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      'A',
+      copy.sample.analysis,
+      '',
+      copy.sample.chapter,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+    ]
+    const ws = XLSX.utils.aoa_to_sheet([headerRow, dataRow])
+    ws['!cols'] = headerRow.map((_, index) => ({
+      wch: index === 0 ? 42 : index >= 15 ? 18 : 14,
+    }))
+    ws['!rows'] = [{ hpt: 20 }, { hpt: 36 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
     const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })

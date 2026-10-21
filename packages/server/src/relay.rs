@@ -376,7 +376,8 @@ pub async fn publish_handler(
     if let Some(images) = req.images {
         let referenced: HashSet<String> = questions
             .iter()
-            .flat_map(|q| q.images.clone().unwrap_or_default())
+            .flat_map(|q| q.media.clone().unwrap_or_default())
+            .map(|item| item.id)
             .collect();
         let mut total_bytes = 0usize;
         for (image_id, payload) in images {
@@ -436,7 +437,7 @@ pub async fn get_exam_handler(
                 "type": q.qtype,
                 "stem": q.stem,
                 "options": q.options,
-                "images": q.images.clone().unwrap_or_default(),
+                "media": q.media.clone().unwrap_or_default(),
             })
         })
         .collect();

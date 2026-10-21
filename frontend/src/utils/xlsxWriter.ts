@@ -1,4 +1,10 @@
 import type { Question } from '@exameow/shared'
+import {
+  FIRST_MEDIA_COLUMN,
+  LAST_MEDIA_COLUMN,
+  mediaColumnIndex,
+} from '@/utils/questionMedia'
+import { TEMPLATE_COPY, type TemplateHeaders } from '@/utils/templateSchema'
 
 const TYPE_MAP: Record<string, string> = {
   single_choice: '单选题',
@@ -8,8 +14,7 @@ const TYPE_MAP: Record<string, string> = {
   short_answer: '简答题',
 }
 
-const IMAGE_COLUMN = 15
-const COLUMN_COUNT = 16
+const COLUMN_COUNT = LAST_MEDIA_COLUMN + 1
 const EMU_PER_PX = 9525
 const DISPLAY_MAX_PX = 160
 const IMAGE_GAP_PX = 8
@@ -24,7 +29,9 @@ export interface XlsxMedia {
 
 export interface XlsxBuildOptions {
   media?: Map<string, XlsxMedia>
-  includeImageColumn?: boolean
+  includeMediaColumns?: boolean
+  /** Localized headers; defaults to Simplified Chinese. */
+  headers?: TemplateHeaders
 }
 
 export interface XlsxBuildResult {
@@ -80,6 +87,7 @@ function colLetter(idx: number): string {
 interface Anchor {
   id: number
   row: number
+  col: number
   relId: string
   offsetY: number
   cx: number
@@ -97,7 +105,7 @@ function displaySize(width: number, height: number): { cx: number; cy: number; p
 
 function drawingAnchorXml(anchor: Anchor): string {
   return `<xdr:oneCellAnchor editAs="oneCell">
-<xdr:from><xdr:col>${IMAGE_COLUMN}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${anchor.row}</xdr:row><xdr:rowOff>${anchor.offsetY}</xdr:rowOff></xdr:from>
+<xdr:from><xdr:col>${anchor.col}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${anchor.row}</xdr:row><xdr:rowOff>${anchor.offsetY}</xdr:rowOff></xdr:from>
 <xdr:ext cx="${anchor.cx}" cy="${anchor.cy}"/>
 <xdr:pic>
 <xdr:nvPicPr><xdr:cNvPr id="${anchor.id}" name="Picture ${anchor.id}"/><xdr:cNvPicPr/></xdr:nvPicPr>
@@ -110,8 +118,8 @@ function drawingAnchorXml(anchor: Anchor): string {
 
 export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {}): XlsxBuildResult {
   const media = options.media
-  const includeImages = options.includeImageColumn ?? (media ? media.size > 0 : false)
-  const columnCount = includeImages ? COLUMN_COUNT : 15
+  const includeMedia = options.includeMediaColumns ?? (media ? media.size > 0 : false)
+  const columnCount = includeMedia ? COLUMN_COUNT : 15
 
   const strings = new Map<string, number>()
   const sst: string[] = []
@@ -161,20 +169,23 @@ export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {})
     sheetRows += `<row r="${rowNum}" spans="1:${columnCount}"${heightAttr}>${cellsXml}</row>`
   }
 
+  const headerCopy = options.headers ?? TEMPLATE_COPY.zh.headers
   const headers: { col: number; value: string }[] = [
-    { col: 0, value: '题干（必填）' },
-    { col: 1, value: '题型 （必填）' },
-    ...Array.from({ length: 8 }, (_, i) => ({
-      col: 2 + i,
-      value: `选项 ${String.fromCharCode(65 + i)}`,
-    })),
-    { col: 10, value: '正确答案\n（必填）' },
-    { col: 11, value: '解析\n（勿删）' },
-    { col: 12, value: '学科' },
-    { col: 13, value: '章节\n（勿删）' },
-    { col: 14, value: '难度' },
+    { col: 0, value: headerCopy.stem },
+    { col: 1, value: headerCopy.type },
+    ...headerCopy.options.map((value, i) => ({ col: 2 + i, value })),
+    { col: 10, value: headerCopy.answer },
+    { col: 11, value: headerCopy.analysis },
+    { col: 12, value: headerCopy.subject },
+    { col: 13, value: headerCopy.chapter },
+    { col: 14, value: headerCopy.difficulty },
   ]
-  if (includeImages) headers.push({ col: IMAGE_COLUMN, value: '图片' })
+  if (includeMedia) {
+    headers.push({ col: FIRST_MEDIA_COLUMN, value: headerCopy.stemImage })
+    headerCopy.optionImages.forEach((value, i) => {
+      headers.push({ col: FIRST_MEDIA_COLUMN + 1 + i, value })
+    })
+  }
   addRow(headers, 0)
 
   for (const q of questions) {
@@ -217,34 +228,38 @@ export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {})
     cells.push({ col: 13, value: q.chapter || '' })
     cells.push({ col: 14, value: q.difficulty || '' })
 
-    let offsetY = 0
     let rowHeightPt = 0
-    if (includeImages) {
-      for (const id of q.images ?? []) {
-        const resolved = ensureMedia(id)
+    if (includeMedia) {
+      const offsets = new Map<number, number>()
+      for (const item of q.media ?? []) {
+        const resolved = ensureMedia(item.id)
         if (!resolved) {
           imagesMissing++
           continue
         }
+        const col = mediaColumnIndex(item)
+        const offsetY = offsets.get(col) ?? 0
         anchors.push({
           id: anchors.length + 2,
           row: rowNum,
+          col,
           relId: resolved.relId,
           offsetY,
           cx: resolved.cx,
           cy: resolved.cy,
         })
-        offsetY += resolved.cy + IMAGE_GAP_PX * EMU_PER_PX
+        const nextOffset = offsetY + resolved.cy + IMAGE_GAP_PX * EMU_PER_PX
+        offsets.set(col, nextOffset)
+        rowHeightPt = Math.max(rowHeightPt, Math.min(409, Math.ceil((nextOffset / EMU_PER_PX) * 0.75)))
         imagesIncluded++
       }
-      if (offsetY > 0) rowHeightPt = Math.min(409, Math.ceil((offsetY / EMU_PER_PX) * 0.75))
     }
 
     addRow(cells, rowHeightPt)
   }
 
-  const colsXml = includeImages
-    ? `<cols><col min="${IMAGE_COLUMN + 1}" max="${IMAGE_COLUMN + 1}" width="30" customWidth="1"/></cols>`
+  const colsXml = includeMedia
+    ? `<cols><col min="${FIRST_MEDIA_COLUMN + 1}" max="${LAST_MEDIA_COLUMN + 1}" width="28" customWidth="1"/></cols>`
     : ''
 
   const drawingXml = anchors.length > 0

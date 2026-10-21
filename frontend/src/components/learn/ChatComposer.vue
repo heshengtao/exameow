@@ -2,17 +2,21 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { isMobileDevice } from '@/utils/platform'
-import { ArrowUpIcon, StopIcon } from '@heroicons/vue/24/outline'
+import { ArrowUpIcon, GlobeAltIcon, SparklesIcon, StopIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
   streaming: boolean
   awaitingAnswer: boolean
   disabled?: boolean
+  searchEnabled?: boolean
+  thinkingEnabled?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'send', text: string): void
   (e: 'stop'): void
+  (e: 'toggle-search'): void
+  (e: 'toggle-thinking'): void
 }>()
 
 const i18n = useI18nStore()
@@ -72,27 +76,53 @@ function onKeydown(e: KeyboardEvent) {
       @keydown="onKeydown"
     />
     <div class="learn-composer__bar">
-      <span class="learn-composer__hint">{{ i18n.t('learnComposerHint') }}</span>
-      <button
-        v-if="streaming"
-        class="learn-composer__action learn-composer__action--stop"
-        :title="i18n.t('learnStop')"
-        :aria-label="i18n.t('learnStop')"
-        @click="emit('stop')"
-      >
-        <StopIcon class="w-5 h-5" />
-      </button>
-      <button
-        v-else
-        class="learn-composer__action"
-        :class="{ 'is-ready': canSend }"
-        :disabled="!canSend"
-        :title="i18n.t('learnSend')"
-        :aria-label="i18n.t('learnSend')"
-        @click="submit"
-      >
-        <ArrowUpIcon class="w-5 h-5" />
-      </button>
+      <div class="learn-composer__toggles">
+        <button
+          type="button"
+          class="learn-composer__toggle"
+          :class="{ 'is-on': thinkingEnabled }"
+          :aria-pressed="thinkingEnabled ? 'true' : 'false'"
+          :title="i18n.t('learnDeepThinking')"
+          @click="emit('toggle-thinking')"
+        >
+          <SparklesIcon class="w-4 h-4" />
+          <span>{{ i18n.t('learnDeepThinking') }}</span>
+        </button>
+        <button
+          type="button"
+          class="learn-composer__toggle"
+          :class="{ 'is-on': searchEnabled }"
+          :aria-pressed="searchEnabled ? 'true' : 'false'"
+          :title="i18n.t('learnWebSearch')"
+          @click="emit('toggle-search')"
+        >
+          <GlobeAltIcon class="w-4 h-4" />
+          <span>{{ i18n.t('learnWebSearch') }}</span>
+        </button>
+      </div>
+      <div class="learn-composer__end">
+        <span class="learn-composer__hint">{{ i18n.t('learnComposerHint') }}</span>
+        <button
+          v-if="streaming"
+          class="learn-composer__action learn-composer__action--stop"
+          :title="i18n.t('learnStop')"
+          :aria-label="i18n.t('learnStop')"
+          @click="emit('stop')"
+        >
+          <StopIcon class="w-5 h-5" />
+        </button>
+        <button
+          v-else
+          class="learn-composer__action"
+          :class="{ 'is-ready': canSend }"
+          :disabled="!canSend"
+          :title="i18n.t('learnSend')"
+          :aria-label="i18n.t('learnSend')"
+          @click="submit"
+        >
+          <ArrowUpIcon class="w-5 h-5" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -143,6 +173,60 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.learn-composer__toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.learn-composer__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--md-outline-variant) / 0.8);
+  background-color: transparent;
+  color: rgb(var(--md-on-surface-variant));
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.learn-composer__toggle:hover {
+  background-color: rgb(var(--md-surface-container-highest));
+}
+
+.learn-composer__toggle.is-on {
+  border-color: rgb(var(--md-primary) / 0.45);
+  background-color: rgb(var(--md-primary) / 0.08);
+  color: rgb(var(--md-primary));
+}
+
+.learn-composer__toggle.is-on:hover {
+  background-color: rgb(var(--md-primary) / 0.14);
+}
+
+.learn-composer__toggle:active {
+  transform: scale(0.96);
+}
+
+.learn-composer__toggle:focus-visible {
+  outline: 2px solid rgb(var(--md-primary));
+  outline-offset: 2px;
+}
+
+.learn-composer__end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .learn-composer__hint {
@@ -204,8 +288,10 @@ function onKeydown(e: KeyboardEvent) {
   .learn-composer__hint {
     display: none;
   }
-  .learn-composer__bar {
-    justify-content: flex-end;
+  .learn-composer__toggle {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 }
 </style>

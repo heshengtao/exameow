@@ -20,6 +20,7 @@ const MAX_QUESTIONS = 500
 const MAX_PUBLISH_PER_DAY = 20
 const REPORT_SUSPEND_THRESHOLD = 3
 const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const QUESTION_TYPES = new Set(['single_choice', 'multi_choice', 'true_false', 'fill_blank', 'short_answer'])
 
 export function generateCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH))
@@ -137,18 +138,24 @@ export async function handlePublish(
   }
   // Cloudflare has no media storage: strip image references (and any other
   // unexpected fields) so nothing image-related ever reaches D1.
-  const sanitizedQuestions = questions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    stem: q.stem,
-    options: Array.isArray(q.options) ? q.options : [],
-    answer: q.answer,
-    analysis: typeof q.analysis === 'string' ? q.analysis : '',
-    ...(typeof q.score === 'number' ? { score: q.score } : {}),
-    ...(q.subject ? { subject: q.subject } : {}),
-    ...(q.chapter ? { chapter: q.chapter } : {}),
-    ...(q.difficulty ? { difficulty: q.difficulty } : {}),
-  }))
+  // Missing fields are filled with safe defaults for older clients.
+  const sanitizedQuestions = questions.map((q, index) => {
+    const type = typeof q.type === 'string' && QUESTION_TYPES.has(q.type) ? q.type : 'short_answer'
+    return {
+      id: typeof q.id === 'string' && q.id.trim() !== '' ? q.id : `q${index + 1}`,
+      type,
+      stem: typeof q.stem === 'string' ? q.stem : String(q.stem ?? ''),
+      options: Array.isArray(q.options) ? q.options.map((option) => String(option)) : [],
+      answer: typeof q.answer === 'string' ? q.answer : String(q.answer ?? ''),
+      analysis: typeof q.analysis === 'string' ? q.analysis : '',
+      ...(typeof q.score === 'number' && Number.isFinite(q.score) ? { score: q.score } : {}),
+      ...(typeof q.subject === 'string' && q.subject ? { subject: q.subject } : {}),
+      ...(typeof q.chapter === 'string' && q.chapter ? { chapter: q.chapter } : {}),
+      ...(q.difficulty === 'easy' || q.difficulty === 'medium' || q.difficulty === 'hard'
+        ? { difficulty: q.difficulty }
+        : {}),
+    }
+  })
   const payload = JSON.stringify(sanitizedQuestions)
   if (payload.length > MAX_EXAM_PAYLOAD_BYTES) {
     return json({ error: 'Payload too large' }, 400)

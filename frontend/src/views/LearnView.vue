@@ -63,6 +63,18 @@ function handleSend(text: string) {
   void learn.send(text)
 }
 
+function toggleSearch() {
+  if (!configStore.searchConfigured) {
+    showSearchDialog.value = true
+    return
+  }
+  learn.webSearchEnabled = !learn.webSearchEnabled
+}
+
+function toggleThinking() {
+  learn.deepThinkingEnabled = !learn.deepThinkingEnabled
+}
+
 function goBack() {
   router.push('/practice')
 }
@@ -197,8 +209,12 @@ function dismissSearchTip() {
         :streaming="learn.streaming"
         :awaiting-answer="learn.awaitingAnswer"
         :disabled="notConfigured"
+        :search-enabled="learn.webSearchEnabled"
+        :thinking-enabled="learn.deepThinkingEnabled"
         @send="handleSend"
         @stop="learn.stop()"
+        @toggle-search="toggleSearch"
+        @toggle-thinking="toggleThinking"
       />
     </div>
 
