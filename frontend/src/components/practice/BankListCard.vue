@@ -15,6 +15,7 @@ import {
   ShareIcon,
 } from '@heroicons/vue/24/outline'
 import { isAndroid } from '@/utils/platform'
+import { supportsLocalMedia } from '@/utils/capabilities'
 import { TEMPLATE_COPY } from '@/utils/templateSchema'
 
 const props = defineProps<{
@@ -126,7 +127,8 @@ async function handleDownloadTemplate() {
     const XLSX = await import('xlsx')
     const copy = TEMPLATE_COPY[i18n.locale] ?? TEMPLATE_COPY.en
     const h = copy.headers
-    const headerRow = [
+    const includeMedia = supportsLocalMedia()
+    const baseHeaders = [
       h.stem,
       h.type,
       ...h.options,
@@ -135,10 +137,11 @@ async function handleDownloadTemplate() {
       h.subject,
       h.chapter,
       h.difficulty,
-      h.stemImage,
-      ...h.optionImages,
     ]
-    const dataRow = [
+    const headerRow = includeMedia
+      ? [...baseHeaders, h.stemImage, ...h.optionImages]
+      : baseHeaders
+    const baseData = [
       copy.sample.stem,
       copy.sample.typeValue,
       copy.sample.optionA,
@@ -154,16 +157,8 @@ async function handleDownloadTemplate() {
       '',
       copy.sample.chapter,
       '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
     ]
+    const dataRow = includeMedia ? [...baseData, ...Array(9).fill('')] : baseData
     const ws = XLSX.utils.aoa_to_sheet([headerRow, dataRow])
     ws['!cols'] = headerRow.map((_, index) => ({
       wch: index === 0 ? 42 : index >= 15 ? 18 : 14,
