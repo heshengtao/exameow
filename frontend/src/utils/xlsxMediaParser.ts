@@ -192,9 +192,78 @@ function mimeForPath(path: string): string {
   return MIME_BY_EXT[ext] ?? 'image/png'
 }
 
+function cellRefToPosition(ref: string): { row: number; col: number } | null {
+  const match = /^([A-Za-z]+)(\d+)$/.exec(ref.trim())
+  if (!match) return null
+  let col = 0
+  for (const ch of match[1]!.toUpperCase()) {
+    col = col * 26 + (ch.charCodeAt(0) - 64)
+  }
+  return { row: Number(match[2]) - 1, col: col - 1 }
+}
+
+const DISPIMG_PATTERN = /DISPIMG\s*\(\s*"([^"]+)"/i
+
+/** WPS "image in cell" stores image ids in xl/cellimages.xml. */
+function readCellImagePaths(index: Map<string, Uint8Array>): Map<string, string> {
+  const paths = new Map<string, string>()
+  const doc = decodeXml(index.get('xl/cellimages.xml'))
+  if (!doc) return paths
+
+  const rels = readRelationships(index, 'xl/_rels/cellimages.xml.rels')
+  for (const cellImage of descendants(doc.documentElement, 'cellImage')) {
+    const pic = firstDescendant(cellImage, 'pic') ?? cellImage
+    const nonVisual = firstDescendant(pic, 'cNvPr')
+    const id = nonVisual?.getAttribute('name') ?? nonVisual?.getAttribute('descr') ?? ''
+    const embed = relEmbed(firstDescendant(pic, 'blip'))
+    if (!id || !embed) continue
+    const rel = rels.get(embed)
+    if (!rel) continue
+    paths.set(id, resolvePath('xl', rel.target))
+  }
+  return paths
+}
+
+function extractInCellImages(
+  index: Map<string, Uint8Array>,
+  sheetPath: string,
+): XlsxImageEntry[] {
+  const sheetDoc = decodeXml(index.get(sheetPath))
+  if (!sheetDoc) return []
+  const cellImagePaths = readCellImagePaths(index)
+  if (cellImagePaths.size === 0) return []
+
+  const entries: XlsxImageEntry[] = []
+  for (const cell of descendants(sheetDoc.documentElement, 'c')) {
+    const ref = cell.getAttribute('r')
+    if (!ref) continue
+    const formula = firstDescendant(cell, 'f')?.textContent ?? ''
+    const cached = firstDescendant(cell, 'v')?.textContent ?? ''
+    const imageId = DISPIMG_PATTERN.exec(formula)?.[1] ?? DISPIMG_PATTERN.exec(cached)?.[1]
+    if (!imageId) continue
+
+    const mediaPath = cellImagePaths.get(imageId)
+    if (!mediaPath) continue
+    const bytes = index.get(mediaPath)
+    if (!bytes || bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) continue
+    const position = cellRefToPosition(ref)
+    if (!position) continue
+
+    entries.push({
+      row: position.row,
+      col: position.col,
+      order: 0,
+      name: basename(mediaPath),
+      blob: new Blob([bytes as unknown as BlobPart], { type: mimeForPath(mediaPath) }),
+    })
+  }
+  return entries
+}
+
 /**
  * Extracts images embedded in an XLSX and maps them to their anchor row.
- * Only the first sheet is considered, matching the import behaviour.
+ * Supports both floating images (`xl/drawings`) and WPS in-cell images
+ * (`xl/cellimages.xml` + `DISPIMG(...)`). Only the first sheet is considered.
  *
  * `wb.files` comes from `XLSX.read(buffer, { bookFiles: true })` (SheetJS 0.18).
  */
@@ -205,32 +274,43 @@ export function extractXlsxImages(files: SheetJsWorkbookFiles | undefined): Xlsx
 
   let entries: XlsxImageEntry[] = []
   const sheetPath = firstSheetPath(index)
+
+  entries.push(...extractInCellImages(index, sheetPath))
+
   const drawingPath = findDrawingPath(index, sheetPath)
-  if (!drawingPath) return []
+  if (drawingPath) {
+    const drawingRels = readRelationships(index, relsPathFor(drawingPath))
+    const drawingXml = index.get(drawingPath)
+    const anchors = parseAnchors(drawingXml)
 
-  const drawingRels = readRelationships(index, relsPathFor(drawingPath))
-  const drawingXml = index.get(drawingPath)
-  const anchors = parseAnchors(drawingXml)
+    const dedicated = anchors.filter((a) => a.col >= IMAGE_COLUMN_INDEX)
+    const selected = dedicated.length > 0 ? dedicated : anchors.filter((a) => a.row > 0)
 
-  const dedicated = anchors.filter((a) => a.col >= IMAGE_COLUMN_INDEX)
-  const selected = dedicated.length > 0 ? dedicated : anchors.filter((a) => a.row > 0)
+    for (const anchor of selected) {
+      const rel = drawingRels.get(anchor.embed)
+      if (!rel) continue
+      const mediaPath = resolvePath(dirname(drawingPath), rel.target)
+      const bytes = index.get(mediaPath)
+      if (!bytes || bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) continue
 
-  for (const anchor of selected) {
-    const rel = drawingRels.get(anchor.embed)
-    if (!rel) continue
-    const mediaPath = resolvePath(dirname(drawingPath), rel.target)
-    const bytes = index.get(mediaPath)
-    if (!bytes || bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) continue
-
-    const mime = mimeForPath(mediaPath)
-    entries.push({
-      row: anchor.row,
-      col: anchor.col,
-      order: anchor.rowOff,
-      name: basename(mediaPath),
-      blob: new Blob([bytes as unknown as BlobPart], { type: mime }),
-    })
+      const mime = mimeForPath(mediaPath)
+      entries.push({
+        row: anchor.row,
+        col: anchor.col,
+        order: anchor.rowOff,
+        name: basename(mediaPath),
+        blob: new Blob([bytes as unknown as BlobPart], { type: mime }),
+      })
+    }
   }
+
+  const seen = new Set<string>()
+  entries = entries.filter((entry) => {
+    const key = `${entry.row}:${entry.col}:${entry.name}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 
   entries = entries.sort((a, b) => a.row - b.row || a.order - b.order || a.col - b.col)
   return entries

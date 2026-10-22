@@ -52,6 +52,14 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
+const INLINE_IMAGE_PATTERN = /(?:_xlfn\.)?DISPIMG\s*\(\s*"[^"]*"\s*(?:,\s*\d+\s*)?\)/gi
+
+/** WPS in-cell images replace the text value with a DISPIMG formula. */
+function stripInlineImageText(value: string): string {
+  if (!value || !value.toUpperCase().includes('DISPIMG')) return value
+  return value.replace(INLINE_IMAGE_PATTERN, '').replace(/^=+/, '').trim()
+}
+
 export const normalizeDifficulty = normalizeDifficultyLabel
 
 function looksLikeHeader(cell: string): boolean {
@@ -360,11 +368,42 @@ export function parseWithMapping(
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     if (!row || row.length === 0) continue
-    const allBlank = row.every(c => !c || c.trim() === '')
+
+    const stored = storedImagesByRow?.get(i + sheetRowOffset) ?? []
+    const allBlank = row.every(c => !c || c.trim() === '') && stored.length === 0
     if (allBlank) continue
 
     const stem = mapping.stem !== null ? (row[mapping.stem] ?? '').trim() : ''
-    if (!stem) continue
+
+    const media: QuestionMedia[] = []
+    for (const image of stored) {
+      const imageColumn = analysis.imageColumns?.get(image.col)
+      if (imageColumn) {
+        if (imageColumn.target === 'option') {
+          const letter = imageColumn.optionIndex ?? 0
+          const textColumn = 2 + letter
+          const position = mapping.options.indexOf(textColumn)
+          media.push({
+            id: image.id,
+            target: 'option',
+            optionIndex: position >= 0 ? position : letter,
+          })
+        } else {
+          media.push({ id: image.id, target: 'stem' })
+        }
+        continue
+      }
+      if (image.col === 0) {
+        media.push({ id: image.id, target: 'stem' })
+        continue
+      }
+      const position = mapping.options.indexOf(image.col)
+      if (position >= 0) {
+        media.push({ id: image.id, target: 'option', optionIndex: position })
+      }
+    }
+
+    if (!stem && media.length === 0) continue
 
     let qtype: QuestionType = SA
     if (mapping.type !== null) {
@@ -372,6 +411,7 @@ export function parseWithMapping(
       qtype = typeLabelToEnum(t)
     }
 
+    const hasOptionMedia = media.some(item => item.target === 'option')
     const options: string[] = []
     if (mapping.combinedOptions !== null) {
       const cell = (row[mapping.combinedOptions] ?? '').trim()
@@ -380,10 +420,21 @@ export function parseWithMapping(
       }
     } else {
       for (const oi of mapping.options) {
-        const o = (row[oi] ?? '').trim()
-        if (o) options.push(o)
+        const option = (row[oi] ?? '').trim()
+        if (option || hasOptionMedia) options.push(option)
+      }
+      if (hasOptionMedia) {
+        while (options.length > 0 && options[options.length - 1] === '') options.pop()
       }
     }
+
+    let maxOptionIndex = -1
+    for (const item of media) {
+      if (item.target === 'option') {
+        maxOptionIndex = Math.max(maxOptionIndex, item.optionIndex ?? 0)
+      }
+    }
+    while (options.length <= maxOptionIndex) options.push('')
 
     const answer = mapping.answer !== null ? (row[mapping.answer] ?? '').trim() : ''
     const analysisText = mapping.analysis !== null ? (row[mapping.analysis] ?? '').trim() : ''
@@ -395,15 +446,6 @@ export function parseWithMapping(
       const inferred = detectColumnTypeFromQA(stem, answer, options.length > 0)
       if (inferred) qtype = inferred
     }
-
-    const media: QuestionMedia[] = (storedImagesByRow?.get(i + sheetRowOffset) ?? []).map((image) => {
-      const target = analysis.imageColumns?.get(image.col) ?? imageTargetForColumn(image.col)
-      return {
-        id: image.id,
-        target: target.target,
-        ...(target.optionIndex !== undefined ? { optionIndex: target.optionIndex } : {}),
-      }
-    })
 
     questions.push({
       id: `${source}-${i + 1}`,
@@ -452,7 +494,7 @@ export function analyzeExcel(buffer: ArrayBuffer): ImportAnalysis | null {
     defval: '',
     blankrows: true,
   })
-  const rows = rawRows.filter((r): r is string[] => r !== undefined).map(r => r.map(c => String(c ?? '')))
+  const rows = rawRows.filter((r): r is string[] => r !== undefined).map(r => r.map(c => stripInlineImageText(String(c ?? ''))))
   if (rows.length === 0) return null
 
   const headers = rows[0] ?? []
