@@ -25,6 +25,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY packages/core/ packages/core/
 COPY packages/server/ packages/server/
 COPY packages/mcp/ packages/mcp/
+COPY packages/cli/ packages/cli/
 RUN sed -i '/src-tauri/d; /plugins\/screenrecord/d' Cargo.toml
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -36,6 +37,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY packages/core/ packages/core/
 COPY packages/server/ packages/server/
 COPY packages/mcp/ packages/mcp/
+COPY packages/cli/ packages/cli/
 RUN sed -i '/src-tauri/d; /plugins\/screenrecord/d' Cargo.toml
 RUN cargo build --release -p exameow-server
 
