@@ -1501,7 +1501,7 @@ dependencies = [
 
 [[package]]
 name = "exameow"
-version = "1.7.2"
+version = "1.7.3"
 dependencies = [
  "base64 0.22.1",
  "exameow-core",
@@ -1533,7 +1533,7 @@ dependencies = [
 
 [[package]]
 name = "exameow-cli"
-version = "1.7.2"
+version = "1.7.3"
 dependencies = [
  "clap",
  "serde_json",

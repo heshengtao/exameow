@@ -1,6 +1,6 @@
 [package]
 name = "exameow-cli"
-version = "1.7.2"
+version = "1.7.3"
 edition = "2021"
 license = "Apache-2.0"
 description = "Exameow 的 MCP 薄客户端：桌面 App 开着就转发命令，没开就先启动。"
