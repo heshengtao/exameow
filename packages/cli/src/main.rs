@@ -227,10 +227,10 @@ fn fallback_app_paths() -> Vec<std::path::PathBuf> {
         let mut out = Vec::new();
         if let Ok(local) = std::env::var("LOCALAPPDATA") {
             out.push(
-                std::path::PathBuf::from(local)
+                std::path::PathBuf::from(&local)
                     .join("Programs/Exameow/Exameow.exe"),
             );
-            out.push(std::path::PathBuf::from(local).join("Exameow/Exameow.exe"));
+            out.push(std::path::PathBuf::from(&local).join("Exameow/Exameow.exe"));
         }
         if let Ok(programs) = std::env::var("PROGRAMFILES") {
             out.push(std::path::PathBuf::from(programs).join("Exameow/Exameow.exe"));
