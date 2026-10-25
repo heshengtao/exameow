@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
+import type { LocaleMessages } from '@/i18n/locales'
+import { isDesktopTauri } from '@/utils/platform'
 import {
   CpuChipIcon,
   PaperAirplaneIcon,
@@ -8,19 +11,38 @@ import {
   ChartBarIcon,
   ChevronRightIcon,
   Cog6ToothIcon,
+  ServerStackIcon,
+  CommandLineIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const i18n = useI18nStore()
 const version = import.meta.env.VITE_APP_VERSION
 
-const entries = [
-  { key: 'mineAIConfig', descKey: 'mineAIConfigDesc', path: '/mine/config', icon: CpuChipIcon },
-  { key: 'mineRecords', descKey: 'mineRecordsDesc', path: '/mine/records', icon: ChartBarIcon },
-  { key: 'minePublished', descKey: 'minePublishedDesc', path: '/mine/published', icon: PaperAirplaneIcon },
-  { key: 'mineJoined', descKey: 'mineJoinedDesc', path: '/mine/joined', icon: PencilSquareIcon },
-  { key: 'mineSettings', descKey: 'mineSettingsDesc', path: '/mine/settings', icon: Cog6ToothIcon },
-] as const
+interface MineEntry {
+  key: keyof LocaleMessages
+  descKey: keyof LocaleMessages
+  path: string
+  icon: Component
+}
+
+// Desktop-only integrations: MCP access and the bundled CLI.
+const entries = computed<MineEntry[]>(() => {
+  const list: MineEntry[] = [
+    { key: 'mineAIConfig', descKey: 'mineAIConfigDesc', path: '/mine/config', icon: CpuChipIcon },
+    { key: 'mineRecords', descKey: 'mineRecordsDesc', path: '/mine/records', icon: ChartBarIcon },
+    { key: 'minePublished', descKey: 'minePublishedDesc', path: '/mine/published', icon: PaperAirplaneIcon },
+    { key: 'mineJoined', descKey: 'mineJoinedDesc', path: '/mine/joined', icon: PencilSquareIcon },
+  ]
+  if (isDesktopTauri()) {
+    list.push(
+      { key: 'mcpTitle', descKey: 'mineMcpDesc', path: '/mine/mcp', icon: ServerStackIcon },
+      { key: 'cliTitle', descKey: 'mineCliDesc', path: '/mine/cli', icon: CommandLineIcon },
+    )
+  }
+  list.push({ key: 'mineSettings', descKey: 'mineSettingsDesc', path: '/mine/settings', icon: Cog6ToothIcon })
+  return list
+})
 </script>
 
 <template>

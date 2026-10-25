@@ -102,19 +102,21 @@ Search local question banks by typing or pasting a question — optional AI answ
 
 ### 🤖 MCP — Let Other AI Harnesses Drive Exameow
 
-Exameow ships a built-in **Model Context Protocol** server. Connect Claude Code, Cursor, Codex or any MCP client and it can read your banks, generate questions from a document, run practice, grade answers, export CSV/XLSX and publish online exams — while you watch the UI update.
+Exameow ships a built-in **Model Context Protocol** server. Connect any MCP client and it can read your banks, generate questions from a document, run practice, grade answers, export CSV/XLSX and publish online exams — while you watch the UI update.
 
 - **One endpoint, three builds** — `http://127.0.0.1:5274/mcp` on desktop, `http://<phone-ip>:5274/mcp` on mobile, `http://<host>:3000/mcp` when self-hosted
 - **28 tools** — parsing, generation, answering, judging, explanations, export, web search, bank/practice/wrong-question management, continuous tutoring (`next_question`), exam publishing and UI navigation
 - **`exameow` command line** — a bundled thin MCP client (`status` / `start` / `tools` / `call`) for harnesses that only have a shell
-- **AI skills** — one switch installs `SKILL.md` into Claude Code / Agent Skills, teaching any harness to generate questions and tutor you one question at a time
+- **AI skills** — install `SKILL.md` into your agent's skills directory with one command, teaching any harness to generate questions and tutor you one question at a time
 - **Local is keyless** — loopback requests need no token; LAN/remote clients still use the bearer token
 
-```bash
-# Local desktop — no token
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
+Paste this into any AI client's chat box and it will connect itself:
 
-# Or use the bundled CLI
+> Connect to the Exameow MCP server: use the Streamable HTTP transport, name it `exameow`, and point it at `http://127.0.0.1:5274/mcp`. This is a loopback address, so no authentication is needed. Then call `tools/list` to confirm the available tools.
+
+Or use the bundled CLI:
+
+```bash
 exameow status
 exameow call generate_exam --json '{"source":{"path":"/abs/notes.pdf"},"params":{"count":10},"save_to_bank":true}'
 ```
@@ -137,13 +139,17 @@ npx skills add heshengtao/exameow
 Install this Skill: https://github.com/heshengtao/exameow
 ```
 
-**Option 3 · From the desktop app**
-
-Settings → AI skills copies it to `~/.claude/skills/exameow` and `~/.agents/skills/exameow`.
-
 Direct source: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
 
-Using **DeepSeek Harness**? Add the companion [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit) plugin: a native **Daily Study** page in the sidebar with a daily goal, streak, XP, a seven-day view, and a durable DSH reminder that brings you back to Exameow at the time you choose.
+### 🧩 DeepSeek Harness plugin — Daily Study page
+
+The companion [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit) adds a native **Daily Study** page below **Automation tasks** in the sidebar, with a daily goal, streak, XP, a seven-day view, and a durable DSH reminder that brings you back to Exameow at the time you choose.
+
+Ask your AI to install it:
+
+```
+Install this plugin: https://github.com/heshengtao/exameow-dsh-habit
+```
 
 ### 🌐 Cross-Platform & Privacy — Your Data, Your Device
 

@@ -1,8 +1,7 @@
 # MCP integration (desktop / mobile / self-hosted)
 
-Exameow ships a built-in **Model Context Protocol (MCP)** server, so external AI
-harnesses — Claude Code, Claude Desktop, Cursor, Codex, or anything else that
-speaks MCP — can drive the app's main features.
+Exameow ships a built-in **Model Context Protocol (MCP)** server, so any external
+AI harness that speaks MCP can drive the app's main features.
 
 The server implements the `2025-06-18` revision (with `2024-11-05` /
 `2025-03-26` clients negotiated down automatically) over **Streamable HTTP**.
@@ -22,15 +21,19 @@ request and have no persistent process, so state tools could not work there.
 
 ## Enabling
 
-### Desktop / mobile app
+### Desktop app
 
-1. Open **Mine → Settings → MCP / AI client access**.
-2. Turn the switch on. Desktop starts with loopback MCP **on**; mobile starts off.
-   The port defaults to `5274`.
-3. On mobile (and optionally on desktop) enable **Allow LAN access** so other
-   machines can reach the phone/laptop.
-4. Copy the endpoint and the access token shown in the card. The
-   "Copy Claude Code command" button produces a ready-to-paste command.
+1. Open **Mine → MCP** in the desktop app (the page is desktop-only and hidden on
+   web and mobile).
+2. Turn the switch on. Desktop starts with loopback MCP **on**. The port defaults
+   to `5274`.
+3. Optionally enable **Allow LAN access** so other machines can reach this device.
+4. Copy the endpoint and the access token shown on the page. The **Copy install
+   prompt** button produces a plain-language paragraph that any AI client can act
+   on — paste it into the chat box and the AI adds the server itself.
+
+Mobile builds still run the server (LAN is on by default), but this settings page
+is only shown in the desktop app.
 
 Settings live in `<app config dir>/Exameow/mcp.json`
 (macOS `~/Library/Application Support/Exameow/`, Linux `~/.config/Exameow/`,
@@ -91,9 +94,9 @@ socket address, not headers.
 ## `exameow` command line (thin MCP client)
 
 Desktop installers bundle `exameow-cli`, a thin MCP client. Enable
-**Settings → Command line (exameow)** to put the
-`exameow` command on PATH (macOS uses `/usr/local/bin`, Windows uses a small
-`exameow.cmd` shim; Linux/AppImage show a manual command).
+**Mine → Command line (exameow)** — a desktop-only page — to put the `exameow`
+command on PATH (macOS uses `/usr/local/bin`, Windows uses a small `exameow.cmd`
+shim; Linux/AppImage show a manual command).
 
 ```bash
 exameow status                  # is the app running and MCP reachable?
@@ -124,20 +127,9 @@ Mobile builds deliberately use the base `tauri.conf.json` (no sidecar).
 
 ## AI skills (any harness)
 
-The desktop app bundles `skills/exameow/` — an Agent Skill with `SKILL.md` plus
+The repository ships `skills/exameow/` — an Agent Skill with `SKILL.md` plus
 on-demand `references/` for generation, practice, tutoring, exams, config and
-troubleshooting. Enable **Settings → AI skills** to copy
-it to the two common discovery directories:
-
-- `~/.claude/skills/exameow/` (Claude Code)
-- `~/.agents/skills/exameow/` (generic Agent Skills)
-
-A `.exameow-skill.json` marker records the app version; the settings card shows
-an update hint after an app upgrade (toggle off/on to refresh). Uninstall only
-removes directories whose marker / `SKILL.md` identifies them as Exameow's.
-Restart the harness after installing so it picks up the skill.
-
-Prefer not to use the in-app installer? Install from the repository:
+troubleshooting. Install it from the repository instead of from the app UI:
 
 ```bash
 # Option 1: skills CLI
@@ -150,6 +142,11 @@ Install this Skill: https://github.com/heshengtao/exameow
 ```
 
 Direct source: <https://github.com/heshengtao/exameow/tree/main/skills/exameow>.
+Restart the harness after installing so it picks up the skill.
+
+The desktop bundle also contains the same skill under the app resources, and the
+`skill_status` / `skill_install` / `skill_uninstall` native commands remain
+available for scripts. They are no longer wired to a settings page.
 
 For **DeepSeek Harness**, the optional
 [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit) bundle adds
@@ -171,35 +168,26 @@ stdio-only clients (via `mcp-remote`).
 
 ## Client configuration
 
-### Claude Code
+The server speaks **Streamable HTTP**. The generic JSON form used by most MCP
+clients:
 
-```bash
-# Local desktop: no token needed
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
-
-# LAN / remote only: add the bearer token
-claude mcp add --transport http exameow http://<lan-ip>:5274/mcp \
-  --header "Authorization: Bearer <token>"
-```
-
-### Cursor / other JSON-config clients
-
-Local desktop:
+Local desktop (no token needed):
 
 ```json
 {
   "mcpServers": {
-    "exameow": { "url": "http://127.0.0.1:5274/mcp" }
+    "exameow": { "type": "http", "url": "http://127.0.0.1:5274/mcp" }
   }
 }
 ```
 
-LAN / remote:
+LAN / remote (bearer token required):
 
 ```json
 {
   "mcpServers": {
     "exameow": {
+      "type": "http",
       "url": "http://<lan-ip>:5274/mcp",
       "headers": { "Authorization": "Bearer <token>" }
     }
@@ -207,21 +195,17 @@ LAN / remote:
 }
 ```
 
-### Claude Desktop
+If your client has no import UI, paste this into its chat box and let the AI do
+the wiring:
 
-Claude Desktop only launches stdio servers directly. Point a small proxy at the
-HTTP endpoint (for example `mcp-remote`); local desktop needs no header:
+> Connect to the Exameow MCP server: use the Streamable HTTP transport, name it
+> `exameow`, and point it at `http://127.0.0.1:5274/mcp`. This is a loopback
+> address, so no authentication is needed. Then call `tools/list` to confirm the
+> available tools.
 
-```json
-{
-  "mcpServers": {
-    "exameow": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://127.0.0.1:5274/mcp"]
-    }
-  }
-}
-```
+Clients that only launch stdio servers need a small HTTP-to-stdio proxy, for
+example `npx -y mcp-remote http://127.0.0.1:5274/mcp`, configured as the
+`command`/`args` pair.
 
 ## Tools
 

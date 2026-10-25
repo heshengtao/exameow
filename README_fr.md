@@ -114,10 +114,6 @@ npx skills add heshengtao/exameow
 Install this Skill: https://github.com/heshengtao/exameow
 ```
 
-**Option 3 · Depuis l'application de bureau**
-
-Réglages → AI skills la copie dans `~/.claude/skills/exameow` et `~/.agents/skills/exameow`.
-
 Source directe : [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
 
 ### 🌐 Multiplateforme et confidentialité — Vos données, votre appareil

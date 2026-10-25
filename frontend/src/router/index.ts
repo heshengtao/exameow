@@ -1,4 +1,8 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { isDesktopTauri } from '@/utils/platform'
+
+// MCP/CLI integration pages only exist in the desktop app.
+const desktopOnly = () => (isDesktopTauri() ? true : { name: 'mine' })
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -86,6 +90,20 @@ const router = createRouter({
       name: 'mine-config',
       component: () => import('@/views/ConfigView.vue'),
       meta: { title: 'AI Config' },
+    },
+    {
+      path: '/mine/mcp',
+      name: 'mine-mcp',
+      component: () => import('@/views/McpView.vue'),
+      meta: { title: 'MCP' },
+      beforeEnter: desktopOnly,
+    },
+    {
+      path: '/mine/cli',
+      name: 'mine-cli',
+      component: () => import('@/views/CliView.vue'),
+      meta: { title: 'Command Line' },
+      beforeEnter: desktopOnly,
     },
     {
       path: '/mine/settings',

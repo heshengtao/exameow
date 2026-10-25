@@ -72,13 +72,8 @@ exameow call start_practice --json '{"bank_id":"bank-xxx","mode":"random"}'
 
 ### 接到 AI Harness
 
-- **Claude Code / 支持 HTTP MCP 的客户端**：
-
-  ```bash
-  claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
-  ```
-
-  端口以 `mcp-url` 为准；本机**不要**加 `--header`。
+- **支持 HTTP MCP 的客户端**：用 Streamable HTTP 添加名为 `exameow` 的服务器，
+  地址 `http://127.0.0.1:5274/mcp`；端口以 `mcp-url` 为准，本机**不要**加鉴权头。
 
 - **JSON 配置的客户端**：
 
@@ -86,7 +81,7 @@ exameow call start_practice --json '{"bank_id":"bank-xxx","mode":"random"}'
   { "mcpServers": { "exameow": { "url": "http://127.0.0.1:5274/mcp" } } }
   ```
 
-- **只支持 stdio 的客户端**（如 Claude Desktop）：用 `npx mcp-remote http://127.0.0.1:5274/mcp`
+- **只支持 stdio 的客户端**：用 `npx mcp-remote http://127.0.0.1:5274/mcp`
   做转发；或者让它通过 shell 调 `exameow call`。
 
 - **只能跑 shell 的 Harness**：直接用 `exameow`，不需要 MCP 配置。

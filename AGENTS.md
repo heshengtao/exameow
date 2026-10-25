@@ -51,7 +51,7 @@ A built-in MCP server lets other AI agents drive the app. One implementation, th
 - **Mounts**: `src-tauri/src/mcp_host.rs` (in-process listener: `127.0.0.1:5274`, LAN opt-in, mobile LAN on by default) and `packages/server/src/mcp.rs` (`/mcp`, `MCP_ENABLED`/`MCP_TOKEN`/`MCP_TOKEN_FILE`).
 - **Auth**: loopback peers (`127.0.0.1` / `::1`) are keyless for `/mcp` and the WS handshake; LAN/remote calls still require the auto-generated bearer token (constant-time compare, `Origin`/`Host` checks). `get_config` never returns `api_key`.
 - **Not supported**: Cloudflare Worker build (per-request billing, no persistent bridge), MCP resources/prompts/sampling, OAuth.
-- New native commands (`mcp_info`, `mcp_set_enabled`, `mcp_regenerate_token`, `cli_status`, `install_cli`, `uninstall_cli`, `skill_status`, `skill_install`, `skill_uninstall`) are invoked by the frontend, so `ota.json.minShell` must be ≥ the released version.
+- MCP and CLI settings live on their own desktop-only pages (`frontend/src/views/McpView.vue`, `CliView.vue`, routes `/mine/mcp` + `/mine/cli`, guarded by `isDesktopTauri()`), not inside System Settings. The MCP page copies a harness-agnostic install prompt instead of a client-specific command. Native commands invoked by the frontend (`mcp_info`, `mcp_set_enabled`, `mcp_regenerate_token`, `cli_status`, `install_cli`, `uninstall_cli`) mean `ota.json.minShell` must be ≥ the released version.
 - Docs: `MCP.md`.
 
 ## CLI + AI Skills (desktop)
@@ -69,8 +69,10 @@ A built-in MCP server lets other AI agents drive the app. One implementation, th
   named `exameow-cli` because the main app binary is already `exameow`.
 - **Skills**: `skills/exameow/` (SKILL.md + references) is bundled via
   `src-tauri/tauri.desktop.conf.json` → `bundle.resources`. `src-tauri/src/skills.rs`
-  copies it to `~/.claude/skills/exameow` and `~/.agents/skills/exameow`, with a version
-  marker; Settings exposes install/uninstall.
+  still exposes `skill_status` / `skill_install` / `skill_uninstall` (copies to
+  `~/.claude/skills/exameow` and `~/.agents/skills/exameow`), but **there is no
+  settings UI** — users install from the README / repo with `npx skills add` or by
+  asking their agent.
 - **Desktop packaging** uses `src-tauri/tauri.desktop.conf.json` (`externalBin` +
   `resources`); mobile deliberately does not. `pnpm build:cli` /
   `scripts/build-exameow-cli.sh` builds the sidecar with the target triple.
@@ -109,7 +111,7 @@ packages/
   shared/              TS shared types (@exameow/shared) src/types.ts
 
 src-tauri/             Tauri app; src/lib.rs = all Tauri commands; tauri.conf.json; tauri.desktop.conf.json (sidecar + skills); capabilities/
-skills/exameow/        Bundled Agent Skill (SKILL.md + references) installed by Settings → AI skills
+skills/exameow/        Bundled Agent Skill (SKILL.md + references); install from README/repo, no in-app UI
 workers/               Cloudflare Worker; src/{index,ai,exam,parser,export,types,relay}.ts; wrangler.toml; migrations/ (D1)
                        relay.ts = exam publish/take relay (D1 EXAM_DB, cron cleanup; /api/exam/* routes)
 scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh, check-ota-minshell.sh, build-exameow-cli.sh

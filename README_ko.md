@@ -114,10 +114,6 @@ npx skills add heshengtao/exameow
 Install this Skill: https://github.com/heshengtao/exameow
 ```
 
-**방법 3 · 데스크톱 앱 설정**
-
-설정 → AI skills에서 `~/.claude/skills/exameow` 및 `~/.agents/skills/exameow`로 복사합니다.
-
 직접 다운로드: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
 
 ### 🌐 교차 플랫폼 및 개인정보 보호 — 내 데이터는 내 기기에

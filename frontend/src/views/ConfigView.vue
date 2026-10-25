@@ -157,7 +157,7 @@ async function handleSave() {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto">
+  <div>
     <div class="flex items-center gap-3 mb-6">
       <button class="btn-icon" @click="router.push('/mine')">
         <ArrowLeftIcon class="w-5 h-5" />
@@ -380,9 +380,9 @@ async function handleSave() {
       <div class="flex items-start gap-3">
         <div
           class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-          :style="{ backgroundColor: 'rgb(var(--md-tertiary-container))' }"
+          :style="{ backgroundColor: 'rgb(var(--md-secondary-container))' }"
         >
-          <DocumentTextIcon class="w-5 h-5" :style="{ color: 'rgb(var(--md-on-tertiary-container))' }" />
+          <DocumentTextIcon class="w-5 h-5" :style="{ color: 'rgb(var(--md-on-secondary-container))' }" />
         </div>
         <div class="min-w-0">
           <p class="text-label-md font-semibold" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">

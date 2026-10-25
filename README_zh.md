@@ -102,19 +102,21 @@
 
 ### 🤖 MCP — 让其他 AI 工具直接驱动过了喵
 
-内置 **MCP（Model Context Protocol）** 服务端。接入 Claude Code、Cursor、Codex 或任意 MCP 客户端后，它可以读取题库、从文档出题、开始练习、判分、导出 CSV/XLSX、发布在线考试——而且你能在界面上看到实时变化。
+内置 **MCP（Model Context Protocol）** 服务端。接入任意支持 MCP 的 AI 客户端后，它可以读取题库、从文档出题、开始练习、判分、导出 CSV/XLSX、发布在线考试——而且你能在界面上看到实时变化。
 
 - **一套端点，三种形态** — 桌面端 `http://127.0.0.1:5274/mcp`，移动端 `http://<手机IP>:5274/mcp`，自托管 `http://<host>:3000/mcp`
 - **28 个工具** — 解析、出题、答题、判分、讲解、导出、联网搜索、题库/练习/错题管理、连续辅导（`next_question`）、考试发布与界面跳转
 - **`exameow` 命令行** — 内置 MCP 薄客户端（`status` / `start` / `tools` / `call`），只有 shell 的 Harness 也能用
-- **AI Skills** — 一个开关把 `SKILL.md` 装进 Claude Code / Agent Skills，让任意 Harness 学会出题、一题一题陪你刷
+- **AI Skills** — 一行命令把 `SKILL.md` 装进 Agent Skills 目录，让任意 Harness 学会出题、一题一题陪你刷
 - **本机免密** — 回环请求无需 Token；只有 LAN / 远程客户端才需要 Bearer Token
 
-```bash
-# 本机桌面端，无需 Token
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
+把下面这段话发给任意 AI 客户端，它就会自己完成接入：
 
-# 或直接用内置 CLI
+> 请通过 MCP 接入 Exameow：传输方式使用 Streamable HTTP，名称 `exameow`，地址 `http://127.0.0.1:5274/mcp`。这是本机回环地址，无需鉴权。接入后请调用 `tools/list` 确认可用工具。
+
+或直接使用内置 CLI：
+
+```bash
 exameow status
 exameow call generate_exam --json '{"source":{"path":"/abs/notes.pdf"},"params":{"count":10},"save_to_bank":true}'
 ```
@@ -137,13 +139,17 @@ npx skills add heshengtao/exameow
 Install this Skill: https://github.com/heshengtao/exameow
 ```
 
-**方式三 · 桌面版设置**
-
-设置 → AI skills，会复制到 `~/.claude/skills/exameow` 和 `~/.agents/skills/exameow`。
-
 直接下载：[`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow)。
 
-**使用 DeepSeek Harness？** 再装一个配套的 [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit)：在左侧栏「自动化任务」下方新增「每日学习」页面，显示每日目标、连续天数、XP、本周记录，并可在你选定的时间用 DSH 的定时任务把提醒发到指定会话。
+### 🧩 DeepSeek Harness 插件 — 每日学习页
+
+配套的 [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit) 会在左侧栏「自动化任务」下方新增「每日学习」页面，显示每日目标、连续天数、XP、本周记录，并可在你选定的时间用 DSH 的定时任务把提醒发到指定会话。
+
+把这句话发给 AI，让它安装：
+
+```
+Install this plugin: https://github.com/heshengtao/exameow-dsh-habit
+```
 
 ### 🌐 跨平台与隐私 — 你的数据，你做主
 

@@ -52,17 +52,14 @@ Stateless 工具（出题 / 解析 / 判分 / 搜索）不受影响。
 - `language` 用 `zh-CN`；题干语言由它决定。
 - 文件解析乱码：确认编码（UTF-8 / GBK）或先转文本。
 
-## 各 Harness 配置
+## 各客户端配置
 
-### Claude Code
+### 支持 HTTP MCP 的客户端
 
-```bash
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
-```
+用 Streamable HTTP 添加名为 `exameow` 的服务器，地址
+`http://127.0.0.1:5274/mcp`；本机不要加鉴权头，端口以 `mcp-url` 为准。
 
-本机不要加 `--header`。端口以 `mcp-url` 为准。
-
-### Cursor / JSON 客户端
+### JSON 配置的客户端
 
 ```json
 {
@@ -72,7 +69,7 @@ claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
 }
 ```
 
-### Claude Desktop（只支持 stdio）
+### 只支持 stdio 的客户端
 
 ```json
 {

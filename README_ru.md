@@ -114,10 +114,6 @@ npx skills add heshengtao/exameow
 Install this Skill: https://github.com/heshengtao/exameow
 ```
 
-**Вариант 3 · Из настроек настольного приложения**
-
-Настройки → AI skills копирует её в `~/.claude/skills/exameow` и `~/.agents/skills/exameow`.
-
 Прямой источник: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
 
 ### 🌐 Кроссплатформенность и конфиденциальность — Ваши данные принадлежат вам
