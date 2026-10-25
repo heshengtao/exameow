@@ -220,9 +220,10 @@ Exameow is a local AI exam-question generator with a built-in practice mode.
 Recommended flow:
 1. Call `app_status` to see the platform, whether an AI endpoint is configured, and which banks exist.
 2. Use `generate_exam` to create questions from a document path, base64 document, or raw text. Defaults: 5 single-choice medium questions; pass `save_to_bank: true` to store them as a bank the user sees immediately.
-3. Use `list_banks` / `get_bank` / `search_bank_questions` to inspect saved content, and `start_practice` / `submit_answer` / `finish_practice` to run the quiz mode.
-4. Use `publish_exam` to create a shareable online exam code; keep the returned `admin_token` for `get_exam_results` / `delete_exam`.
-5. Use `navigate` to bring the app UI to the relevant screen.
+3. Use `list_banks` / `get_bank` / `search_bank_questions` to inspect saved content, and `start_practice` / `submit_answer` / `next_question` / `finish_practice` to run the quiz mode.
+4. To tutor continuously: start a session, show only the current question, wait for the learner, submit their answer, discuss the returned correct answer and analysis, then call `next_question` and repeat.
+5. Use `publish_exam` to create a shareable online exam code; keep the returned `admin_token` for `get_exam_results` / `delete_exam`.
+6. Use `navigate` to bring the app UI to the relevant screen.
 
 State tools (`app_status` and everything from `list_banks` onward) require the Exameow app window or a browser tab to be open and connected.";
 

@@ -105,15 +105,45 @@ Search local question banks by typing or pasting a question — optional AI answ
 Exameow ships a built-in **Model Context Protocol** server. Connect Claude Code, Cursor, Codex or any MCP client and it can read your banks, generate questions from a document, run practice, grade answers, export CSV/XLSX and publish online exams — while you watch the UI update.
 
 - **One endpoint, three builds** — `http://127.0.0.1:5274/mcp` on desktop, `http://<phone-ip>:5274/mcp` on mobile, `http://<host>:3000/mcp` when self-hosted
-- **27 tools** — parsing, generation, answering, judging, explanations, export, web search, bank/practice/wrong-question management, exam publishing and UI navigation
-- **Secure by default** — auto-generated bearer token, loopback-only binding on desktop, origin checks, no API-key leakage
+- **28 tools** — parsing, generation, answering, judging, explanations, export, web search, bank/practice/wrong-question management, continuous tutoring (`next_question`), exam publishing and UI navigation
+- **`exameow` command line** — a bundled thin MCP client (`status` / `start` / `tools` / `call`) for harnesses that only have a shell
+- **AI skills** — one switch installs `SKILL.md` into Claude Code / Agent Skills, teaching any harness to generate questions and tutor you one question at a time
+- **Local is keyless** — loopback requests need no token; LAN/remote clients still use the bearer token
 
 ```bash
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp \
-  --header "Authorization: Bearer <token>"
+# Local desktop — no token
+claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
+
+# Or use the bundled CLI
+exameow status
+exameow call generate_exam --json '{"source":{"path":"/abs/notes.pdf"},"params":{"count":10},"save_to_bank":true}'
 ```
 
-Setup and the full tool list: **[MCP.md](MCP.md)**.
+Setup, the full tool list, CLI and skills: **[MCP.md](MCP.md)**.
+
+### 🧠 AI Skills — Teach any harness to generate and tutor
+
+Exameow ships a **Skill** (`skills/exameow`) that teaches an AI agent how to drive the running app over MCP: generate questions from a document, save banks, run practice, grade answers, explain and discuss, then advance one question at a time with `next_question`. It works over the built-in **MCP** server, so any harness that supports Agent Skills can pick it up.
+
+**Option 1 · Install from the command line**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**Option 2 · Ask your agent to install it**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**Option 3 · From the desktop app**
+
+Settings → AI skills copies it to `~/.claude/skills/exameow` and `~/.agents/skills/exameow`.
+
+Direct source: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
+
+Using **DeepSeek Harness**? Add the companion [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit) plugin: a native **Daily Study** page in the sidebar with a daily goal, streak, XP, a seven-day view, and a durable DSH reminder that brings you back to Exameow at the time you choose.
 
 ### 🌐 Cross-Platform & Privacy — Your Data, Your Device
 

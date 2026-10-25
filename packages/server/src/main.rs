@@ -99,5 +99,11 @@ async fn main() {
         .await
         .unwrap();
     println!("Exameow server running on http://0.0.0.0:{port}");
-    axum::serve(listener, app).await.unwrap();
+    // Connect info lets the MCP layer tell loopback apart from LAN clients.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }

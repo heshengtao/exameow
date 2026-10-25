@@ -98,6 +98,28 @@ Exameow는 **10가지 이상의 파일 형식**(PDF, DOCX, XLSX, PPTX, EPUB, ODT
 - **실시간 카메라 검색** — 카메라를 화면이나 종이에 대면 AI가 실시간으로 매칭되는 문제 검색
 - **화면 녹화 검색** — 화면의 특정 영역을 지정하면 AI가 실시간으로 문제를 인식하고 플로팅 창에 정답 표시 (Windows / macOS / Linux / Android 지원, iOS 미지원)
 
+### 🧠 AI Skills — 어떤 Harness든 문제 출제와 학습 튜터링을
+
+Exameow에는 **Skill**(`skills/exameow`)이 포함되어 있습니다. AI 에이전트가 MCP를 통해 실행 중인 앱을 조작하며, 문서에서 문제 생성, 문제 은행 저장, 연습 시작, 채점, 설명과 토론, `next_question`으로 한 문제씩 진행하는 방법을 배웁니다. 내장 **MCP** 서버를 통해 동작하므로 Agent Skills를 지원하는 모든 Harness에서 바로 사용할 수 있습니다.
+
+**방법 1 · 명령줄에서 설치**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**방법 2 · 에이전트에게 설치시키기**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**방법 3 · 데스크톱 앱 설정**
+
+설정 → AI skills에서 `~/.claude/skills/exameow` 및 `~/.agents/skills/exameow`로 복사합니다.
+
+직접 다운로드: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
+
 ### 🌐 교차 플랫폼 및 개인정보 보호 — 내 데이터는 내 기기에
 
 Exameow는 **Windows, macOS, Linux, Android, Web** (iOS는 셀프 빌드)을 지원합니다. Web 버전은 **단 하나의 Docker 명령**으로 데플로이할 수 있습니다. 모든 문제 은행, 학습 기록, 오답 노트는 로컬에 저장되며, 온라인 시험 기능을 사용하지 않는 한 서버로 업로드되지 않습니다. 데스크톱 앱의 API 키는 **AES-256-GCM**으로 암호화되어 저장됩니다. UI는 시스템 언어(한국어/영어/중국어 등)를 자동으로 감지하며 원터치로 전환할 수 있습니다.

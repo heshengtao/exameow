@@ -25,7 +25,8 @@ request and have no persistent process, so state tools could not work there.
 ### Desktop / mobile app
 
 1. Open **Mine → Settings → MCP / AI client access**.
-2. Turn the switch on. The port defaults to `5274`.
+2. Turn the switch on. Desktop starts with loopback MCP **on**; mobile starts off.
+   The port defaults to `5274`.
 3. On mobile (and optionally on desktop) enable **Allow LAN access** so other
    machines can reach the phone/laptop.
 4. Copy the endpoint and the access token shown in the card. The
@@ -33,7 +34,16 @@ request and have no persistent process, so state tools could not work there.
 
 Settings live in `<app config dir>/Exameow/mcp.json`
 (macOS `~/Library/Application Support/Exameow/`, Linux `~/.config/Exameow/`,
-Windows `%APPDATA%\Exameow\`).
+Windows `%APPDATA%\Exameow/`).
+
+The app also writes two discovery files there on every launch / while running:
+
+| File | Content |
+| --- | --- |
+| `mcp-url` | The URL actually being served (removed when MCP stops) |
+| `cli-path` | Absolute path to the bundled `exameow-cli` binary |
+
+External harnesses should read these instead of guessing a port or searching PATH.
 
 When building the Android APK yourself, run `pnpm tauri android init` and then
 `pnpm android:patch` once — release builds block cleartext traffic, and the
@@ -60,22 +70,137 @@ docker exec exameow-server cat /app/data/mcp_token.txt
 Open the web app in a browser tab so the state tools can reach `localStorage`;
 without a tab, state tools return `app_not_connected`.
 
+## Local access needs no token
+
+Requests whose **TCP peer is loopback** (`127.0.0.1`, `::1`) are accepted without
+an `Authorization` header, provided the `Host` is a loopback name and any browser
+`Origin` is loopback or Tauri. This is what makes the CLI and local AI harnesses
+keyless:
+
+```bash
+curl -s http://127.0.0.1:5274/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+LAN clients connecting to `http://<lan-ip>:5274/mcp` still need the bearer token
+— the peer address is not loopback, so the token remains the gate. A remote
+attacker cannot spoof loopback by sending `Host: 127.0.0.1`; the check uses the
+socket address, not headers.
+
+## `exameow` command line (thin MCP client)
+
+Desktop installers bundle `exameow-cli`, a thin MCP client. Enable
+**Settings → Command line (exameow)** to put the
+`exameow` command on PATH (macOS uses `/usr/local/bin`, Windows uses a small
+`exameow.cmd` shim; Linux/AppImage show a manual command).
+
+```bash
+exameow status                  # is the app running and MCP reachable?
+exameow start                   # launch the app and wait for MCP
+exameow tools                   # list MCP tools
+exameow call app_status --json '{}'
+exameow call generate_exam --json '{
+  "source": {"path": "/abs/notes.pdf"},
+  "params": {"count": 10, "language": "zh-CN"},
+  "save_to_bank": true
+}'
+```
+
+The command surface is the MCP tool surface: adding a tool automatically adds a
+callable subcommand (forwarded by name). The CLI discovers the endpoint via
+`EXAMEOW_MCP_URL` → `mcp-url` → `mcp.json` port, and reads a token only for LAN
+usage (`EXAMEOW_MCP_TOKEN` or `mcp.json`). `exameow start` accepts
+`EXAMEOW_APP_PATH` for custom installs.
+
+Desktop packaging lives in `src-tauri/tauri.desktop.conf.json` (sidecar +
+skill resources). Build a desktop installer with:
+
+```bash
+pnpm tauri build --config src-tauri/tauri.desktop.conf.json
+```
+
+Mobile builds deliberately use the base `tauri.conf.json` (no sidecar).
+
+## AI skills (any harness)
+
+The desktop app bundles `skills/exameow/` — an Agent Skill with `SKILL.md` plus
+on-demand `references/` for generation, practice, tutoring, exams, config and
+troubleshooting. Enable **Settings → AI skills** to copy
+it to the two common discovery directories:
+
+- `~/.claude/skills/exameow/` (Claude Code)
+- `~/.agents/skills/exameow/` (generic Agent Skills)
+
+A `.exameow-skill.json` marker records the app version; the settings card shows
+an update hint after an app upgrade (toggle off/on to refresh). Uninstall only
+removes directories whose marker / `SKILL.md` identifies them as Exameow's.
+Restart the harness after installing so it picks up the skill.
+
+Prefer not to use the in-app installer? Install from the repository:
+
+```bash
+# Option 1: skills CLI
+npx skills add heshengtao/exameow
+```
+
+```
+# Option 2: ask your agent
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+Direct source: <https://github.com/heshengtao/exameow/tree/main/skills/exameow>.
+
+For **DeepSeek Harness**, the optional
+[`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit) bundle adds
+a native **Daily Study** page below **Automation tasks** in the sidebar (daily
+goal, streak, XP, seven-day view) and creates durable DSH reminders through the
+Host `schedule` service. When it is installed, the skill detects the
+`study_habit` tool and records practice/check-ins automatically; when it is
+absent, the skill tells the user how to install it.
+
+With the skill loaded, an agent can:
+
+- generate questions from a document or text and save them to a bank;
+- start a practice session and quiz the learner **one question at a time**;
+- grade answers, explain, discuss follow-ups, then advance with `next_question`;
+- finish with a summary, retry wrong questions, export, or publish an online exam.
+
+The skill teaches the same flow for MCP-native clients, CLI-only harnesses, and
+stdio-only clients (via `mcp-remote`).
+
 ## Client configuration
 
 ### Claude Code
 
 ```bash
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp \
+# Local desktop: no token needed
+claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
+
+# LAN / remote only: add the bearer token
+claude mcp add --transport http exameow http://<lan-ip>:5274/mcp \
   --header "Authorization: Bearer <token>"
 ```
 
 ### Cursor / other JSON-config clients
 
+Local desktop:
+
+```json
+{
+  "mcpServers": {
+    "exameow": { "url": "http://127.0.0.1:5274/mcp" }
+  }
+}
+```
+
+LAN / remote:
+
 ```json
 {
   "mcpServers": {
     "exameow": {
-      "url": "http://127.0.0.1:5274/mcp",
+      "url": "http://<lan-ip>:5274/mcp",
       "headers": { "Authorization": "Bearer <token>" }
     }
   }
@@ -85,20 +210,14 @@ claude mcp add --transport http exameow http://127.0.0.1:5274/mcp \
 ### Claude Desktop
 
 Claude Desktop only launches stdio servers directly. Point a small proxy at the
-HTTP endpoint (for example `mcp-remote`):
+HTTP endpoint (for example `mcp-remote`); local desktop needs no header:
 
 ```json
 {
   "mcpServers": {
     "exameow": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "http://127.0.0.1:5274/mcp",
-        "--header",
-        "Authorization: Bearer <token>"
-      ]
+      "args": ["-y", "mcp-remote", "http://127.0.0.1:5274/mcp"]
     }
   }
 }
@@ -133,6 +252,7 @@ HTTP endpoint (for example `mcp-remote`):
 | `search_bank_questions` | Substring search over stems |
 | `start_practice` | Start sequential / random / mock / wrong-only practice |
 | `get_practice_state` | Progress plus the current question (no answer) |
+| `next_question` | Advance to the next question after discussion |
 | `submit_answer` | Grade the current question (optional AI grading) |
 | `finish_practice` | Finish and get the score summary |
 | `list_wrong_questions` | Wrong-question records |
@@ -143,19 +263,23 @@ HTTP endpoint (for example `mcp-remote`):
 
 ## Security
 
-- Every `/mcp` request and the bridge WebSocket require the bearer token.
-  Regenerating the token invalidates the old one immediately.
+- Loopback peers are trusted for `/mcp` and the bridge WebSocket; **LAN and
+  remote requests still require the bearer token**. Regenerating the token
+  invalidates the old one immediately.
 - Desktop binds `127.0.0.1` unless LAN access is enabled; mobile binds the LAN
   address by default because loopback-only would be unreachable.
 - Cross-origin browser requests are rejected (`Origin` must be absent, be a
   Tauri origin, be loopback, or match `Host`). This blocks DNS-rebinding and
-  drive-by requests from websites.
+  drive-by requests from websites. The keyless loopback rule uses the TCP peer
+  address, not client-controlled headers.
 - `get_config` never returns the API key.
 - Destructive tools require an explicit `confirm: true`.
 - Request bodies are capped at 8 MiB; `fetch_page` reuses the core SSRF guard.
-
-If a self-hosted instance is exposed to the internet, the token is the only
-gate — put it behind a reverse proxy/firewall or set `MCP_ENABLED=false`.
+- The CLI only connects to the configured endpoint; it does not open a port. The
+  installed `exameow` command is a symlink/shim to the bundled binary, never a
+  copy, so it follows app updates.
+- If a self-hosted instance is exposed to the internet, the token is the only
+  gate — put it behind a reverse proxy/firewall or set `MCP_ENABLED=false`.
 
 ## Limitations
 
@@ -171,6 +295,24 @@ gate — put it behind a reverse proxy/firewall or set `MCP_ENABLED=false`.
 
 ## Verifying by hand
 
+Local desktop (keyless):
+
+```bash
+curl -s http://127.0.0.1:5274/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+
+curl -s http://127.0.0.1:5274/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+curl -s http://127.0.0.1:5274/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"app_status","arguments":{}}}'
+```
+
+Self-hosted / Docker / LAN (token required):
+
 ```bash
 TOKEN=$(cat mcp_token.txt)
 
@@ -178,14 +320,12 @@ curl -s localhost:3000/mcp \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+```
 
-curl -s localhost:3000/mcp \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+Or use the bundled client:
 
-curl -s localhost:3000/mcp \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"app_status","arguments":{}}}'
+```bash
+exameow status
+exameow tools
+exameow call app_status --json '{}'
 ```

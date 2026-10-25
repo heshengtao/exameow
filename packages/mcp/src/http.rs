@@ -1,12 +1,13 @@
 use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{DefaultBodyLimit, Query, State};
+use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, Query, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::bridge::{BridgeOut, SessionRegistry};
@@ -26,7 +27,11 @@ pub async fn serve(
     listener: tokio::net::TcpListener,
     service: Arc<McpService>,
 ) -> std::io::Result<()> {
-    axum::serve(listener, router(service)).await
+    axum::serve(
+        listener,
+        router(service).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
 }
 
 /// Runs the MCP endpoint until `shutdown` resolves (used by the Tauri hosts).
@@ -38,9 +43,12 @@ pub async fn serve_with_shutdown<F>(
 where
     F: std::future::Future<Output = ()> + Send + 'static,
 {
-    axum::serve(listener, router(service))
-        .with_graceful_shutdown(shutdown)
-        .await
+    axum::serve(
+        listener,
+        router(service).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown)
+    .await
 }
 
 /// Bootstrap endpoint for the browser bridge: tells the app which URL/token to use.
@@ -104,6 +112,67 @@ fn token_ok(service: &McpService, provided: Option<&str>) -> bool {
         return true;
     }
     provided.map_or(false, |value| constant_time_eq(value, &expected))
+}
+
+/// True when the TCP peer is on the loopback interface. Header values are
+/// client-controlled, so only the socket address can tell local apart from LAN.
+fn loopback_peer(peer: Option<&Extension<ConnectInfo<SocketAddr>>>) -> bool {
+    peer.map(|Extension(ConnectInfo(addr))| addr.ip().is_loopback())
+        .unwrap_or(false)
+}
+
+/// Hostname without the port, handling `[::1]:5274`.
+fn hostname_of(host: &str) -> &str {
+    if let Some(rest) = host.strip_prefix('[') {
+        return rest.split(']').next().unwrap_or(rest);
+    }
+    host.split(':').next().unwrap_or(host)
+}
+
+fn is_loopback_hostname(host: &str) -> bool {
+    matches!(hostname_of(host), "localhost" | "127.0.0.1" | "::1")
+}
+
+/// Keyless access is only for genuinely local requests. Requiring a loopback
+/// `Host` (and a loopback/Tauri `Origin` when a browser sends one) blocks DNS
+/// rebinding: after rebinding, the browser still uses the attacker's hostname.
+fn keyless_ok(headers: &HeaderMap) -> bool {
+    let host_ok = headers
+        .get(header::HOST)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(is_loopback_hostname);
+    if !host_ok {
+        return false;
+    }
+    let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) else {
+        return true;
+    };
+    if origin == "tauri://localhost"
+        || origin == "https://tauri.localhost"
+        || origin == "http://tauri.localhost"
+    {
+        return true;
+    }
+    let origin_host = origin
+        .split_once("://")
+        .map(|(_, rest)| rest)
+        .unwrap_or(origin)
+        .split('/')
+        .next()
+        .unwrap_or("");
+    is_loopback_hostname(origin_host)
+}
+
+/// Local desktop processes do not need to copy the bearer token: loopback
+/// requests are trusted after the Origin/Host checks below. LAN clients still
+/// need the token, because their peer address is not loopback.
+fn local_request(
+    service: &McpService,
+    headers: &HeaderMap,
+    peer: Option<&Extension<ConnectInfo<SocketAddr>>>,
+) -> bool {
+    token_ok(service, bearer(headers).as_deref())
+        || (loopback_peer(peer) && keyless_ok(headers))
 }
 
 /// Blocks browsers on other origins from driving the local port (DNS rebinding /
@@ -182,10 +251,11 @@ fn forbidden() -> Response {
 
 async fn post_mcp(
     State(service): State<Arc<McpService>>,
+    peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    if !token_ok(&service, bearer(&headers).as_deref()) {
+    if !local_request(&service, &headers, peer.as_ref()) {
         return unauthorized();
     }
     if !origin_ok(&headers) {
@@ -245,8 +315,12 @@ async fn get_mcp() -> Response {
         .into_response()
 }
 
-async fn delete_mcp(State(service): State<Arc<McpService>>, headers: HeaderMap) -> Response {
-    if !token_ok(&service, bearer(&headers).as_deref()) {
+async fn delete_mcp(
+    State(service): State<Arc<McpService>>,
+    peer: Option<Extension<ConnectInfo<SocketAddr>>>,
+    headers: HeaderMap,
+) -> Response {
+    if !local_request(&service, &headers, peer.as_ref()) {
         return unauthorized();
     }
     json_response(StatusCode::OK, json!({ "ok": true }))
@@ -259,12 +333,15 @@ struct TokenQuery {
 
 async fn ws_session(
     State(service): State<Arc<McpService>>,
+    peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     Query(query): Query<TokenQuery>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Response {
     let provided = query.token.or_else(|| bearer(&headers));
-    if !token_ok(&service, provided.as_deref()) {
+    let allowed = token_ok(&service, provided.as_deref())
+        || (loopback_peer(peer.as_ref()) && keyless_ok(&headers));
+    if !allowed {
         return unauthorized();
     }
     if !origin_ok(&headers) {
@@ -322,5 +399,39 @@ async fn handle_socket(mut socket: WebSocket, service: Arc<McpService>) {
     service.bridge.unregister(&id);
     if !service.bridge.is_connected() {
         service.bridge.fail_pending();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hostname_handles_ports_and_ipv6() {
+        assert_eq!(hostname_of("127.0.0.1:5274"), "127.0.0.1");
+        assert_eq!(hostname_of("localhost:5274"), "localhost");
+        assert_eq!(hostname_of("[::1]:5274"), "::1");
+        assert_eq!(hostname_of("evil.com:5274"), "evil.com");
+    }
+
+    #[test]
+    fn keyless_requires_a_loopback_host() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, "127.0.0.1:5274".parse().unwrap());
+        assert!(keyless_ok(&headers));
+
+        headers.insert(header::HOST, "evil.com:5274".parse().unwrap());
+        assert!(!keyless_ok(&headers));
+    }
+
+    #[test]
+    fn keyless_rejects_cross_origin_browser_requests() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, "127.0.0.1:5274".parse().unwrap());
+        headers.insert(header::ORIGIN, "http://evil.com".parse().unwrap());
+        assert!(!keyless_ok(&headers));
+
+        headers.insert(header::ORIGIN, "http://127.0.0.1:5274".parse().unwrap());
+        assert!(keyless_ok(&headers));
     }
 }

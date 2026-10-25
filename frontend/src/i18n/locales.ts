@@ -582,6 +582,39 @@ export interface LocaleMessages {
   mcpServerManaged: string
   mcpCopyCommand: string
   mcpSecurityHint: string
+  cliTitle?: string
+  cliHint?: string
+  cliMount?: string
+  cliState?: string
+  cliCommand?: string
+  cliBundled?: string
+  cliConflict?: string
+  cliManual?: string
+  cliFullPath?: string
+  cliCopy?: string
+  cliCopied?: string
+  cliBusy?: string
+  cliStateMissing?: string
+  cliStateInstalled?: string
+  cliStateConflict?: string
+  cliStateSystem?: string
+  cliStateUnsupported?: string
+  cliHintDevBuild?: string
+  cliHintAppImage?: string
+  cliHintNeedsManual?: string
+  skillsTitle?: string
+  skillsHint?: string
+  skillsSource?: string
+  skillsInstall?: string
+  skillsStatus?: string
+  skillsInstalled?: string
+  skillsNotInstalled?: string
+  skillsVersion?: string
+  skillsUpdateAvailable?: string
+  skillsTargets?: string
+  skillsUnsupported?: string
+  skillsBusy?: string
+  skillsRestartHint?: string
 }
 
 export const zh: LocaleMessages = {
@@ -605,6 +638,39 @@ export const zh: LocaleMessages = {
   mcpServerManaged: 'MCP 由服务器配置提供（MCP_ENABLED）',
   mcpCopyCommand: '复制 Claude Code 命令',
   mcpSecurityHint: '令牌等同于完整控制权，请勿分享。',
+  cliTitle: '命令行（exameow）',
+  cliHint: '内置 exameow 命令是 MCP 的薄客户端：本机调用无需令牌；挂载后可在任意终端使用。',
+  cliMount: '在终端使用 exameow',
+  cliState: '挂载状态',
+  cliCommand: '命令',
+  cliBundled: '包内 CLI',
+  cliConflict: '同名命令',
+  cliManual: '手工安装命令',
+  cliFullPath: 'CLI 全路径',
+  cliCopy: '复制',
+  cliCopied: '已复制',
+  cliBusy: '处理中…',
+  cliStateMissing: '未挂载',
+  cliStateInstalled: '已挂载',
+  cliStateConflict: '命令冲突',
+  cliStateSystem: '系统已提供',
+  cliStateUnsupported: '此环境不可挂载',
+  cliHintDevBuild: '开发构建没有内置 CLI，安装包中才可用。',
+  cliHintAppImage: 'AppImage 的路径每次启动都会变化，请用设置页显示的全路径。',
+  cliHintNeedsManual: '需要 root 权限；请复制下面的命令手工执行。',
+  skillsTitle: 'AI Skills',
+  skillsHint: '把 Exameow 的 skill 安装到 Claude Code / 通用 Agent Skills 目录；也可以让 AI 从 GitHub 仓库的 skills/exameow 安装。',
+  skillsSource: 'GitHub 地址',
+  skillsInstall: '安装 Skills',
+  skillsStatus: '安装状态',
+  skillsInstalled: '已安装',
+  skillsNotInstalled: '未安装',
+  skillsVersion: '版本',
+  skillsUpdateAvailable: '有新版本，重新打开开关即可更新',
+  skillsTargets: '安装位置',
+  skillsUnsupported: '这个构建没有内置 skill（开发构建 / 未打包）。',
+  skillsBusy: '处理中…',
+  skillsRestartHint: '安装后重启 AI Harness 即可加载。',
   mediaCsvOmitted: 'CSV 不包含图片，已忽略 {n} 张',
   mediaImportDropped: '当前平台不支持图片，已忽略 {n} 张',
   mediaImportCount: '已导入 {n} 张图片',
@@ -1189,6 +1255,39 @@ export const zhTW: LocaleMessages = {
   mcpServerManaged: 'MCP 由伺服器設定提供（MCP_ENABLED）',
   mcpCopyCommand: '複製 Claude Code 指令',
   mcpSecurityHint: '權杖等同於完整控制權，請勿分享。',
+  cliTitle: '命令列（exameow）',
+  cliHint: '內建 exameow 指令是 MCP 的薄客戶端：本機呼叫無需權杖；掛載後可在任意終端使用。',
+  cliMount: '在終端使用 exameow',
+  cliState: '掛載狀態',
+  cliCommand: '指令',
+  cliBundled: '包內 CLI',
+  cliConflict: '同名指令',
+  cliManual: '手動安裝指令',
+  cliFullPath: 'CLI 完整路徑',
+  cliCopy: '複製',
+  cliCopied: '已複製',
+  cliBusy: '處理中…',
+  cliStateMissing: '未掛載',
+  cliStateInstalled: '已掛載',
+  cliStateConflict: '指令衝突',
+  cliStateSystem: '系統已提供',
+  cliStateUnsupported: '此環境不可掛載',
+  cliHintDevBuild: '開發建置沒有內建 CLI，安裝包中才可用。',
+  cliHintAppImage: 'AppImage 的路徑每次啟動都會變化，請用設定頁顯示的完整路徑。',
+  cliHintNeedsManual: '需要 root 權限；請複製下面的指令手動執行。',
+  skillsTitle: 'AI Skills',
+  skillsHint: '把 Exameow 的 skill 安裝到 Claude Code / 通用 Agent Skills 目錄；也可以讓 AI 從 GitHub 倉庫的 skills/exameow 安裝。',
+  skillsSource: 'GitHub 位址',
+  skillsInstall: '安裝 Skills',
+  skillsStatus: '安裝狀態',
+  skillsInstalled: '已安裝',
+  skillsNotInstalled: '未安裝',
+  skillsVersion: '版本',
+  skillsUpdateAvailable: '有新版本，重新打開開關即可更新',
+  skillsTargets: '安裝位置',
+  skillsUnsupported: '這個建置沒有內建 skill（開發建置 / 未打包）。',
+  skillsBusy: '處理中…',
+  skillsRestartHint: '安裝後重啟 AI Harness 即可載入。',
   mediaCsvOmitted: 'CSV 不包含圖片，已忽略 {n} 張',
   mediaImportDropped: '目前平台不支援圖片，已忽略 {n} 張',
   mediaImportCount: '已匯入 {n} 張圖片',
@@ -1773,6 +1872,39 @@ export const en: LocaleMessages = {
   mcpServerManaged: 'MCP is provided by the server configuration (MCP_ENABLED)',
   mcpCopyCommand: 'Copy Claude Code command',
   mcpSecurityHint: 'The token grants full control — never share it.',
+  cliTitle: 'Command line (exameow)',
+  cliHint: 'The bundled exameow command is a thin MCP client. Local calls need no token; mount it to use it from any terminal.',
+  cliMount: 'Use exameow in the terminal',
+  cliState: 'Mount status',
+  cliCommand: 'Command',
+  cliBundled: 'Bundled CLI',
+  cliConflict: 'Existing command',
+  cliManual: 'Manual install command',
+  cliFullPath: 'CLI full path',
+  cliCopy: 'Copy',
+  cliCopied: 'Copied',
+  cliBusy: 'Working…',
+  cliStateMissing: 'Not mounted',
+  cliStateInstalled: 'Mounted',
+  cliStateConflict: 'Command conflict',
+  cliStateSystem: 'Provided by the system',
+  cliStateUnsupported: 'Cannot mount here',
+  cliHintDevBuild: 'Development builds have no bundled CLI; it ships with installers.',
+  cliHintAppImage: 'The AppImage path changes on every launch; use the full path shown here.',
+  cliHintNeedsManual: 'Root is required; copy and run the command below.',
+  skillsTitle: 'AI skills',
+  skillsHint: 'Install the Exameow skill into Claude Code / Agent Skills, or let your AI install it from the GitHub repo’s skills/exameow.',
+  skillsSource: 'GitHub source',
+  skillsInstall: 'Install skills',
+  skillsStatus: 'Install status',
+  skillsInstalled: 'Installed',
+  skillsNotInstalled: 'Not installed',
+  skillsVersion: 'Version',
+  skillsUpdateAvailable: 'A newer version is available; toggle off and on to update',
+  skillsTargets: 'Install locations',
+  skillsUnsupported: 'This build has no bundled skill (development build / not packaged).',
+  skillsBusy: 'Working…',
+  skillsRestartHint: 'Restart the AI harness after installing to load it.',
   mediaCsvOmitted: 'CSV cannot include images — {n} image(s) omitted',
   mediaImportDropped: 'This platform does not support images — {n} image(s) ignored',
   mediaImportCount: '{n} image(s) imported',

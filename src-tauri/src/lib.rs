@@ -18,8 +18,10 @@ use std::fmt;
 use std::future::Future;
 
 mod ai_requests;
+mod cli;
 mod mcp_host;
 mod ota;
+mod skills;
 use ai_requests::AiRequestRegistry;
 use mcp_host::{McpHost, McpInfoDto};
 #[cfg(target_os = "macos")]
@@ -916,6 +918,10 @@ pub fn run() {
                 eprintln!("[mcp] failed to start: {error}");
             }
 
+            // Tell external AI harnesses where the bundled CLI lives. This does
+            // not touch PATH; mounting is still an explicit switch in Settings.
+            cli::publish_path();
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -942,6 +948,12 @@ pub fn run() {
             mcp_info,
             mcp_set_enabled,
             mcp_regenerate_token,
+            cli::cli_status,
+            cli::install_cli,
+            cli::uninstall_cli,
+            skills::skill_status,
+            skills::skill_install,
+            skills::skill_uninstall,
             open_app_settings,
             capture_screen,
             check_screen_permission,

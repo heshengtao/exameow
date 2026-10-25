@@ -98,6 +98,28 @@ Durchsuchen Sie lokale Fragenkataloge durch Eingabe oder Einfügen einer Frage �
 - **Kamera-Live-Suche** — Kamera auf Bildschirm/Papier richten; KI überwacht und gleicht Fragen in Echtzeit ab
 - **Bildschirmaufnahme-Suche** — Erfassungsrahmen über beliebigem Fenster zeichnen; KI überwacht und findet Fragen live mit schwebendem Antwort-Overlay (Windows / macOS / Linux / Android; auf iOS aufgrund von Systembeschränkungen nicht verfügbar)
 
+### 🧠 AI Skills — Bring jedem Harness das Generieren und Tutorieren bei
+
+Exameow enthält eine **Skill** (`skills/exameow`), die einem KI-Agenten beibringt, die laufende App über MCP zu steuern: Fragen aus einem Dokument generieren, Banken speichern, eine Übung starten, Antworten bewerten, erklären und diskutieren und mit `next_question` Frage für Frage weitergehen. Sie arbeitet über den integrierten **MCP**-Server, sodass jeder Harness mit Agent-Skills-Unterstützung sie direkt nutzen kann.
+
+**Option 1 · Installation über die Kommandozeile**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**Option 2 · Den Agenten bitten, sie zu installieren**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**Option 3 · Über die Desktop-App**
+
+Einstellungen → AI skills kopiert sie nach `~/.claude/skills/exameow` und `~/.agents/skills/exameow`.
+
+Direkte Quelle: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
+
 ### 🌐 Cross-Plattform & Datenschutz — Ihre Daten, Ihr Gerät
 
 Exameow läuft auf **Windows, macOS, Linux, Android und Web** (iOS via Selbstkompilierung). Bereitstellung der Webversion mit **einem Docker-Befehl**. Alle Fragenkataloge, Übungsprotokolle und Fehler-Historien werden lokal gespeichert — nichts wird auf einen Server hochgeladen, es sei denn, Sie nutzen das Online-Prüfungssystem. API-Schlüssel werden auf dem Desktop mit **AES-256-GCM** verschlüsselt. Die Benutzeroberfläche erkennt automatisch die System-Sprache mit Schnellumschaltung.

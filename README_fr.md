@@ -98,6 +98,28 @@ Recherchez dans vos banques de questions locales en saisissant ou en collant une
 - **Recherche en direct par caméra** — Orientez votre caméra vers l'écran ou le papier ; l'IA surveille et associe les questions en temps réel
 - **Recherche par capture d'écran** — Dessinez un cadre de capture sur n'importe quelle fenêtre ; l'IA surveille et associe les questions en direct avec une superposition flottante d'affichage des réponses (Windows / macOS / Linux / Android ; non disponible sur iOS en raison de restrictions système)
 
+### 🧠 AI Skills — Apprenez à n'importe quel harness à générer et à tutoriser
+
+Exameow embarque une **Skill** (`skills/exameow`) qui apprend à un agent IA à piloter l'application en cours d'exécution via MCP : générer des questions à partir d'un document, enregistrer des banques, lancer une session d'entraînement, corriger les réponses, expliquer et discuter, puis avancer question par question avec `next_question`. Elle fonctionne via le serveur **MCP** intégré, donc tout harness compatible Agent Skills peut l'utiliser.
+
+**Option 1 · Installer en ligne de commande**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**Option 2 · Demander à votre agent de l'installer**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**Option 3 · Depuis l'application de bureau**
+
+Réglages → AI skills la copie dans `~/.claude/skills/exameow` et `~/.agents/skills/exameow`.
+
+Source directe : [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
+
 ### 🌐 Multiplateforme et confidentialité — Vos données, votre appareil
 
 Exameow fonctionne sur **Windows, macOS, Linux, Android et Web** (iOS via génération autonome). Déployez la version web avec **une seule commande Docker**. Toutes les banques de questions, les historiques d'entraînement et le suivi des erreurs sont stockés localement — rien n'est téléversé sur un serveur sauf si vous choisissez d'utiliser le relais d'examen en ligne. Les clés d'API sont chiffrées avec **AES-256-GCM** sur bureau. L'interface détecte automatiquement la langue du système avec basculement rapide.

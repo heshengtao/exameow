@@ -98,6 +98,28 @@
 - **拍屏搜題** — 鏡頭對準螢幕或試卷，AI 實時監聽並匹配題目
 - **錄屏搜題** — 框選螢幕任意區域，AI 實時識別並搜尋本地題庫，懸浮視窗展示答案（支援 Windows / macOS / Linux / Android；iOS 因系統限制暫不支援）
 
+### 🧠 AI Skills — 讓任意 Harness 學會出題與陪你刷題
+
+Exameow 附帶一個 **Skill**（`skills/exameow`），教會 AI 代理透過 MCP 驅動正在執行的 App：從文件出題、存題庫、開始練習、判分、講解與討論，並用 `next_question` 一題一題往下走。它透過內建 **MCP** 伺服器運作，因此任何支援 Agent Skills 的 Harness 都能直接使用。
+
+**方式一 · 命令列安裝**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**方式二 · 讓你的 Agent 自己裝**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**方式三 · 桌面版設定**
+
+設定 → AI skills，會複製到 `~/.claude/skills/exameow` 和 `~/.agents/skills/exameow`。
+
+直接下載：[`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow)。
+
 ### 🌐 跨平台與隱私 — 你的數據，你做主
 
 過了喵支援 **Windows、macOS、Linux、Android 和 Web**（iOS 需自行打包）。**一條 Docker 指令**即可部署網頁版。所有題庫、練習記錄和錯題本均儲存在本地——不上傳至任何伺服器（除非你主動使用線上考試功能）。桌面端 API 金鑰使用 **AES-256-GCM** 加密儲存。介面自動隨系統語言（中文/英文），一鍵切換。

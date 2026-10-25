@@ -91,15 +91,17 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config libclang-dev libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libegl-dev xdg-utils libgbm-dev
 
       - name: Build Tauri
-        run: pnpm tauri build --target ${{ matrix.target }} ${{ matrix.bundles }}
+        run: pnpm tauri build --config src-tauri/tauri.desktop.conf.json --target ${{ matrix.target }} ${{ matrix.bundles }}
         env:
+          EXAMEOW_TARGET: ${{ matrix.target }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Retry Build Tauri (transient download failures)
         if: failure() && matrix.platform == 'windows-latest'
-        run: pnpm tauri build --target ${{ matrix.target }} ${{ matrix.bundles }}
+        run: pnpm tauri build --config src-tauri/tauri.desktop.conf.json --target ${{ matrix.target }} ${{ matrix.bundles }}
         env:
+          EXAMEOW_TARGET: ${{ matrix.target }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
@@ -120,8 +122,10 @@ jobs:
           Copy-Item target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-setup.exe
           Copy-Item target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe.sig dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-setup.exe.sig
           Copy-Item target/${{ matrix.target }}/release/exameow.exe dist/Exameow.exe
-          Compress-Archive -Path dist/Exameow.exe -DestinationPath dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-portable.zip
+          Copy-Item target/${{ matrix.target }}/release/exameow-cli.exe dist/exameow-cli.exe
+          Compress-Archive -Path dist/Exameow.exe,dist/exameow-cli.exe -DestinationPath dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-portable.zip
           Remove-Item dist/Exameow.exe
+          Remove-Item dist/exameow-cli.exe
         shell: pwsh
 
       - name: Collect macOS artifacts

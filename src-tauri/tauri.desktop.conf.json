@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nickzyl/tauri/refs/heads/master/crates/tauri-config-schema/schema.json",
+  "build": {
+    "beforeBuildCommand": "pnpm build && pnpm build:cli"
+  },
+  "bundle": {
+    "externalBin": ["binaries/exameow-cli"],
+    "resources": {
+      "../skills/exameow": "skills/exameow"
+    }
+  }
+}

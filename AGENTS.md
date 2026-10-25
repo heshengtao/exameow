@@ -11,7 +11,7 @@ Version `1.2.1` (kept in sync across root `package.json`, `src-tauri/Cargo.toml`
 ## Release Rules
 
 - **版本号语义（semver）**：第一位 = 不兼容的大更新；第二位 = 新功能；第三位 = Bug 修复。
-- **Bump 版本时**：同步改 4 个文件 + `Cargo.lock` 中 `name = "exameow"` 条目（**只改 exameow 条目，千万别全局替换**——`cesu8` 等依赖锁版本也是 x.y.z，误改会导致全平台构建失败）。
+- **Bump 版本时**：同步改 5 个文件（根 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`、`packages/cli/Cargo.toml`、`workers/package.json`）+ `Cargo.lock` 中 `name = "exameow"` 与 `name = "exameow-cli"` 条目（**只改这两个条目，千万别全局替换**——`cesu8` 等依赖锁版本也是 x.y.z，误改会导致全平台构建失败）。
 - **发布流程**：bump 提交 → 打 `v*` tag 推送触发 CI（desktop/mobile/docker 三条流水线）→ CI 生成的 GitHub Release **默认是草稿，必须发布（`gh release edit vX.Y.Z --draft=false`），否则 Tauri 更新器看不到 `latest.json`** → 用 `bash scripts/deploy-cf.sh` 顺便更新 Cloudflare 线上版。
 - **移动端 OTA 热更新**：`src-tauri/src/ota.rs` 自研实现（assets 替换 + 三态回滚 staged→booting→committed），仅 Android/iOS 生效，桌面端仍用官方 updater。CI 随 release 附加 `mobile-dist.tar.gz` + `mobile-ota.json`；App 查 `releases/latest/download/mobile-ota.json`。**若某版本前端依赖新增的原生能力（Rust 命令/插件），发版前必须把仓库根 `ota.json` 的 `minShell` 提高到能支持它的最低 APK 版本**，否则旧壳会热更到不兼容的前端，调新命令时报 `command xxx not found`（v1.3.5 真实事故：`explain_question` 新增但 minShell 滞留 1.3.0，旧壳热更后 AI 解析全挂；且已中招设备无法靠 OTA 自愈——minShell 只在下载决策时校验，必须重装新 APK）。纯前端修复无需动 `minShell`。**防忘**：mobile CI 首步跑 `scripts/check-ota-minshell.sh`，自动 diff 前端 `invoke()` 命令集与上一 tag 原生代码（`src-tauri/` + `plugins/`），发现新命令但 `minShell` 未提到 ≥ 当前版本则流水线直接失败。
 
@@ -45,14 +45,44 @@ Platform detection lives in `frontend/src/utils/platform.ts`.
 A built-in MCP server lets other AI agents drive the app. One implementation, three mounts:
 
 - **Crate**: `packages/mcp` (`exameow-mcp`) — hand-rolled JSON-RPC 2.0 subset (`initialize` / `ping` / `tools/list` / `tools/call`), Streamable HTTP returning JSON, plus a WebSocket session bridge at `/api/mcp/session`.
-- **Tool catalog**: `packages/mcp/src/catalog.rs` is the single source of truth for names, descriptions and JSON Schemas (27 tools). The frontend only registers handlers by name in `frontend/src/mcp/handlers/*` — never duplicate schemas in TS.
+- **Tool catalog**: `packages/mcp/src/catalog.rs` is the single source of truth for names, descriptions and JSON Schemas (28 tools). The frontend only registers handlers by name in `frontend/src/mcp/handlers/*` — never duplicate schemas in TS.
 - **Stateless tools** run in Rust against `exameow-core` (`core_tools.rs`).
 - **Stateful tools** (banks, practice, wrong questions, publish, navigate) are forwarded over the WS bridge to the frontend registry; with no connected window/tab they return `app_not_connected`.
 - **Mounts**: `src-tauri/src/mcp_host.rs` (in-process listener: `127.0.0.1:5274`, LAN opt-in, mobile LAN on by default) and `packages/server/src/mcp.rs` (`/mcp`, `MCP_ENABLED`/`MCP_TOKEN`/`MCP_TOKEN_FILE`).
-- **Auth**: auto-generated bearer token on every `/mcp` call and WS handshake, constant-time compare, `Origin`/`Host` checks. `get_config` never returns `api_key`.
+- **Auth**: loopback peers (`127.0.0.1` / `::1`) are keyless for `/mcp` and the WS handshake; LAN/remote calls still require the auto-generated bearer token (constant-time compare, `Origin`/`Host` checks). `get_config` never returns `api_key`.
 - **Not supported**: Cloudflare Worker build (per-request billing, no persistent bridge), MCP resources/prompts/sampling, OAuth.
-- New native commands (`mcp_info`, `mcp_set_enabled`, `mcp_regenerate_token`) are invoked by the frontend, so `ota.json.minShell` must be ≥ the released version.
+- New native commands (`mcp_info`, `mcp_set_enabled`, `mcp_regenerate_token`, `cli_status`, `install_cli`, `uninstall_cli`, `skill_status`, `skill_install`, `skill_uninstall`) are invoked by the frontend, so `ota.json.minShell` must be ≥ the released version.
 - Docs: `MCP.md`.
+
+## CLI + AI Skills (desktop)
+
+- **`packages/cli`** (`exameow-cli`, user-facing command `exameow`) is a thin MCP client
+  (`status` / `start` / `tools` / `call`). It discovers the endpoint from
+  `EXAMEOW_MCP_URL` → `<config>/mcp-url` → `mcp.json` port. Source lives in
+  `packages/cli/src/{main,client,discovery}.rs`.
+- **Local keyless access**: `packages/mcp/src/http.rs` trusts requests whose TCP peer is
+  loopback; LAN/remote still require the bearer token. The server must be served with
+  `into_make_service_with_connect_info::<SocketAddr>()` (both Tauri host and Axum server).
+- **Mount**: `src-tauri/src/cli.rs` writes `<config>/cli-path` on every launch (for harness
+  discovery) and installs `/usr/local/bin/exameow` (macOS), a `%LOCALAPPDATA%\Exameow\bin\
+  exameow.cmd` shim (Windows), or prints a manual command (Linux/AppImage). The sidecar is
+  named `exameow-cli` because the main app binary is already `exameow`.
+- **Skills**: `skills/exameow/` (SKILL.md + references) is bundled via
+  `src-tauri/tauri.desktop.conf.json` → `bundle.resources`. `src-tauri/src/skills.rs`
+  copies it to `~/.claude/skills/exameow` and `~/.agents/skills/exameow`, with a version
+  marker; Settings exposes install/uninstall.
+- **Desktop packaging** uses `src-tauri/tauri.desktop.conf.json` (`externalBin` +
+  `resources`); mobile deliberately does not. `pnpm build:cli` /
+  `scripts/build-exameow-cli.sh` builds the sidecar with the target triple.
+- **Continuous tutoring** relies on the `next_question` bridge tool (added to
+  `catalog.rs` + `frontend/src/mcp/handlers/practice.ts`); `submit_answer` does not
+  auto-advance.
+- **DeepSeek Harness companion** lives in a separate Apache-2.0 repo,
+  `heshengtao/exameow-dsh-habit`: a Host+Client bundle with a native sidebar
+  **Daily Study** page (goal/streak/XP/week view) and durable DSH `schedule`
+  reminders, plus a `study_habit` tool.
+  The skill detects that tool when present; without it, the skill points users to
+  the plugin and to the app's GitHub Releases.
 
 ## Directory Map
 
@@ -74,13 +104,15 @@ packages/
     src/export/        writer.rs (CSV), xlsx.rs (manual ZIP+XML, no lib)
     src/config/        store.rs (AES-256-GCM encrypted config persistence)
   server/              Axum HTTP server; routes.rs (AI 端点) + relay.rs (在线考试,SQLite via rusqlite) + mcp.rs (MCP 挂载)
-  mcp/                 Rust crate `exameow-mcp`; catalog.rs (27 工具 schema)、core_tools.rs、bridge.rs、http.rs
+  mcp/                 Rust crate `exameow-mcp`; catalog.rs (28 工具 schema)、core_tools.rs、bridge.rs、http.rs
+  cli/                 Rust crate `exameow-cli`（用户命令 `exameow`）：MCP 薄客户端
   shared/              TS shared types (@exameow/shared) src/types.ts
 
-src-tauri/             Tauri app; src/lib.rs = all Tauri commands; tauri.conf.json; capabilities/
+src-tauri/             Tauri app; src/lib.rs = all Tauri commands; tauri.conf.json; tauri.desktop.conf.json (sidecar + skills); capabilities/
+skills/exameow/        Bundled Agent Skill (SKILL.md + references) installed by Settings → AI skills
 workers/               Cloudflare Worker; src/{index,ai,exam,parser,export,types,relay}.ts; wrangler.toml; migrations/ (D1)
                        relay.ts = exam publish/take relay (D1 EXAM_DB, cron cleanup; /api/exam/* routes)
-scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh, check-ota-minshell.sh
+scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh, check-ota-minshell.sh, build-exameow-cli.sh
 .github/workflows/     release-desktop.yml / release-mobile.yml / release-docker.yml (v* tag 触发;Docker 推 Docker Hub `ailm32442/exameow`)
 ```
 
@@ -94,7 +126,8 @@ scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh,
 | Frontend typecheck | `cd frontend && pnpm run type-check` |
 | Axum server | `cargo run -p exameow-server` (port 3000) |
 | Tauri dev | `pnpm tauri dev` |
-| Tauri build | `pnpm tauri build` |
+| Tauri build | `pnpm tauri build --config src-tauri/tauri.desktop.conf.json` |
+| Build CLI sidecar | `pnpm build:cli` |
 | CF Worker dev | `cd workers && pnpm dev` |
 | CF Worker typecheck | `cd workers && pnpm typecheck` |
 | CF deploy | `bash scripts/deploy-cf.sh` |

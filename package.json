@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "cd frontend && pnpm dev",
     "build": "cd frontend && pnpm build",
+    "build:cli": "bash scripts/build-exameow-cli.sh",
     "android:patch": "bash scripts/patch-android-cleartext.sh",
     "tauri": "tauri"
   },

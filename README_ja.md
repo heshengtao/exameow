@@ -98,6 +98,28 @@ Exameowは**10種類以上のファイル形式**（PDF、DOCX、XLSX、PPTX、E
 - **ライブカメラ検索** — カメラを画面や紙に向けるだけで、AIがリアルタイムで一致する問題を検索
 - **画面録画検索** — 画面上に枠を描画し、AIがリアルタイムで問題を認識・検索してフローティングウィンドウに答えを表示（Windows / macOS / Linux / Android対応。iOSは非対応）
 
+### 🧠 AI Skills — あらゆる Harness に出題と学習チューターを
+
+Exameow には **Skill**（`skills/exameow`）が同梱されています。AI エージェントが MCP 経由で実行中のアプリを操作し、ドキュメントからの出題、問題集の保存、演習の開始、採点、解説と対話、`next_question` で1問ずつ進めることを学べます。内蔵の **MCP** サーバー経由で動作するため、Agent Skills に対応した任意の Harness がそのまま利用できます。
+
+**方法 1 · コマンドラインでインストール**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**方法 2 · エージェントにインストールさせる**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**方法 3 · デスクトップアプリの設定**
+
+設定 → AI skills で `~/.claude/skills/exameow` と `~/.agents/skills/exameow` にコピーされます。
+
+直接ダウンロード：[`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow)。
+
 ### 🌐 クロスプラットフォームとプライバシー — データを自分で管理
 
 Exameowは**Windows、macOS、Linux、Android、Web**（iOSはセルフビルド）に対応しています。Web版は**1つのDockerコマンド**でデプロイ可能です。すべての問題集、演習記録、誤答履歴はローカルに保存され、オンライン試験機能を使用しない限りサーバーにアップロードされることはありません。デスクトップ版のAPIキーは**AES-256-GCM**で暗号化されて保存されます。UI言語はシステム言語（日本語/英語/中国語など）を自動検出し、ワンタップで切替可能です。

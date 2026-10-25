@@ -1,5 +1,6 @@
 node_modules/
 target/
+src-tauri/binaries/
 frontend/dist/
 workers/public/
 workers/.wrangler/

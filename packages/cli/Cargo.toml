@@ -1,0 +1,16 @@
+[package]
+name = "exameow-cli"
+version = "1.7.2"
+edition = "2021"
+license = "Apache-2.0"
+description = "Exameow 的 MCP 薄客户端：桌面 App 开着就转发命令，没开就先启动。"
+
+[[bin]]
+name = "exameow-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+# 只连本机回环 HTTP，不需要 TLS：关掉默认特性（rustls / gzip）以缩小依赖。
+ureq = { version = "3", default-features = false }

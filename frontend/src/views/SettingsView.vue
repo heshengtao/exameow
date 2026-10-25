@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import { useMcpStore } from '@/stores/mcp'
+import { useIntegrationStore } from '@/stores/integration'
 import { SUPPORTED_LOCALES } from '@/i18n/locales'
 import { useTheme, type Theme, type AccentColor } from '@/composables/useTheme'
 import { useDesktopUpdater } from '@/composables/useDesktopUpdater'
@@ -18,6 +19,7 @@ import {
   SwatchIcon,
   SparklesIcon,
   ServerStackIcon,
+  CommandLineIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -68,10 +70,18 @@ const mcpEndpoint = computed(() => {
   return mcpAllowLan.value && info.lan_url ? info.lan_url : info.url
 })
 
-const mcpCommand = computed(
-  () =>
-    `claude mcp add --transport http exameow ${mcpEndpoint.value} --header "Authorization: Bearer ${mcp.info?.token ?? ''}"`,
+const mcpEndpointIsLoopback = computed(() =>
+  /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(?::|\/|$)/i.test(mcpEndpoint.value),
 )
+
+const mcpCommand = computed(() => {
+  const endpoint = mcpEndpoint.value
+  if (mcpEndpointIsLoopback.value) {
+    // Local desktop: keyless.
+    return `claude mcp add --transport http exameow ${endpoint}`
+  }
+  return `claude mcp add --transport http exameow ${endpoint} --header "Authorization: Bearer ${mcp.info?.token ?? ''}"`
+})
 
 async function syncMcpSettings() {
   await mcp.load()
@@ -131,8 +141,60 @@ async function copyToClipboard(text: string, key: string) {
   } catch {}
 }
 
+// CLI / skills
+const integration = useIntegrationStore()
+const SKILL_REPO_URL = 'https://github.com/heshengtao/exameow/tree/main/skills/exameow'
+
+const cliStateLabel = computed(() => {
+  const state = integration.cli?.state
+  if (state === 'installed') return i18n.t('cliStateInstalled')
+  if (state === 'conflict') return i18n.t('cliStateConflict')
+  if (state === 'system') return i18n.t('cliStateSystem')
+  if (state === 'unsupported') return i18n.t('cliStateUnsupported')
+  return i18n.t('cliStateMissing')
+})
+
+const cliMessage = computed(() => {
+  const status = integration.cli
+  if (!status) return i18n.t('cliHint')
+  if (status.hint === 'dev_build') return i18n.t('cliHintDevBuild')
+  if (status.hint === 'appimage') return i18n.t('cliHintAppImage')
+  if (status.hint === 'needs_manual') return i18n.t('cliHintNeedsManual')
+  return i18n.t('cliHint')
+})
+
+const cliOn = computed(
+  () => integration.cli?.state === 'installed' || integration.cli?.state === 'system',
+)
+
+const cliToggleable = computed(() => {
+  const state = integration.cli?.state
+  return state === 'missing' || state === 'conflict' || state === 'installed'
+})
+
+const skillsOn = computed(() => !!integration.skills?.installed)
+
+const skillsToggleable = computed(
+  () => !!integration.skills && !integration.skills.unsupported,
+)
+
+async function handleCliToggle(value: boolean) {
+  try {
+    if (value) await integration.installCli()
+    else await integration.uninstallCli()
+  } catch {}
+}
+
+async function handleSkillsToggle(value: boolean) {
+  try {
+    if (value) await integration.installSkills()
+    else await integration.uninstallSkills()
+  } catch {}
+}
+
 onMounted(async () => {
   await syncMcpSettings()
+  await integration.load()
   if (!showOta) return
   try {
     const { tauriApi } = await import('@/api/bridge')
@@ -374,6 +436,138 @@ async function handleOtaCheck() {
 
       <p v-if="mcpActionError || mcp.error" class="text-sm mt-3 break-all" style="color: rgb(var(--md-error))">
         {{ mcpActionError || mcp.error }}
+      </p>
+    </div>
+
+    <!-- Command line (exameow) -->
+    <div v-if="integration.available" class="card-filled p-5 sm:p-6 mb-4">
+      <div class="flex items-center justify-between gap-4">
+        <label class="text-label-md font-semibold flex items-center gap-2" style="color: rgb(var(--md-on-surface-variant))">
+          <CommandLineIcon class="w-4 h-4" />
+          {{ i18n.t('cliTitle') }}
+        </label>
+        <BaseSwitch
+          :model-value="cliOn"
+          :disabled="integration.loading || !cliToggleable"
+          @update:model-value="handleCliToggle"
+        />
+      </div>
+      <p class="text-body-sm mt-2" style="color: rgb(var(--md-on-surface-variant))">
+        {{ cliMessage }}
+      </p>
+
+      <div class="mt-4 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-label-sm">{{ i18n.t('cliState') }}</span>
+          <span class="text-sm font-mono">
+            {{ integration.loading ? i18n.t('cliBusy') : cliStateLabel }}
+          </span>
+        </div>
+
+        <div v-if="integration.cli?.target" class="flex items-start justify-between gap-3">
+          <span class="text-label-sm shrink-0">{{ i18n.t('cliCommand') }}</span>
+          <span class="text-xs font-mono break-all text-right">{{ integration.cli.target }}</span>
+        </div>
+
+        <div v-if="integration.cli?.conflict" class="flex items-start justify-between gap-3">
+          <span class="text-label-sm shrink-0">{{ i18n.t('cliConflict') }}</span>
+          <span class="text-xs font-mono break-all text-right">{{ integration.cli.conflict }}</span>
+        </div>
+
+        <div v-if="integration.cli?.full_path" class="flex items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="text-label-sm">{{ i18n.t('cliFullPath') }}</div>
+            <div class="text-xs font-mono break-all mt-1">{{ integration.cli.full_path }}</div>
+          </div>
+          <button class="btn-outlined text-sm shrink-0" @click="copyToClipboard(integration.cli?.full_path ?? '', 'cli-full')">
+            {{ mcpCopied === 'cli-full' ? i18n.t('cliCopied') : i18n.t('cliCopy') }}
+          </button>
+        </div>
+
+        <div v-if="integration.cli?.manual_command" class="flex items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="text-label-sm">{{ i18n.t('cliManual') }}</div>
+            <div class="text-xs font-mono break-all mt-1">{{ integration.cli.manual_command }}</div>
+          </div>
+          <button class="btn-outlined text-sm shrink-0" @click="copyToClipboard(integration.cli?.manual_command ?? '', 'cli-manual')">
+            {{ mcpCopied === 'cli-manual' ? i18n.t('cliCopied') : i18n.t('cliCopy') }}
+          </button>
+        </div>
+      </div>
+
+      <p v-if="integration.error" class="text-sm mt-3 break-all" style="color: rgb(var(--md-error))">
+        {{ integration.error }}
+      </p>
+    </div>
+
+    <!-- AI skills -->
+    <div v-if="integration.available" class="card-filled p-5 sm:p-6 mb-4">
+      <div class="flex items-center justify-between gap-4">
+        <label class="text-label-md font-semibold flex items-center gap-2" style="color: rgb(var(--md-on-surface-variant))">
+          <SparklesIcon class="w-4 h-4" />
+          {{ i18n.t('skillsTitle') }}
+        </label>
+        <BaseSwitch
+          :model-value="skillsOn"
+          :disabled="integration.loading || !skillsToggleable"
+          @update:model-value="handleSkillsToggle"
+        />
+      </div>
+      <p class="text-body-sm mt-2" style="color: rgb(var(--md-on-surface-variant))">
+        {{ i18n.t('skillsHint') }}
+      </p>
+
+      <div v-if="integration.skills" class="mt-4 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-label-sm">{{ i18n.t('skillsStatus') }}</span>
+          <span class="text-sm font-mono">
+            {{ integration.loading
+              ? i18n.t('skillsBusy')
+              : skillsOn ? i18n.t('skillsInstalled') : i18n.t('skillsNotInstalled') }}
+          </span>
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-label-sm">{{ i18n.t('skillsVersion') }}</span>
+          <span class="text-sm font-mono">v{{ integration.skills.version }}</span>
+        </div>
+
+        <p v-if="integration.skills.update_available" class="text-sm" style="color: rgb(var(--md-primary))">
+          {{ i18n.t('skillsUpdateAvailable') }}
+        </p>
+        <p v-if="integration.skills.unsupported" class="text-sm" style="color: rgb(var(--md-error))">
+          {{ i18n.t('skillsUnsupported') }}
+        </p>
+
+        <div class="flex items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="text-label-sm">{{ i18n.t('skillsSource') }}</div>
+            <div class="text-xs font-mono break-all mt-1">{{ SKILL_REPO_URL }}</div>
+          </div>
+          <button class="btn-outlined text-sm shrink-0" @click="copyToClipboard(SKILL_REPO_URL, 'skills-repo')">
+            {{ mcpCopied === 'skills-repo' ? i18n.t('cliCopied') : i18n.t('cliCopy') }}
+          </button>
+        </div>
+
+        <div>
+          <div class="text-label-sm mb-1.5">{{ i18n.t('skillsTargets') }}</div>
+          <div
+            v-for="target in integration.skills.targets"
+            :key="target.path"
+            class="text-xs font-mono break-all leading-5"
+            :style="{ color: target.installed ? 'rgb(var(--md-primary))' : 'rgb(var(--md-on-surface-variant))' }"
+          >
+            {{ target.installed ? '✓' : '·' }} {{ target.path }}
+          </div>
+        </div>
+
+        <p class="text-xs" style="color: rgb(var(--md-on-surface-variant))">
+          {{ i18n.t('skillsRestartHint') }}
+        </p>
+      </div>
+
+      <p v-if="integration.error" class="text-sm mt-3 break-all" style="color: rgb(var(--md-error))">
+        {{ integration.error }}
       </p>
     </div>
 

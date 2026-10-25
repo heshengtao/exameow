@@ -31,7 +31,9 @@ fn is_mobile() -> bool {
 impl Default for McpSettings {
     fn default() -> Self {
         Self {
-            enabled: false,
+            // Desktop starts with loopback MCP on so `exameow` / skills work out
+            // of the box. Mobile keeps it off: it binds LAN by default there.
+            enabled: !is_mobile(),
             port: DEFAULT_PORT,
             allow_lan: is_mobile(),
             token: random_token(),
@@ -46,6 +48,31 @@ fn random_token() -> String {
 
 fn settings_path() -> Option<std::path::PathBuf> {
     config_dir(APP_NAME).ok().map(|dir| dir.join("mcp.json"))
+}
+
+/// Runtime discovery file: the URL the listener is actually serving on.
+/// External CLIs read this instead of guessing the port.
+fn url_file() -> Option<std::path::PathBuf> {
+    settings_path()
+        .and_then(|path| path.parent().map(|dir| dir.join("mcp-url")))
+}
+
+fn write_url_file(url: &str) {
+    let Some(path) = url_file() else {
+        return;
+    };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Err(error) = std::fs::write(&path, url) {
+        eprintln!("[mcp] cannot write {}: {error}", path.display());
+    }
+}
+
+fn remove_url_file() {
+    if let Some(path) = url_file() {
+        let _ = std::fs::remove_file(path);
+    }
 }
 
 fn load_settings() -> McpSettings {
@@ -68,7 +95,14 @@ fn load_settings() -> McpSettings {
 fn save_settings(settings: &McpSettings) -> Result<(), String> {
     let path = settings_path().ok_or_else(|| "cannot resolve config directory".to_string())?;
     let raw = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
-    std::fs::write(&path, raw).map_err(|e| format!("cannot write {}: {e}", path.display()))
+    std::fs::write(&path, raw).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    // The file contains the LAN token; keep it private on Unix.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -118,10 +152,26 @@ pub struct McpHost {
     version: String,
 }
 
+impl Drop for McpHost {
+    fn drop(&mut self) {
+        // Best-effort cleanup so a graceful quit does not leave a stale URL.
+        remove_url_file();
+    }
+}
+
 impl McpHost {
     pub fn new(version: impl Into<String>) -> Self {
+        let settings = load_settings();
+        // Persist the first-run defaults (enabled on desktop, random token) so
+        // the token is stable across launches. Without this, LAN clients would
+        // see a new token every time the app restarts.
+        if settings_path().is_some_and(|path| !path.exists()) {
+            if let Err(error) = save_settings(&settings) {
+                eprintln!("[mcp] cannot save default settings: {error}");
+            }
+        }
         Self {
-            settings: Mutex::new(load_settings()),
+            settings: Mutex::new(settings),
             running: Mutex::new(None),
             bridge: Arc::new(SessionRegistry::new()),
             store: ConfigStore::new(APP_NAME).ok(),
@@ -194,6 +244,10 @@ impl McpHost {
     pub fn start_if_enabled(&self) -> Result<(), String> {
         if self.settings.lock().unwrap().enabled {
             self.start()?;
+        } else {
+            // Drop a stale discovery file from an earlier run; otherwise the CLI
+            // would think MCP is still reachable.
+            remove_url_file();
         }
         Ok(())
     }
@@ -219,6 +273,7 @@ impl McpHost {
                 let _ = shutdown.send(());
             }
         }
+        remove_url_file();
         self.bridge.fail_pending();
     }
 
@@ -279,6 +334,7 @@ impl McpHost {
             shutdown: Some(shutdown_tx),
             service,
         });
+        write_url_file(&format!("http://127.0.0.1:{port}/mcp"));
         Ok(())
     }
 }

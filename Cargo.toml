@@ -4,6 +4,7 @@ members = [
     "packages/core",
     "packages/server",
     "packages/mcp",
+    "packages/cli",
     "src-tauri",
     "plugins/screenrecord",
 ]

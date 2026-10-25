@@ -105,15 +105,45 @@
 内置 **MCP（Model Context Protocol）** 服务端。接入 Claude Code、Cursor、Codex 或任意 MCP 客户端后，它可以读取题库、从文档出题、开始练习、判分、导出 CSV/XLSX、发布在线考试——而且你能在界面上看到实时变化。
 
 - **一套端点，三种形态** — 桌面端 `http://127.0.0.1:5274/mcp`，移动端 `http://<手机IP>:5274/mcp`，自托管 `http://<host>:3000/mcp`
-- **27 个工具** — 解析、出题、答题、判分、讲解、导出、联网搜索、题库/练习/错题管理、考试发布与界面跳转
-- **默认安全** — 自动生成 Bearer Token、桌面端仅监听回环、Origin 校验、绝不回传 API Key
+- **28 个工具** — 解析、出题、答题、判分、讲解、导出、联网搜索、题库/练习/错题管理、连续辅导（`next_question`）、考试发布与界面跳转
+- **`exameow` 命令行** — 内置 MCP 薄客户端（`status` / `start` / `tools` / `call`），只有 shell 的 Harness 也能用
+- **AI Skills** — 一个开关把 `SKILL.md` 装进 Claude Code / Agent Skills，让任意 Harness 学会出题、一题一题陪你刷
+- **本机免密** — 回环请求无需 Token；只有 LAN / 远程客户端才需要 Bearer Token
 
 ```bash
-claude mcp add --transport http exameow http://127.0.0.1:5274/mcp \
-  --header "Authorization: Bearer <token>"
+# 本机桌面端，无需 Token
+claude mcp add --transport http exameow http://127.0.0.1:5274/mcp
+
+# 或直接用内置 CLI
+exameow status
+exameow call generate_exam --json '{"source":{"path":"/abs/notes.pdf"},"params":{"count":10},"save_to_bank":true}'
 ```
 
-开启方式与完整工具清单：[MCP.md](MCP.md)。
+开启方式、完整工具清单、CLI 与 Skills：[MCP.md](MCP.md)。
+
+### 🧠 AI Skills — 让任意 Harness 学会出题与陪你刷题
+
+Exameow 附带一个 **Skill**（`skills/exameow`），教会 AI 代理通过 MCP 驱动正在运行的 App：从文档出题、存题库、开始练习、判分、讲解与讨论，并用 `next_question` 一题一题往下走。它通过内置 **MCP** 服务器工作，因此任何支持 Agent Skills 的 Harness 都能直接用。
+
+**方式一 · 命令行安装**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**方式二 · 让你的 Agent 自己装**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**方式三 · 桌面版设置**
+
+设置 → AI skills，会复制到 `~/.claude/skills/exameow` 和 `~/.agents/skills/exameow`。
+
+直接下载：[`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow)。
+
+**使用 DeepSeek Harness？** 再装一个配套的 [`exameow-dsh-habit`](https://github.com/heshengtao/exameow-dsh-habit)：在左侧栏「自动化任务」下方新增「每日学习」页面，显示每日目标、连续天数、XP、本周记录，并可在你选定的时间用 DSH 的定时任务把提醒发到指定会话。
 
 ### 🌐 跨平台与隐私 — 你的数据，你做主
 

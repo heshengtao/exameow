@@ -76,6 +76,17 @@ export function registerPracticeTools(): void {
 
   registerMcpTool('get_practice_state', () => sessionSummary())
 
+  registerMcpTool('next_question', () => {
+    const practice = usePracticeStore()
+    const session = practice.session
+    if (!session) {
+      throw new McpToolError('no_session', 'No practice session is active. Call start_practice first.')
+    }
+    const atEnd = session.currentIndex >= session.questions.length - 1
+    if (!atEnd) practice.nextQuestion()
+    return { at_end: atEnd, ...sessionSummary() }
+  })
+
   registerMcpTool('submit_answer', async (args) => {
     const practice = usePracticeStore()
     const session = practice.session

@@ -330,6 +330,13 @@ pub fn catalog() -> Vec<ToolDef> {
             destructive: false,
         },
         ToolDef {
+            name: "next_question",
+            description: "Advance the active practice session to the next question. Call this after the learner has discussed the current question. Returns at_end=true when the last question is already current.",
+            input_schema: object(json!({}), &[]),
+            read_only: false,
+            destructive: false,
+        },
+        ToolDef {
             name: "submit_answer",
             description: "Submit an answer for the current practice question. Choice/true-false/fill-blank are graded locally; short answers can be graded by AI with use_ai_judge=true.",
             input_schema: object(
@@ -446,6 +453,7 @@ pub const BRIDGE_TOOLS: &[&str] = &[
     "search_bank_questions",
     "start_practice",
     "get_practice_state",
+    "next_question",
     "submit_answer",
     "finish_practice",
     "list_wrong_questions",

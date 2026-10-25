@@ -98,6 +98,28 @@ Busca en los bancos de preguntas locales escribiendo o pegando una pregunta; la 
 - **Búsqueda en vivo con cámara** — Apunta la cámara a la pantalla/papel; la IA monitorea y busca preguntas en tiempo real
 - **Búsqueda por grabación de pantalla** — Dibuja un marco de captura en cualquier ventana; la IA monitorea e identifica preguntas con una superposición flotante (Windows / macOS / Linux / Android; no disponible en iOS debido a restricciones del sistema)
 
+### 🧠 AI Skills — Enseña a cualquier harness a generar y tutorizar
+
+Exameow incluye una **Skill** (`skills/exameow`) que enseña a un agente de IA a controlar la app en ejecución mediante MCP: generar preguntas desde un documento, guardar bancos, iniciar prácticas, corregir respuestas, explicar y conversar, y avanzar pregunta a pregunta con `next_question`. Funciona sobre el servidor **MCP** integrado, así que cualquier harness compatible con Agent Skills puede usarla.
+
+**Opción 1 · Instalar desde la línea de comandos**
+
+```bash
+npx skills add heshengtao/exameow
+```
+
+**Opción 2 · Pedir a tu agente que la instale**
+
+```
+Install this Skill: https://github.com/heshengtao/exameow
+```
+
+**Opción 3 · Desde la app de escritorio**
+
+Ajustes → AI skills la copia a `~/.claude/skills/exameow` y `~/.agents/skills/exameow`.
+
+Fuente directa: [`skills/exameow`](https://github.com/heshengtao/exameow/tree/main/skills/exameow).
+
 ### 🌐 Multiplataforma y privacidad — Tus datos, tu dispositivo
 
 Exameow se ejecuta en **Windows, macOS, Linux, Android y Web** (iOS mediante compilación propia). Despliega la versión web con **un solo comando Docker**. Todos los bancos de preguntas, registros de práctica e historial de errores se almacenan localmente: nada se sube a un servidor a menos que utilices el sistema de exámenes en línea. Las claves de API están cifradas con **AES-256-GCM** en escritorio. La interfaz detecta automáticamente el idioma del sistema con cambio rápido.
