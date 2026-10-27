@@ -155,6 +155,7 @@ Defined in `packages/shared/src/types.ts` (TS) and `packages/core/src/exam/types
 
 - **Browser `localStorage`**: question banks, practice sessions, wrong questions, config. Keys: `exameow-banks`, `exameow-practice-session`, `exameow-wrong`, `exameow-questions`, `exameow-sourcefile`.
 - **Native (Tauri/Axum)**: AI credentials encrypted with AES-256-GCM via `ConfigStore` in OS config dir (macOS `~/Library/Application Support/Exameow/`, Linux `~/.config/Exameow/`, Windows `%APPDATA%/Exameow/`).
+- **Mobile 配置目录**：Android/iOS 应用进程**没有** `HOME`/`TMPDIR` 环境变量，`ConfigStore` 无法从环境推导目录（v1.7.3 及更早会把配置写进 Android 的 `cache/` 临时目录，或直接报 `cannot determine config directory`，见 issue #12）。壳在 `setup()` 里调用 `app.path().app_config_dir()` 并通过 `exameow_core::config::set_config_root()` 注入（Android 实际为 `/data/user/0/<pkg>/Exameow`）。**不要**再用环境变量推导移动端配置路径。
 - **Server is stateless for AI** — 但自 v1.3 起内置在线考试 relay(SQLite),Docker 版完全自包含,不依赖演示站。反滥用:每 IP 每日发布限 20 场;≥3 个独立 IP 举报自动暂停;管理员页 `#/admin`(CF 密钥存 `wrangler secret`,本地备份于 gitignored 的 `.secrets/`)。
 
 ## Environment Variables

@@ -509,6 +509,31 @@ fn load_config() -> Result<Option<AIConfigData>, CommandError> {
         .map_err(|e| CommandError(format!("Config load error: {e}")))
 }
 
+/// Carries over the encrypted AI config left behind by builds that resolved the
+/// config dir from the environment. On Android that meant `$TMPDIR` (the app
+/// cache dir), so a working install may have its config there — see issue #12.
+/// Best effort: a failure only costs the user re-entering the key.
+#[cfg(mobile)]
+fn migrate_legacy_config(legacy: &std::path::Path, target: &std::path::Path) {
+    for name in ["config.enc", "key.bin", "mcp.json"] {
+        let from = legacy.join(name);
+        if !from.exists() {
+            continue;
+        }
+        let to = target.join(name);
+        if to.exists() {
+            continue;
+        }
+        if let Err(error) = std::fs::create_dir_all(target) {
+            eprintln!("[config] cannot create {}: {error}", target.display());
+            return;
+        }
+        if let Err(error) = std::fs::rename(&from, &to) {
+            eprintln!("[config] cannot migrate {name}: {error}");
+        }
+    }
+}
+
 #[tauri::command]
 fn mcp_info(host: tauri::State<'_, McpHost>) -> McpInfoDto {
     host.info()
@@ -889,8 +914,28 @@ pub fn run() {
         .plugin(tauri_plugin_process::init());
     builder
         .manage(AiRequestRegistry::new())
-        .manage(McpHost::new(env!("CARGO_PKG_VERSION")))
         .setup(|app| {
+            // Android/iOS app processes have no HOME/TMPDIR (issue #12), so core
+            // cannot derive a config directory from the environment. Hand it the
+            // platform sandbox path before anything touches saved config.
+            #[cfg(mobile)]
+            {
+                match app.path().app_config_dir() {
+                    Ok(dir) => {
+                        eprintln!("[config] app config root: {}", dir.display());
+                        if let Ok(cache) = app.path().app_cache_dir() {
+                            migrate_legacy_config(&cache.join(APP_NAME), &dir.join(APP_NAME));
+                        }
+                        exameow_core::config::set_config_root(dir);
+                    }
+                    Err(error) => eprintln!("[config] cannot resolve app config dir: {error}"),
+                }
+            }
+
+            // Built here rather than at builder time so its ConfigStore and
+            // mcp.json lookup run after the config root above is in place.
+            app.manage(McpHost::new(env!("CARGO_PKG_VERSION")));
+
             let config = &app.config().app.windows[0];
             let mut builder = tauri::WebviewWindowBuilder::from_config(app.handle(), config)?;
 

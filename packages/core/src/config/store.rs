@@ -4,7 +4,8 @@ use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SearchConfigData {
@@ -102,13 +103,45 @@ fn open_sealed(key: &[u8; 32], encoded: &str) -> Result<Vec<u8>, CoreError> {
     Ok(plaintext.to_vec())
 }
 
+/// Base directory override supplied by the host shell (see [`set_config_root`]).
+static CONFIG_ROOT: OnceLock<PathBuf> = OnceLock::new();
+
+/// Overrides the base directory [`config_dir`] joins the app name onto.
+///
+/// The Tauri shell calls this at startup with `app.path().app_config_dir()`,
+/// because Android and iOS app processes have neither `HOME` nor `TMPDIR` in
+/// their environment (Android only inherits `ANDROID_*` vars from zygote, and an
+/// app cannot derive its sandbox from those). Without the override the
+/// environment-based fallback in [`dirs_next`] finds nothing there and every
+/// config read/write fails with "cannot determine config directory".
+///
+/// Only the first call wins; later calls are ignored.
+pub fn set_config_root(root: impl Into<PathBuf>) {
+    let _ = CONFIG_ROOT.set(root.into());
+}
+
 /// Resolves (and creates) the per-app configuration directory.
 pub fn config_dir(app_name: &str) -> Result<PathBuf, CoreError> {
-    let base = dirs_next()
-        .ok_or_else(|| CoreError::Config("cannot determine config directory".to_string()))?;
+    let base = CONFIG_ROOT
+        .get()
+        .cloned()
+        .or_else(dirs_next)
+        .ok_or_else(|| {
+            CoreError::Config(
+                "cannot determine config directory (set HOME/XDG_CONFIG_HOME/APPDATA, \
+                 or call config::set_config_root)"
+                    .to_string(),
+            )
+        })?;
+    config_dir_in(&base, app_name)
+}
+
+/// Joins `app_name` onto `base`, creating it. Split out from [`config_dir`] so
+/// the directory-creation logic is testable without the process-wide root.
+fn config_dir_in(base: &Path, app_name: &str) -> Result<PathBuf, CoreError> {
     let app_dir = base.join(app_name);
     std::fs::create_dir_all(&app_dir)
-        .map_err(|e| CoreError::Config(format!("cannot create config dir: {e}")))?;
+        .map_err(|e| CoreError::Config(format!("cannot create config dir {app_dir:?}: {e}")))?;
     Ok(app_dir)
 }
 
@@ -189,6 +222,15 @@ mod tests {
     fn open_rejects_wrong_key() {
         let sealed = seal(&[7u8; 32], b"secret").unwrap();
         assert!(open_sealed(&[8u8; 32], &sealed).is_err());
+    }
+
+    #[test]
+    fn config_dir_in_creates_app_dir() {
+        let base = std::env::temp_dir().join(format!("exameow-cfg-{}", std::process::id()));
+        let app_dir = config_dir_in(&base, "Exameow").unwrap();
+        assert_eq!(app_dir, base.join("Exameow"));
+        assert!(app_dir.is_dir());
+        std::fs::remove_dir_all(&base).ok();
     }
 }
 
