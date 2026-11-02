@@ -11,8 +11,10 @@ import { fetchPages } from './fetch'
 import { chatStream, chatStreamWithTools, normalizeChatMessages } from './chat'
 import { parseFile } from './parser'
 import { generateXlsxBuffer, generateCsvContent } from './export'
+import { normalizeLocale } from './exportLabels'
 import { Question, ExamParams, AVAILABLE_CF_MODELS, AIRequestOptions, SearchProvider, FetchProvider, ChatToolConfig, ChatToolName, WebSearchResult, MAX_JSON_BODY_BYTES, MAX_JSON_EXPORT_BYTES, MAX_REQUEST_BYTES, MAX_UPLOAD_BYTES, MAX_DOC_TEXT_CHARS, MAX_STEM_CHARS, MAX_ANSWER_CHARS, MAX_PROMPT_CHARS, MAX_EXAM_PAYLOAD_BYTES } from './types'
 import { allowRequest, bodyTooLarge, clampText, originAllowed, readJsonCapped, sanitizeModel } from './guard'
+import { version as APP_VERSION } from '../package.json'
 
 type Bindings = {
   AI: Ai
@@ -551,7 +553,7 @@ app.get('/api/export', async (c) => {
     return c.json({ error: 'Invalid questions JSON' }, 400)
   }
 
-  const csvContent = generateCsvContent(questions, c.req.query('locale') ?? 'zh')
+  const csvContent = generateCsvContent(questions, normalizeLocale(c.req.query('locale')))
   return new Response(csvContent, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
@@ -571,7 +573,7 @@ app.post('/api/export/xlsx', async (c) => {
   // 兼容两种请求体:旧客户端发题目数组,新客户端发 { questions, locale }
   const body = parsed.value as unknown
   const questions = Array.isArray(body) ? body : (body as { questions?: unknown })?.questions
-  const locale = Array.isArray(body) ? 'zh' : ((body as { locale?: string })?.locale ?? 'zh')
+  const locale = normalizeLocale(Array.isArray(body) ? 'zh' : (body as { locale?: string })?.locale)
 
   if (!Array.isArray(questions)) {
     return c.json({ error: 'Expected array of questions' }, 400)
@@ -671,7 +673,7 @@ app.post('/api/exam/admin/code/:code/restore', (c) => {
 
 // GET /api/health - health check
 app.get('/api/health', (c) => {
-  return c.json({ status: 'ok', version: '1.6.2', runtime: 'cloudflare-worker' })
+  return c.json({ status: 'ok', version: APP_VERSION, runtime: 'cloudflare-worker' })
 })
 
 // SPA fallback: serve index.html for all non-API, non-asset routes

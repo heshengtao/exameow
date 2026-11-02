@@ -290,6 +290,20 @@ export const EXPORT_LABELS: Record<Locale, ExportLabels> = {
   },
 }
 
+/**
+ * 把外部传入的 locale 字符串收敛到受支持的 10 种语言之一。
+ * 未知值一律回退中文,保证老客户端/手写请求不会拿到空表头。
+ * 顺带兼容 `fr-FR`、`ru_RU`、`ZH-CN` 这类带地区或大小写变体的写法。
+ */
+export function normalizeLocale(raw: string | null | undefined): Locale {
+  if (!raw) return 'zh'
+  const key = raw.trim()
+  if (key in EXPORT_LABELS) return key as Locale
+  const primary = key.toLowerCase().split(/[-_]/)[0]
+  const hit = (Object.keys(EXPORT_LABELS) as Locale[]).find((l) => l.toLowerCase() === primary)
+  return hit ?? 'zh'
+}
+
 /** 完整 15 列表头:题干、题型、选项 A–H、正确答案、解析、学科、章节、难度 */
 export function exportHeaderRow(labels: ExportLabels): string[] {
   const h = labels.headers
