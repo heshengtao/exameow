@@ -13,6 +13,7 @@ Version `1.7.5` (kept in sync across root `package.json`, `src-tauri/Cargo.toml`
 - **版本号语义（semver）**：第一位 = 不兼容的大更新；第二位 = 新功能；第三位 = Bug 修复。
 - **Bump 版本时**：同步改 5 个文件（根 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`、`packages/cli/Cargo.toml`、`workers/package.json`）+ `Cargo.lock` 中 `name = "exameow"` 与 `name = "exameow-cli"` 条目（**只改这两个条目，千万别全局替换**——`cesu8` 等依赖锁版本也是 x.y.z，误改会导致全平台构建失败）。
 - **发布流程**：bump 提交 → 打 `v*` tag 推送触发 CI（desktop/mobile/docker 三条流水线）→ CI 生成的 GitHub Release **默认是草稿，必须发布（`gh release edit vX.Y.Z --draft=false`），否则 Tauri 更新器看不到 `latest.json`** → 用 `bash scripts/deploy-cf.sh` 顺便更新 Cloudflare 线上版。
+- **GitCode 发布包同步**：GitCode 的「仓库镜像」只同步分支/tag/提交，不同步 Release 附件。`.github/workflows/sync-gitcode-release.yml` 在 GitHub Release 正式发布（`release: published`）后，用 `scripts/sync-gitcode-release.mjs` 调 GitCode OpenAPI 建/更新同名 Release 并上传安装包（跳过 `latest.json` 和 `*.idsig`，按 Gitee 系列约 20 个附件/Release 的上限留余量），也可 `workflow_dispatch` 指定 tag 补同步。需配置 Secret `GITCODE_TOKEN`（gitcode.com/setting/token-classic，需仓库写权限）与 Variable `GITCODE_REPO`（默认与 GitHub 仓库同名）。GitHub 仍是唯一规范源，GitCode 只做只读镜像；`latest.json` / OTA 地址仍指向 GitHub。
 - **移动端 OTA 热更新**：`src-tauri/src/ota.rs` 自研实现（assets 替换 + 三态回滚 staged→booting→committed），仅 Android/iOS 生效，桌面端仍用官方 updater。CI 随 release 附加 `mobile-dist.tar.gz` + `mobile-ota.json`；App 查 `releases/latest/download/mobile-ota.json`。**若某版本前端依赖新增的原生能力（Rust 命令/插件），发版前必须把仓库根 `ota.json` 的 `minShell` 提高到能支持它的最低 APK 版本**，否则旧壳会热更到不兼容的前端，调新命令时报 `command xxx not found`（v1.3.5 真实事故：`explain_question` 新增但 minShell 滞留 1.3.0，旧壳热更后 AI 解析全挂；且已中招设备无法靠 OTA 自愈——minShell 只在下载决策时校验，必须重装新 APK）。纯前端修复无需动 `minShell`。**防忘**：mobile CI 首步跑 `scripts/check-ota-minshell.sh`，自动 diff 前端 `invoke()` 命令集与上一 tag 原生代码（`src-tauri/` + `plugins/`），发现新命令但 `minShell` 未提到 ≥ 当前版本则流水线直接失败。
 
 **章节功能发布提醒**：`auto_chapter` / `chapter_names` 依赖本次新增的 Rust 生成提示词能力。下次发布此功能时须升级次版本，并将 `ota.json` 的 `minShell` 提高到包含该能力的新壳版本；旧 1.5.0 壳会忽略这些参数，不能仅靠新命令检测覆盖此兼容性变化。
@@ -114,8 +115,8 @@ src-tauri/             Tauri app; src/lib.rs = all Tauri commands; tauri.conf.js
 skills/exameow/        Bundled Agent Skill (SKILL.md + references); install from README/repo, no in-app UI
 workers/               Cloudflare Worker; src/{index,ai,exam,parser,export,types,relay}.ts; wrangler.toml; migrations/ (D1)
                        relay.ts = exam publish/take relay (D1 EXAM_DB, cron cleanup; /api/exam/* routes)
-scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh, check-ota-minshell.sh, build-exameow-cli.sh
-.github/workflows/     release-desktop.yml / release-mobile.yml / release-docker.yml (v* tag 触发;Docker 推 Docker Hub `ailm32442/exameow`)
+scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh, check-ota-minshell.sh, build-exameow-cli.sh, sync-gitcode-release.mjs
+.github/workflows/     release-desktop.yml / release-mobile.yml / release-docker.yml (v* tag 触发;Docker 推 Docker Hub `ailm32442/exameow`) / sync-gitcode-release.yml (Release 发布后把附件同步到 GitCode)
 ```
 
 ## Commands
