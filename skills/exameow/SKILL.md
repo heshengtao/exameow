@@ -13,7 +13,8 @@ license: Apache-2.0
 
 - 桌面版 Exameow 需要在运行。走 CLI 时先 `exameow status` 确认，没开就 `exameow start`。
 - **如果本机没有 Exameow**：不要假设它一定存在。先看下文「没装 App：帮用户下载」，
-  可以帮用户打开 GitHub Releases，或在用户同意后把对应平台的安装包下到 `~/Downloads`。
+  可以帮用户打开 GitHub / GitCode 的 Releases，或在用户同意后把对应平台的安装包下到
+  `~/Downloads`（两个源都试，哪个能下用哪个）。
 - **本机回环调用不需要密钥**。MCP 地址是 `127.0.0.1` / `localhost` / `[::1]` 时，直接请求，
   不要 `Authorization` 头。只有 LAN（手机 / 另一台机器）才需要 `mcp.json` 里的 token。
 - 状态类工具（题库、练习、发布）需要 App 窗口或浏览器标签页**连着 bridge**：窗口被最小化、
@@ -147,12 +148,17 @@ ls -d /Applications/Exameow.app "$HOME/Applications/Exameow.app" 2>/dev/null || 
 # 配置目录（见下表）里的 cli-path / mcp-url
 ```
 
+两个下载源内容相同：GitHub 是源站，GitCode 是国内镜像（下载更快，但新版本发布后要等同步）：
+
+- GitHub：<https://github.com/heshengtao/exameow/releases/latest>
+- GitCode：<https://gitcode.com/heshengtao/exameow/releases/latest>
+
 如果确实没有，先问用户想「打开下载页自己选」还是「直接下载对应安装包」：
 
-- **打开浏览器**（推荐先给这个）：
-  - macOS：`open https://github.com/heshengtao/exameow/releases/latest`
-  - Windows：`start "" https://github.com/heshengtao/exameow/releases/latest`
-  - Linux：`xdg-open https://github.com/heshengtao/exameow/releases/latest`
+- **打开浏览器**（推荐先给这个）：国内网络给 GitCode，其它情况给 GitHub。
+  - macOS：`open <链接>`
+  - Windows：`start "" <链接>`
+  - Linux：`xdg-open <链接>`
 - **直接下载**：先确认系统 / 架构，再选资产名（版本号会变，用 `gh release view` 或
   Releases 页面确认）：
   - macOS Apple Silicon：`Exameow-v*-macos_arm64.dmg`
@@ -161,15 +167,39 @@ ls -d /Applications/Exameow.app "$HOME/Applications/Exameow.app" 2>/dev/null || 
   - Linux：`Exameow-v*-linux_amd64.AppImage` 或 `.deb`
   - Android：`Exameow-v*-android_arm64.apk`
 
-  例：
+  **两条路都要试**。两个地址只有域名不同，文件名完全一致：
+
+  ```text
+  https://github.com/heshengtao/exameow/releases/download/<tag>/<资产名>
+  https://gitcode.com/heshengtao/exameow/releases/download/<tag>/<资产名>
+  ```
+
+  - 顺序：国内网络先 GitCode，失败再 GitHub；海外或不确定就先 GitHub。
+  - GitCode 是发版后异步同步的，刚发布的版本可能还没有该文件；**404 / 超时不要报错，
+    直接换另一条**。
+  - 下载前先探测：`curl -sL -m 10 -r 0-0 -o /dev/null -w '%{http_code}' "<url>"`，
+    返回 200/206 才算存在。**不要用 `-I`（HEAD）**：GitCode 对 HEAD 会返回 401。
+  - `gh release download` 只走 GitHub；GitCode 只能用 `curl`。
+
+  例（macOS arm64，两条路自动回退）：
 
   ```bash
   mkdir -p "$HOME/Downloads"
-  gh release download --repo heshengtao/exameow --pattern 'Exameow-*-macos_arm64.dmg' --dir "$HOME/Downloads"
+  tag=$(gh release view --repo heshengtao/exameow --json tagName -q .tagName)
+  asset="Exameow-${tag}-macos_arm64.dmg"
+  for base in https://gitcode.com/heshengtao/exameow/releases/download \
+              https://github.com/heshengtao/exameow/releases/download; do
+    url="$base/$tag/$asset"
+    code=$(curl -sL -m 10 -r 0-0 -o /dev/null -w '%{http_code}' "$url" || true)
+    case "$code" in 200|206|302) curl -fL --retry 3 -o "$HOME/Downloads/$asset" "$url" && break ;; esac
+  done
   ```
 
-  没有 `gh` 时用 `curl -fL -o ...` 从 Releases 页面拿直链。下载完把**绝对路径**告诉用户，
-  让用户自己双击安装；不要替用户运行安装器、不要静默改系统设置。
+  Windows 没有 bash 时，用 `curl.exe -fL -o` 分别试上面两个地址即可；没有 `gh` 时，
+  `tag` 直接填 Releases 页面上的版本号（如 `v1.7.5`）。
+
+  下载完把**绝对路径**告诉用户，让用户自己双击安装；不要替用户运行安装器、
+  不要静默改系统设置。
 
 详细话术和平台判断见 `references/habit.md`。
 
@@ -208,6 +238,7 @@ ls -d /Applications/Exameow.app "$HOME/Applications/Exameow.app" 2>/dev/null || 
 ## 仓库与反馈
 
 - 仓库：<https://github.com/heshengtao/exameow>（Apache-2.0）。
+- 国内镜像：<https://gitcode.com/heshengtao/exameow>（代码与发布包同步，下载更快）。
 - **DSH 学习提醒插件**：<https://github.com/heshengtao/exameow-dsh-habit>（Apache-2.0）。
 - **安装本 Skill**：`npx skills add heshengtao/exameow`；或让 Agent 执行
   `Install this Skill: https://github.com/heshengtao/exameow`。
