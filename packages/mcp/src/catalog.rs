@@ -198,7 +198,8 @@ pub fn catalog() -> Vec<ToolDef> {
                 json!({
                     "questions": { "type": "array", "items": question_schema() },
                     "format": { "type": "string", "enum": ["csv", "xlsx"] },
-                    "save_path": { "type": "string", "description": "Absolute path; extension should match format" }
+                    "save_path": { "type": "string", "description": "Absolute path; extension should match format" },
+                    "locale": { "type": "string", "description": "Header/type-label language: zh, zh-TW, en, ja, ko, es, fr, de, ru, ar (default zh)" }
                 }),
                 &["questions", "format"],
             ),

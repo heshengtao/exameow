@@ -4,22 +4,7 @@ use std::io::{Cursor, Write};
 use zip::write::FileOptions;
 use zip::CompressionMethod;
 
-const XLSX_TYPE_MAP: &[(&str, &str)] = &[
-    ("single_choice", "单选题"),
-    ("multi_choice", "多选题"),
-    ("true_false", "判断题"),
-    ("fill_blank", "填空题"),
-    ("short_answer", "简答题"),
-];
-
-pub(super) fn to_chinese_type(qtype: &str) -> &str {
-    for (key, label) in XLSX_TYPE_MAP {
-        if qtype == *key {
-            return label;
-        }
-    }
-    "简答题"
-}
+use super::labels::{difficulty_index, difficulty_label, labels_for, type_index, type_label};
 
 struct SharedStringWriter {
     strings: Vec<String>,
@@ -175,31 +160,25 @@ impl SheetDataWriter {
     }
 }
 
-pub fn export_xlsx(questions: &[Question], path: &str) -> Result<(), CoreError> {
-    let data = generate_xlsx(questions)?;
+pub fn export_xlsx(questions: &[Question], path: &str, locale: &str) -> Result<(), CoreError> {
+    let data = generate_xlsx(questions, locale)?;
     std::fs::write(path, data)
         .map_err(|e| CoreError::Export(format!("cannot write file: {e}")))
 }
 
-pub fn export_xlsx_to_writer(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
-    generate_xlsx(questions)
+pub fn export_xlsx_to_writer(questions: &[Question], locale: &str) -> Result<Vec<u8>, CoreError> {
+    generate_xlsx(questions, locale)
 }
 
-fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
+fn generate_xlsx(questions: &[Question], locale: &str) -> Result<Vec<u8>, CoreError> {
+    let labels = labels_for(locale);
     let mut writer = SheetDataWriter::default();
 
-    // Row 1: Header
+    // Row 1: Header(本地化,带必填/勿删提示)
     writer.new_row();
-    writer.add_string_cell(0, "题干（必填）");
-    writer.add_string_cell(1, "题型 （必填）");
-    for i in 0..8 {
-        writer.add_string_cell(2 + i, &format!("选项 {}", (b'A' + i as u8) as char));
+    for (col, value) in labels.xlsx_header_row().iter().enumerate() {
+        writer.add_string_cell(col, value);
     }
-    writer.add_string_cell(10, "正确答案\n（必填）");
-    writer.add_string_cell(11, "解析\n（勿删）");
-    writer.add_string_cell(12, "学科");
-    writer.add_string_cell(13, "章节\n（勿删）");
-    writer.add_string_cell(14, "难度");
     writer.finish_row();
 
     for q in questions {
@@ -207,7 +186,7 @@ fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
 
         let stem = q.stem.trim();
         let qtype_str = q.qtype.to_string();
-        let qtype = to_chinese_type(&qtype_str);
+        let qtype = type_label(&labels, type_index(&qtype_str));
         let analysis = q.analysis.trim();
         let answer = q.answer.trim();
         let options: Vec<String> = q.options.iter().map(|o| o.trim().to_string()).collect();
@@ -245,7 +224,12 @@ fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
         writer.add_string_cell(11, if analysis.is_empty() { "" } else { analysis });
         writer.add_string_cell(12, q.subject.clone().unwrap_or_default().as_str());
         writer.add_string_cell(13, q.chapter.clone().unwrap_or_default().as_str());
-        writer.add_string_cell(14, &q.difficulty.as_ref().map(ToString::to_string).unwrap_or_default());
+        let difficulty = q
+            .difficulty
+            .as_ref()
+            .map(|d| difficulty_label(&labels, difficulty_index(&d.to_string())))
+            .unwrap_or_default();
+        writer.add_string_cell(14, difficulty);
 
         writer.finish_row();
     }

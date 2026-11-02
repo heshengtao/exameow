@@ -3,6 +3,8 @@ import { resolveAIOptions } from '@exameow/shared'
 import { consumeChatSse, type ChatStreamHandlers } from '@/utils/chatStream'
 import { fetchApiKeyOf, searchApiKeyOf } from '@/utils/searchConfig'
 import { AVAILABLE_CF_MODELS } from './cf-models'
+import { EXPORT_LABELS, exportHeaderRow, exportRow, exportXlsxHeaderRow } from '@/utils/exportLabels'
+import type { Locale } from '@/i18n/locales'
 
 export interface GenerateResult {
   questions: Question[]
@@ -47,33 +49,18 @@ export const cfApi = {
     return res.json()
   },
 
-  async exportCsv(questions: Question[], filename: string = 'exameow_questions.csv'): Promise<void> {
-    const csvContent = generateCsvContent(questions)
+  async exportCsv(questions: Question[], filename: string = 'exameow_questions.csv', locale: Locale = 'zh'): Promise<void> {
+    const csvContent = generateCsvContent(questions, locale)
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     downloadFile(url, filename)
   },
 
-  async exportXlsx(questions: Question[], filename: string = 'exameow_questions.xlsx'): Promise<void> {
+  async exportXlsx(questions: Question[], filename: string = 'exameow_questions.xlsx', locale: Locale = 'zh'): Promise<void> {
     const XLSX = await import('xlsx')
-    const data = questions.map((q) => ({
-      '题干（必填）': q.stem,
-      '题型 （必填）': typeLabel(q.type),
-      '选项 A': q.options[0] || '',
-      '选项 B': q.options[1] || '',
-      '选项 C': q.options[2] || '',
-      '选项 D': q.options[3] || '',
-      '选项 E': q.options[4] || '',
-      '选项 F': q.options[5] || '',
-      '选项 G': q.options[6] || '',
-      '选项 H': q.options[7] || '',
-      '正确答案': q.answer,
-      '解析': q.analysis,
-      '学科': q.subject || '',
-      '章节': q.chapter || '',
-      '难度': q.difficulty || '',
-    }))
-    const ws = XLSX.utils.json_to_sheet(data)
+    const labels = EXPORT_LABELS[locale] ?? EXPORT_LABELS.zh
+    const rows = questions.map((q) => exportRow(q, labels))
+    const ws = XLSX.utils.aoa_to_sheet([exportXlsxHeaderRow(labels), ...rows])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
     const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
@@ -236,43 +223,12 @@ export const cfApi = {
   },
 };
 
-export function generateCsvContent(questions: Question[]): string {
-  const typeLabels: Record<string, string> = {
-    single_choice: '单选题', multi_choice: '多选题',
-    true_false: '判断题', fill_blank: '填空题',
-    short_answer: '简答题',
-  }
-  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
-  const rows = questions.map((q) => [
-    q.stem,
-    typeLabels[q.type] || q.type,
-    q.options[0] || '',
-    q.options[1] || '',
-    q.options[2] || '',
-    q.options[3] || '',
-    q.options[4] || '',
-    q.options[5] || '',
-    q.options[6] || '',
-    q.options[7] || '',
-    q.answer,
-    q.analysis,
-    q.subject || '',
-    q.chapter || '',
-    q.difficulty || '',
-  ])
-  const csvRows = [headers, ...rows].map((r) =>
+export function generateCsvContent(questions: Question[], locale: Locale = 'zh'): string {
+  const labels = EXPORT_LABELS[locale] ?? EXPORT_LABELS.zh
+  const csvRows = [exportHeaderRow(labels), ...questions.map((q) => exportRow(q, labels))].map((r) =>
     r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','),
   )
   return '\uFEFF' + csvRows.join('\n')
-}
-
-function typeLabel(qtype: string): string {
-  const map: Record<string, string> = {
-    single_choice: '单选题', multi_choice: '多选题',
-    true_false: '判断题', fill_blank: '填空题',
-    short_answer: '简答题',
-  }
-  return map[qtype] || '简答题'
 }
 
 function downloadFile(url: string, filename: string): void {

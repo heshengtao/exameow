@@ -97,16 +97,16 @@ export const tauriApi = {
     }
   },
 
-  async exportCsv(questions: Question[], savePath: string): Promise<void> {
-    return invoke<void>('export_csv', { questionsJson: JSON.stringify(questions), savePath })
+  async exportCsv(questions: Question[], savePath: string, locale = 'zh'): Promise<void> {
+    return invoke<void>('export_csv', { questionsJson: JSON.stringify(questions), savePath, locale })
   },
 
-  async exportXlsx(questions: Question[], savePath: string): Promise<void> {
-    return invoke<void>('export_xlsx', { questionsJson: JSON.stringify(questions), savePath })
+  async exportXlsx(questions: Question[], savePath: string, locale = 'zh'): Promise<void> {
+    return invoke<void>('export_xlsx', { questionsJson: JSON.stringify(questions), savePath, locale })
   },
 
-  async exportXlsxData(questions: Question[]): Promise<string> {
-    return invoke<string>('export_xlsx_data', { questionsJson: JSON.stringify(questions) })
+  async exportXlsxData(questions: Question[], locale = 'zh'): Promise<string> {
+    return invoke<string>('export_xlsx_data', { questionsJson: JSON.stringify(questions), locale })
   },
 
   async writeFile(savePath: string, contentBase64: string): Promise<void> {

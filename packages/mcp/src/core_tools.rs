@@ -352,14 +352,15 @@ pub async fn call(source: &dyn AiConfigSource, name: &str, args: &Value) -> Resu
                     .ok_or_else(|| "questions is required".to_string())?,
             )?;
             let format = arg_str(args, "format").unwrap_or_else(|| "csv".to_string());
+            let locale = arg_str(args, "locale").unwrap_or_else(|| "zh".to_string());
             let (bytes, mime, filename) = match format.as_str() {
                 "csv" => {
                     let mut buf = Vec::new();
-                    export_csv_to_writer(&questions, &mut buf).map_err(|e| e.to_string())?;
+                    export_csv_to_writer(&questions, &mut buf, &locale).map_err(|e| e.to_string())?;
                     (buf, "text/csv", "exameow_questions.csv")
                 }
                 "xlsx" => (
-                    export_xlsx_to_writer(&questions).map_err(|e| e.to_string())?,
+                    export_xlsx_to_writer(&questions, &locale).map_err(|e| e.to_string())?,
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     "exameow_questions.xlsx",
                 ),

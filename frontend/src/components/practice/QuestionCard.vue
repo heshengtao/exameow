@@ -5,6 +5,7 @@ import { useI18nStore } from '@/stores/i18n'
 import type { Question, PracticeMode } from '@exameow/shared'
 import QuestionImages from '@/components/practice/QuestionImages.vue'
 import { mediaIds } from '@/utils/questionMedia'
+import { stripOptionLabel } from '@/utils/optionText'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -351,7 +352,7 @@ function getBadgeStyle(opt: string) {
             :style="getBadgeStyle(optionLabels[idx]!)"
           >{{ optionLabels[idx] }}</div>
           <div class="flex-1 min-w-0">
-            <span class="text-sm font-medium" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ opt }}</span>
+            <span class="text-sm font-medium" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ stripOptionLabel(opt) }}</span>
             <QuestionImages :ids="mediaIds(question.media, 'option', idx)" compact />
           </div>
           <CheckCircleIcon

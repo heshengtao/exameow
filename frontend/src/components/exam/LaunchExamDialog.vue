@@ -5,7 +5,7 @@ import { usePracticeStore } from '@/stores/practice'
 import { examLinkFor } from '@/api/relay'
 import ScheduleFields from '@/components/exam/ScheduleFields.vue'
 import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
-import { exportQuestionsToWord } from '@/utils/wordExport'
+import { saveWordDocuments } from '@/composables/useBankExport'
 import { QuestionType, type Question } from '@exameow/shared'
 import {
   EXAM_TYPE_ORDER,
@@ -47,6 +47,24 @@ const copied = ref('')
 const lastComposed = ref<Question[] | null>(null)
 
 const examLink = computed(() => examLinkFor(result.value?.code ?? ''))
+
+const downloadingWord = ref(false)
+
+async function handleDownloadWord(questions: Question[]) {
+  if (downloadingWord.value) return
+  downloadingWord.value = true
+  try {
+    await saveWordDocuments(
+      title.value.trim() || i18n.t('launchExamDefaultTitle'),
+      questions,
+      i18n.locale,
+    )
+  } catch (e: any) {
+    error.value = String(e?.message ?? e)
+  } finally {
+    downloadingWord.value = false
+  }
+}
 
 const banks = computed(() => practiceStore.banks)
 
@@ -191,9 +209,9 @@ async function copy(text: string, which: string) {
           <button
             class="btn-tonal"
             :disabled="totalSelected === 0"
-            @click="exportQuestionsToWord(title.trim() || '考试试卷', composeQuestions())"
+            @click="handleDownloadWord(composeQuestions())"
           >
-            下载 Word 试卷
+            {{ i18n.t('launchExamDownloadWord') }}
           </button>
           <button class="btn-filled" :disabled="publishing || totalSelected === 0" @click="handlePublish">
             {{ publishing ? i18n.t('pubPublishing') : i18n.t('pubConfirm') }}
@@ -223,9 +241,9 @@ async function copy(text: string, which: string) {
         <button
           v-if="lastComposed"
           class="btn-tonal w-full mt-2"
-          @click="exportQuestionsToWord(title.trim() || '考试试卷', lastComposed!)"
+          @click="handleDownloadWord(lastComposed!)"
         >
-          下载 Word 试卷(与本次发布完全一致)
+          {{ i18n.t('launchExamDownloadWordExact') }}
         </button>
       </template>
     </div>

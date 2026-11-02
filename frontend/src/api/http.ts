@@ -2,6 +2,8 @@ import type { AIConfig, AIRequestOptions, AnswerResult, ChatMessage, ChatToolOpt
 import { resolveAIOptions } from '@exameow/shared'
 import { consumeChatSse, type ChatStreamHandlers } from '@/utils/chatStream'
 import { fetchApiKeyOf, searchApiKeyOf } from '@/utils/searchConfig'
+import { EXPORT_LABELS, exportHeaderRow, exportRow } from '@/utils/exportLabels'
+import type { Locale } from '@/i18n/locales'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
@@ -46,8 +48,8 @@ export const httpApi = {
     return res.json()
   },
 
-  async exportCsv(questions: Question[], filename: string = 'exameow_questions.csv'): Promise<void> {
-    const csvContent = generateCsvContent(questions)
+  async exportCsv(questions: Question[], filename: string = 'exameow_questions.csv', locale: Locale = 'zh'): Promise<void> {
+    const csvContent = generateCsvContent(questions, locale)
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -57,11 +59,11 @@ export const httpApi = {
     URL.revokeObjectURL(url)
   },
 
-  async exportXlsx(questions: Question[], filename: string = 'exameow_questions.xlsx'): Promise<void> {
+  async exportXlsx(questions: Question[], filename: string = 'exameow_questions.xlsx', locale: Locale = 'zh'): Promise<void> {
     const res = await fetch(`${BASE_URL}/api/export/xlsx`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(questions),
+      body: JSON.stringify({ questions, locale }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
     const blob = await res.blob()
@@ -257,31 +259,9 @@ export const httpApi = {
   },
 };
 
-export function generateCsvContent(questions: Question[]): string {
-  const typeLabels: Record<string, string> = {
-    single_choice: '单选题', multi_choice: '多选题',
-    true_false: '判断题', fill_blank: '填空题',
-    short_answer: '简答题',
-  }
-  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
-  const rows = questions.map((q) => [
-    q.stem,
-    typeLabels[q.type] || q.type,
-    q.options[0] || '',
-    q.options[1] || '',
-    q.options[2] || '',
-    q.options[3] || '',
-    q.options[4] || '',
-    q.options[5] || '',
-    q.options[6] || '',
-    q.options[7] || '',
-    q.answer,
-    q.analysis,
-    q.subject || '',
-    q.chapter || '',
-    q.difficulty || '',
-  ])
-  const csvRows = [headers, ...rows].map((r) =>
+export function generateCsvContent(questions: Question[], locale: Locale = 'zh'): string {
+  const labels = EXPORT_LABELS[locale] ?? EXPORT_LABELS.zh
+  const csvRows = [exportHeaderRow(labels), ...questions.map((q) => exportRow(q, labels))].map((r) =>
     r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','),
   )
   return '\uFEFF' + csvRows.join('\n')

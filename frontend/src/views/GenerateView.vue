@@ -6,6 +6,7 @@ import { useI18nStore } from '@/stores/i18n'
 import FileUploader from '@/components/generate/FileUploader.vue'
 import ParamForm from '@/components/generate/ParamForm.vue'
 import QuestionTable from '@/components/preview/QuestionTable.vue'
+import { saveWordDocuments } from '@/composables/useBankExport'
 import { getFileInputs, fileInputsRef } from '@/stores/fileInput'
 import { api } from '@/api'
 import { generateCsvContent } from '@/api/http'
@@ -26,11 +27,15 @@ const exportSuccess = ref('')
 const exportFilePath = ref('')
 const exporting = ref(false)
 const exportingXlsx = ref(false)
+const exportingWord = ref(false)
 const showPublish = ref(false)
 const showJoin = ref(false)
 const showLaunch = ref(false)
 
 const baseFileName = computed(() => examStore.sourceFileName || 'exameow_questions')
+
+// 试卷标题:去掉源文件扩展名,用作 Word 文档标题与文件名前缀
+const paperTitle = computed(() => baseFileName.value.replace(/\.[^.\\/]+$/, '') || 'exameow_paper')
 
 const canGenerate = computed(() =>
   fileInputsRef.value.length > 0 && examStore.questionTypes.length > 0 && examStore.totalCount > 0 && configStore.configured && !examStore.generating,
@@ -50,6 +55,17 @@ async function handleGenerate() {
   try {
     await examStore.generate(inputs)
   } catch (_e) {}
+}
+
+async function handleExportWord() {
+  exportError.value = ''
+  exportSuccess.value = ''
+  exportingWord.value = true
+  try {
+    const files = await saveWordDocuments(paperTitle.value, examStore.questions, i18n.locale)
+    exportSuccess.value = i18n.t('previewExportSaved') + files.join('、')
+    exportFilePath.value = files[0] ?? ''
+  } catch (e: any) { exportError.value = e.message || String(e) } finally { exportingWord.value = false }
 }
 
 function handleNewBatch() { examStore.reset() }
@@ -88,7 +104,7 @@ async function handleExportCsv() {
   try {
     const defaultName = `${baseFileName.value}.csv`
     if (isTauri) {
-      await saveFile(defaultName, generateCsvContent(examStore.questions))
+      await saveFile(defaultName, generateCsvContent(examStore.questions, i18n.locale))
     } else {
       await api.exportCsv(examStore.questions, undefined, defaultName)
     }
@@ -215,6 +231,9 @@ async function handleShare() {
         <div class="flex flex-wrap gap-2">
           <button class="btn-tonal text-sm" :disabled="exporting" @click="handleExportCsv">
             <ArrowDownTrayIcon class="w-4 h-4" /> CSV
+          </button>
+          <button class="btn-tonal text-sm" :disabled="exportingWord" @click="handleExportWord">
+            <ArrowDownTrayIcon class="w-4 h-4" /> {{ exportingWord ? '...' : 'Word' }}
           </button>
           <button class="btn-filled text-sm" :disabled="exportingXlsx" @click="handleExportXlsx">
             <ArrowDownTrayIcon class="w-4 h-4" /> {{ exportingXlsx ? '...' : 'XLSX' }}

@@ -1,14 +1,4 @@
-const TYPE_MAP: Record<string, string> = {
-  single_choice: '单选题',
-  multi_choice: '多选题',
-  true_false: '判断题',
-  fill_blank: '填空题',
-  short_answer: '简答题',
-}
-
-function chineseType(qtype: string): string {
-  return TYPE_MAP[qtype] || '简答题'
-}
+import { EXPORT_LABELS, exportHeaderRow, exportRow, exportXlsxHeaderRow, type Locale } from './exportLabels'
 
 function answerLetter(answer: string, options: string[]): string {
   if (/^[A-H]$/.test(answer)) return answer
@@ -50,7 +40,8 @@ function colLetter(idx: number): string {
   return result.reverse().join('')
 }
 
-export function generateXlsxBuffer(questions: import('./types').Question[]): Uint8Array {
+export function generateXlsxBuffer(questions: import('./types').Question[], locale: Locale = 'zh'): Uint8Array {
+  const labels = EXPORT_LABELS[locale] ?? EXPORT_LABELS.zh
   const strings: Map<string, number> = new Map()
   const sst: string[] = []
 
@@ -76,24 +67,12 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
     sheetRows += `<row r="${rowNum}" spans="1:15">${cellsXml}</row>`
   }
 
-  const headers = [
-    { col: 0, value: '题干（必填）' },
-    { col: 1, value: '题型 （必填）' },
-    ...Array.from({ length: 8 }, (_, i) => ({
-      col: 2 + i,
-      value: `选项 ${String.fromCharCode(65 + i)}`,
-    })),
-    { col: 10, value: '正确答案\n（必填）' },
-    { col: 11, value: '解析\n（勿删）' },
-    { col: 12, value: '学科' },
-    { col: 13, value: '章节\n（勿删）' },
-    { col: 14, value: '难度' },
-  ]
+  const headers = exportXlsxHeaderRow(labels).map((value, i) => ({ col: i, value }))
   addRow(headers)
 
   for (const q of questions) {
     const stem = q.stem.trim()
-    const qtype = chineseType(q.type)
+    const qtype = labels.types[q.type] ?? q.type
     const analysis = q.analysis.trim()
     const answer = q.answer.trim()
     const options = q.options.map((o) => o.trim())
@@ -132,7 +111,7 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
     cells.push({ col: 11, value: analysis || '' })
     cells.push({ col: 12, value: q.subject || '' })
     cells.push({ col: 13, value: q.chapter || '' })
-    cells.push({ col: 14, value: q.difficulty || '' })
+    cells.push({ col: 14, value: q.difficulty ? (labels.difficulties[q.difficulty] ?? q.difficulty) : '' })
 
     addRow(cells)
   }
@@ -194,28 +173,9 @@ export function generateXlsxBuffer(questions: import('./types').Question[]): Uin
   return createZip(files)
 }
 
-export function generateCsvContent(questions: import('./types').Question[]): string {
-  const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
-
-  const rows = questions.map((q) => [
-    q.stem,
-    chineseType(q.type),
-    q.options[0] || '',
-    q.options[1] || '',
-    q.options[2] || '',
-    q.options[3] || '',
-    q.options[4] || '',
-    q.options[5] || '',
-    q.options[6] || '',
-    q.options[7] || '',
-    q.answer,
-    q.analysis,
-    q.subject || '',
-    q.chapter || '',
-    q.difficulty || '',
-  ])
-
-  const csvRows = [headers, ...rows].map((r) =>
+export function generateCsvContent(questions: import('./types').Question[], locale: Locale = 'zh'): string {
+  const labels = EXPORT_LABELS[locale] ?? EXPORT_LABELS.zh
+  const csvRows = [exportHeaderRow(labels), ...questions.map((q) => exportRow(q, labels))].map((r) =>
     r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')
   )
   return '\uFEFF' + csvRows.join('\n')

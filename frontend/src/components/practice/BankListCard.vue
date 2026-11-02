@@ -365,7 +365,7 @@ const hasExportMessage = computed(() => templateExportSuccess.value || templateE
                 :style="{ color: 'rgb(var(--md-on-surface))' }"
                 @click.stop="handleExportBank(bank, 'word')"
               >
-                Word 试卷+答案
+                {{ i18n.t('practiceExportWord') }}
               </button>
             </div>
           </Transition>

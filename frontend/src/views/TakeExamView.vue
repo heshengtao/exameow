@@ -5,6 +5,7 @@ import { useI18nStore } from '@/stores/i18n'
 import { fetchExam, submitExam, reportExam, RelayError, examMediaUrl } from '@/api/relay'
 import QuestionImages from '@/components/practice/QuestionImages.vue'
 import { allMediaIds, mediaIds } from '@/utils/questionMedia'
+import { stripOptionLabel } from '@/utils/optionText'
 import { useJoinedStore } from '@/stores/joined'
 import type { JoinedRecord } from '@/stores/joined'
 import ProgressBar from '@/components/practice/ProgressBar.vue'
@@ -416,7 +417,7 @@ onUnmounted(() => {
               :style="badgeStyle(currentQuestion.id, optionLabels[oi]!, isMulti(currentQuestion.type))"
             >{{ optionLabels[oi] }}</div>
             <div class="flex-1 min-w-0">
-              <span class="text-sm" style="color: rgb(var(--md-on-surface))">{{ opt }}</span>
+              <span class="text-sm" style="color: rgb(var(--md-on-surface))">{{ stripOptionLabel(opt) }}</span>
               <QuestionImages
                 :ids="mediaIds(currentQuestion.media, 'option', oi)"
                 compact

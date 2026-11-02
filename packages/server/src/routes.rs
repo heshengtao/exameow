@@ -38,6 +38,19 @@ pub struct GenerateResult {
 #[derive(Deserialize)]
 pub struct ExportQuery {
     pub questions: String,
+    /// 导出语言;缺省回落到中文(兼容旧客户端)
+    pub locale: Option<String>,
+}
+
+/// `/api/export/xlsx` 请求体:旧客户端直接发题目数组,新客户端发 `{questions, locale}`
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum ExportXlsxPayload {
+    Plain(Vec<Question>),
+    WithLocale {
+        questions: Vec<Question>,
+        locale: Option<String>,
+    },
 }
 
 fn ai_endpoint() -> String { std::env::var("AI_ENDPOINT").unwrap_or_default() }
@@ -191,8 +204,12 @@ pub async fn export_handler(
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid questions JSON: {e}")))?;
 
     let mut buf = vec![];
-    exameow_core::export::export_csv_to_writer(&questions, &mut buf)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    exameow_core::export::export_csv_to_writer(
+        &questions,
+        &mut buf,
+        params.locale.as_deref().unwrap_or("zh"),
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Response::builder()
         .header(header::CONTENT_TYPE, "text/csv; charset=utf-8")
@@ -205,9 +222,16 @@ pub async fn export_handler(
 }
 
 pub async fn export_xlsx_handler(
-    Json(questions): Json<Vec<Question>>,
+    Json(payload): Json<ExportXlsxPayload>,
 ) -> Result<Response, (StatusCode, String)> {
-    let data = exameow_core::export::export_xlsx_to_writer(&questions)
+    let (questions, locale) = match payload {
+        ExportXlsxPayload::Plain(q) => (q, "zh".to_string()),
+        ExportXlsxPayload::WithLocale { questions, locale } => {
+            (questions, locale.unwrap_or_else(|| "zh".to_string()))
+        }
+    };
+
+    let data = exameow_core::export::export_xlsx_to_writer(&questions, &locale)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Response::builder()

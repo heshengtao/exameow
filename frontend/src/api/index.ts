@@ -4,6 +4,7 @@ import type { ChatStreamHandlers } from '@/utils/chatStream'
 import { tauriApi, type GenerateResult as TauriGenerateResult } from './bridge'
 import { httpApi, type GenerateResult as HttpGenerateResult, type ServerConfigInfo } from './http'
 import { cfApi } from './cf'
+import { useI18nStore } from '@/stores/i18n'
 
 let _isTauri: boolean | null = null
 let _isCloudflare: boolean | null = null
@@ -166,13 +167,14 @@ export const api = {
     savePath?: string,
     filename?: string,
   ): Promise<void> {
+    const locale = useI18nStore().locale
     if (isTauri()) {
-      return tauriApi.exportCsv(questions, savePath!)
+      return tauriApi.exportCsv(questions, savePath!, locale)
     }
     if (isCloudflare()) {
-      return cfApi.exportCsv(questions, filename)
+      return cfApi.exportCsv(questions, filename, locale)
     }
-    return httpApi.exportCsv(questions, filename)
+    return httpApi.exportCsv(questions, filename, locale)
   },
 
   async exportXlsx(
@@ -180,19 +182,20 @@ export const api = {
     savePath?: string,
     filename?: string,
   ): Promise<void> {
+    const locale = useI18nStore().locale
     if (isTauri()) {
-      return tauriApi.exportXlsx(questions, savePath!)
+      return tauriApi.exportXlsx(questions, savePath!, locale)
     }
     if (isCloudflare()) {
-      return cfApi.exportXlsx(questions, filename)
+      return cfApi.exportXlsx(questions, filename, locale)
     }
-    return httpApi.exportXlsx(questions, filename)
+    return httpApi.exportXlsx(questions, filename, locale)
   },
 
   async exportXlsxData(
     questions: import('@exameow/shared').Question[],
   ): Promise<string> {
-    return tauriApi.exportXlsxData(questions)
+    return tauriApi.exportXlsxData(questions, useI18nStore().locale)
   },
 
   async saveConfig(config: AIConfig): Promise<void> {

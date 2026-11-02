@@ -396,26 +396,26 @@ fn parse_file_bytes(base64_data: String, file_ext: String) -> Result<String, Com
 }
 
 #[tauri::command]
-fn export_csv(questions_json: String, save_path: String) -> Result<(), CommandError> {
+fn export_csv(questions_json: String, save_path: String, locale: Option<String>) -> Result<(), CommandError> {
     let questions: Vec<Question> = serde_json::from_str(&questions_json)
         .map_err(|e| CommandError(format!("Invalid questions JSON: {e}")))?;
-    core_export_csv(&questions, &save_path)
+    core_export_csv(&questions, &save_path, locale.as_deref().unwrap_or("zh"))
         .map_err(|e| CommandError(format!("CSV export error: {e}")))
 }
 
 #[tauri::command]
-fn export_xlsx(questions_json: String, save_path: String) -> Result<(), CommandError> {
+fn export_xlsx(questions_json: String, save_path: String, locale: Option<String>) -> Result<(), CommandError> {
     let questions: Vec<Question> = serde_json::from_str(&questions_json)
         .map_err(|e| CommandError(format!("Invalid questions JSON: {e}")))?;
-    core_export_xlsx(&questions, &save_path)
+    core_export_xlsx(&questions, &save_path, locale.as_deref().unwrap_or("zh"))
         .map_err(|e| CommandError(format!("XLSX export error: {e}")))
 }
 
 #[tauri::command]
-fn export_xlsx_data(questions_json: String) -> Result<String, CommandError> {
+fn export_xlsx_data(questions_json: String, locale: Option<String>) -> Result<String, CommandError> {
     let questions: Vec<Question> = serde_json::from_str(&questions_json)
         .map_err(|e| CommandError(format!("Invalid questions JSON: {e}")))?;
-    let data = exameow_core::export::export_xlsx_to_writer(&questions)
+    let data = exameow_core::export::export_xlsx_to_writer(&questions, locale.as_deref().unwrap_or("zh"))
         .map_err(|e| CommandError(format!("Export XLSX error: {e}")))?;
     Ok(base64::engine::general_purpose::STANDARD.encode(&data))
 }

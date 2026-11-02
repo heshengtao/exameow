@@ -221,7 +221,7 @@ example `npx -y mcp-remote http://127.0.0.1:5274/mcp`, configured as the
 | `answer_question` | Answer one question with reasoning |
 | `judge_answer` | Grade a free-text answer against a reference |
 | `explain_question` | Tutor-style explanation, optionally grounded in web search |
-| `export_questions` | CSV/XLSX to a path or as base64 |
+| `export_questions` | CSV/XLSX to a path or as base64 (optional `locale` for headers/type labels) |
 | `web_search` | Search through the configured provider |
 | `fetch_page` | Extract readable text from a public URL |
 

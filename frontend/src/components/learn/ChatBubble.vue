@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { renderMarkdown } from '@/utils/markdown'
+import { stripOptionLabel } from '@/utils/optionText'
 import type { LearnMessage } from '@/stores/learn'
 import type { Question } from '@exameow/shared'
 import { SparklesIcon, UserIcon, AcademicCapIcon, GlobeAltIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
@@ -224,7 +225,7 @@ function badgeStyle(letter: string) {
               <span
                 class="text-sm flex-1 break-words"
                 :style="{ color: 'rgb(var(--md-on-surface))' }"
-              >{{ option }}</span>
+              >{{ stripOptionLabel(option) }}</span>
             </button>
 
             <button

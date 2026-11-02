@@ -6,6 +6,7 @@ import { useI18nStore } from '@/stores/i18n'
 import { api } from '@/api'
 import { generateCsvContent } from '@/api/http'
 import QuestionTable from '@/components/preview/QuestionTable.vue'
+import { saveWordDocuments } from '@/composables/useBankExport'
 import { ArrowLeftIcon, ArrowDownTrayIcon, DocumentTextIcon, CheckCircleIcon, ShareIcon } from '@heroicons/vue/24/outline'
 import { isAndroid } from '@/utils/platform'
 
@@ -18,12 +19,16 @@ const exportSuccess = ref('')
 const exportFilePath = ref('')
 const exporting = ref(false)
 const exportingXlsx = ref(false)
+const exportingWord = ref(false)
 
 const baseFileName = computed(() => {
   const name = examStore.sourceFileName
   if (name) return name
   return 'exameow_questions'
 })
+
+// 试卷标题:去掉源文件扩展名,用作 Word 文档标题与文件名前缀
+const paperTitle = computed(() => baseFileName.value.replace(/\.[^.\\/]+$/, '') || 'exameow_paper')
 
 async function saveFile(filename: string, content: string | Uint8Array): Promise<string | null> {
   try {
@@ -68,7 +73,7 @@ async function handleExport() {
   try {
     const defaultName = `${baseFileName.value}.csv`
     if (isTauri) {
-      const content = generateCsvContent(examStore.questions)
+      const content = generateCsvContent(examStore.questions, i18n.locale)
       await saveFile(defaultName, content)
     } else {
       await api.exportCsv(examStore.questions, undefined, defaultName)
@@ -90,6 +95,21 @@ async function handleExportXlsx() {
       await api.exportXlsx(examStore.questions, undefined, defaultName)
     }
   } catch (e: any) { exportError.value = e.message || String(e) } finally { exportingXlsx.value = false }
+}
+
+async function handleExportWord() {
+  exportError.value = ''
+  exportSuccess.value = ''
+  exportingWord.value = true
+  try {
+    const files = await saveWordDocuments(paperTitle.value, examStore.questions, i18n.locale)
+    exportSuccess.value = i18n.t('previewExportSaved') + files.join('、')
+    exportFilePath.value = files[0] ?? ''
+  } catch (e: any) {
+    exportError.value = e.message || String(e)
+  } finally {
+    exportingWord.value = false
+  }
 }
 
 function handleNewBatch() { examStore.reset(); router.push('/generate') }
@@ -127,6 +147,9 @@ function handleNewBatch() { examStore.reset(); router.push('/generate') }
           </button>
           <button class="btn-tonal text-sm" :disabled="exporting" @click="handleExport">
             <ArrowDownTrayIcon class="w-4 h-4" /> CSV
+          </button>
+          <button class="btn-tonal text-sm" :disabled="exportingWord" @click="handleExportWord">
+            <ArrowDownTrayIcon class="w-4 h-4" /> {{ exportingWord ? '...' : 'Word' }}
           </button>
           <button class="btn-filled text-sm" :disabled="exportingXlsx" @click="handleExportXlsx">
             <ArrowDownTrayIcon class="w-4 h-4" /> {{ exportingXlsx ? '...' : 'XLSX' }}

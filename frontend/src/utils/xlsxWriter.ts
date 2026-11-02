@@ -5,14 +5,8 @@ import {
   mediaColumnIndex,
 } from '@/utils/questionMedia'
 import { TEMPLATE_COPY, type TemplateHeaders } from '@/utils/templateSchema'
-
-const TYPE_MAP: Record<string, string> = {
-  single_choice: '单选题',
-  multi_choice: '多选题',
-  true_false: '判断题',
-  fill_blank: '填空题',
-  short_answer: '简答题',
-}
+import { EXPORT_LABELS } from '@/utils/exportLabels'
+import { createZip } from '@/utils/zip'
 
 const COLUMN_COUNT = LAST_MEDIA_COLUMN + 1
 const EMU_PER_PX = 9525
@@ -32,6 +26,10 @@ export interface XlsxBuildOptions {
   includeMediaColumns?: boolean
   /** Localized headers; defaults to Simplified Chinese. */
   headers?: TemplateHeaders
+  /** Localized question-type labels; defaults to Simplified Chinese. */
+  types?: Record<string, string>
+  /** Localized difficulty labels; defaults to the raw enum value. */
+  difficulties?: Record<string, string>
 }
 
 export interface XlsxBuildResult {
@@ -40,8 +38,8 @@ export interface XlsxBuildResult {
   imagesMissing: number
 }
 
-function chineseType(qtype: string): string {
-  return TYPE_MAP[qtype] || '简答题'
+function typeLabel(qtype: string, map: Record<string, string>): string {
+  return map[qtype] ?? map.short_answer ?? qtype
 }
 
 function answerLetter(answer: string, options: string[]): string {
@@ -170,6 +168,8 @@ export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {})
   }
 
   const headerCopy = options.headers ?? TEMPLATE_COPY.zh.headers
+  const typeCopy = options.types ?? EXPORT_LABELS.zh.types
+  const diffCopy = options.difficulties ?? EXPORT_LABELS.zh.difficulties
   const headers: { col: number; value: string }[] = [
     { col: 0, value: headerCopy.stem },
     { col: 1, value: headerCopy.type },
@@ -190,7 +190,7 @@ export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {})
 
   for (const q of questions) {
     const stem = q.stem.trim()
-    const qtype = chineseType(q.type)
+    const qtype = typeLabel(q.type, typeCopy)
     const analysis = q.analysis.trim()
     const answer = q.answer.trim()
     const options = q.options.map((o) => o.trim())
@@ -226,7 +226,7 @@ export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {})
     cells.push({ col: 11, value: analysis || '' })
     cells.push({ col: 12, value: q.subject || '' })
     cells.push({ col: 13, value: q.chapter || '' })
-    cells.push({ col: 14, value: q.difficulty || '' })
+    cells.push({ col: 14, value: q.difficulty ? (diffCopy[q.difficulty] ?? q.difficulty) : '' })
 
     let rowHeightPt = 0
     if (includeMedia) {
@@ -352,97 +352,3 @@ export function buildXlsx(questions: Question[], options: XlsxBuildOptions = {})
   return { buffer: createZip(files), imagesIncluded, imagesMissing }
 }
 
-function createZip(files: { name: string; data: Uint8Array }[]): Uint8Array {
-  const encoder = new TextEncoder()
-  const localHeaders: Uint8Array[] = []
-  const centralHeaders: Uint8Array[] = []
-  let centralSize = 0
-  let offset = 0
-
-  for (const file of files) {
-    const nameBytes = encoder.encode(file.name)
-    const crc = crc32(file.data)
-
-    const localHeader = new Uint8Array(30 + nameBytes.length)
-    const lv = new DataView(localHeader.buffer)
-    lv.setUint32(0, 0x04034b50, true)
-    lv.setUint16(4, 20, true)
-    lv.setUint16(6, 0x0800, true)
-    lv.setUint16(8, 0, true)
-    lv.setUint16(10, 0, true)
-    lv.setUint16(12, 0, true)
-    lv.setUint32(14, crc, true)
-    lv.setUint32(18, file.data.length, true)
-    lv.setUint32(22, file.data.length, true)
-    lv.setUint16(26, nameBytes.length, true)
-    lv.setUint16(28, 0, true)
-    localHeader.set(nameBytes, 30)
-
-    localHeaders.push(localHeader, file.data)
-
-    const centralHeader = new Uint8Array(46 + nameBytes.length)
-    const cv = new DataView(centralHeader.buffer)
-    cv.setUint32(0, 0x02014b50, true)
-    cv.setUint16(4, 20, true)
-    cv.setUint16(6, 20, true)
-    cv.setUint16(8, 0x0800, true)
-    cv.setUint16(10, 0, true)
-    cv.setUint16(12, 0, true)
-    cv.setUint16(14, 0, true)
-    cv.setUint32(16, crc, true)
-    cv.setUint32(20, file.data.length, true)
-    cv.setUint32(24, file.data.length, true)
-    cv.setUint16(28, nameBytes.length, true)
-    cv.setUint16(30, 0, true)
-    cv.setUint16(32, 0, true)
-    cv.setUint16(34, 0, true)
-    cv.setUint16(36, 0, true)
-    cv.setUint32(38, 0, true)
-    cv.setUint32(42, offset, true)
-    centralHeader.set(nameBytes, 46)
-
-    centralHeaders.push(centralHeader)
-    centralSize += centralHeader.length
-    offset += localHeader.length + file.data.length
-  }
-
-  const eocd = new Uint8Array(22)
-  const ev = new DataView(eocd.buffer)
-  ev.setUint32(0, 0x06054b50, true)
-  ev.setUint16(4, 0, true)
-  ev.setUint16(6, 0, true)
-  ev.setUint16(8, files.length, true)
-  ev.setUint16(10, files.length, true)
-  ev.setUint32(12, centralSize, true)
-  ev.setUint32(16, offset, true)
-  ev.setUint16(20, 0, true)
-
-  const totalSize =
-    localHeaders.reduce((acc, h) => acc + h.length, 0) +
-    centralHeaders.reduce((acc, h) => acc + h.length, 0) +
-    eocd.length
-
-  const result = new Uint8Array(totalSize)
-  let pos = 0
-  for (const h of localHeaders) {
-    result.set(h, pos)
-    pos += h.length
-  }
-  for (const h of centralHeaders) {
-    result.set(h, pos)
-    pos += h.length
-  }
-  result.set(eocd, pos)
-  return result
-}
-
-function crc32(data: Uint8Array): number {
-  let crc = 0xffffffff
-  for (let i = 0; i < data.length; i++) {
-    crc ^= data[i]!
-    for (let j = 0; j < 8; j++) {
-      crc = crc & 1 ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1
-    }
-  }
-  return (crc ^ 0xffffffff) >>> 0
-}

@@ -1,12 +1,14 @@
 import { api } from '@/api'
 import { generateCsvContent } from '@/api/http'
-import { exportBankToWord } from '@/utils/wordExport'
+import { buildWordFiles } from '@/utils/wordExport'
 import type { QuestionBank, Question } from '@exameow/shared'
 import { buildXlsx, type XlsxMedia } from '@/utils/xlsxWriter'
 import { getImage } from '@/utils/mediaStore'
 import { countQuestionImages, supportsLocalMedia } from '@/utils/capabilities'
 import { useI18nStore } from '@/stores/i18n'
+import type { Locale } from '@/i18n/locales'
 import { TEMPLATE_COPY } from '@/utils/templateSchema'
+import { EXPORT_LABELS } from '@/utils/exportLabels'
 
 export type BankExportFormat = 'csv' | 'xlsx' | 'word'
 
@@ -47,6 +49,38 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+/**
+ * 保存 Word 试卷(试题卷 + 答案卷)。
+ * 桌面端走原生落盘: Tauri 的 WebView 不处理 <a download> 的 Blob 下载,
+ * 直接触发浏览器下载在打包版里会静默失败。
+ */
+export async function saveWordDocuments(
+  title: string,
+  questions: Question[],
+  locale: Locale = useI18nStore().locale,
+): Promise<string[]> {
+  const files = buildWordFiles(title, questions, locale)
+
+  if (!isTauriPlatform()) {
+    for (const f of files) {
+      downloadBlob(
+        new Blob([f.bytes as unknown as BlobPart], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
+        f.filename,
+      )
+    }
+    return files.map((f) => f.filename)
+  }
+
+  const { tauriApi } = await import('@/api/bridge')
+  const saved: string[] = []
+  for (const f of files) {
+    saved.push(await tauriApi.saveToDownloads(f.filename, toBase64(f.bytes)))
+  }
+  return saved
+}
+
 async function loadBankMedia(questions: Question[]): Promise<Map<string, XlsxMedia>> {
   const media = new Map<string, XlsxMedia>()
   const uniqueIds = new Set<string>()
@@ -74,6 +108,7 @@ async function saveTauri(
   filename: string,
   questions: QuestionBank['questions'],
   format: 'csv' | 'xlsx',
+  locale: Locale,
 ): Promise<string | null> {
   try {
     const mod: any = await import('@tauri-apps/plugin-dialog')
@@ -92,7 +127,7 @@ async function saveTauri(
     // fall through to downloads fallback
   }
   const b64 = format === 'csv'
-    ? btoa(unescape(encodeURIComponent(generateCsvContent(questions))))
+    ? btoa(unescape(encodeURIComponent(generateCsvContent(questions, locale))))
     : await api.exportXlsxData(questions)
   const { tauriApi } = await import('@/api/bridge')
   return tauriApi.saveToDownloads(filename, b64)
@@ -125,9 +160,10 @@ async function saveXlsxWithMedia(filename: string, buffer: Uint8Array): Promise<
 }
 
 export async function exportBank(bank: QuestionBank, format: BankExportFormat): Promise<BankExportResult> {
+  const i18n = useI18nStore()
   if (format === 'word') {
     try {
-      const files = await exportBankToWord(bank)
+      const files = await saveWordDocuments(bank.name, bank.questions)
       return { ok: true, path: files.join('、') }
     } catch (e: any) {
       return { ok: false, error: String(e?.message ?? e) }
@@ -140,13 +176,14 @@ export async function exportBank(bank: QuestionBank, format: BankExportFormat): 
   try {
     if (format === 'xlsx' && supportsLocalMedia()) {
       const media = imageCount > 0 ? await loadBankMedia(bank.questions) : new Map<string, XlsxMedia>()
-      const i18n = useI18nStore()
       const built = buildXlsx(bank.questions, {
         media,
         // Always emit the image columns so exported banks match the template
         // and can be filled in with pictures later.
         includeMediaColumns: true,
         headers: TEMPLATE_COPY[i18n.locale].headers,
+        types: EXPORT_LABELS[i18n.locale].types,
+        difficulties: EXPORT_LABELS[i18n.locale].difficulties,
       })
       const path = await saveXlsxWithMedia(filename, built.buffer)
       if (path === null) return { ok: false, cancelled: true }
@@ -159,7 +196,7 @@ export async function exportBank(bank: QuestionBank, format: BankExportFormat): 
     }
 
     if (isTauriPlatform()) {
-      const path = await saveTauri(filename, bank.questions, format)
+      const path = await saveTauri(filename, bank.questions, format, i18n.locale)
       if (path === null) return { ok: false, cancelled: true }
       const omitted = format === 'csv' || (format === 'xlsx' && imageCount > 0) ? imageCount : undefined
       return { ok: true, path, imagesOmitted: omitted }

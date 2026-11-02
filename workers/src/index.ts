@@ -551,7 +551,7 @@ app.get('/api/export', async (c) => {
     return c.json({ error: 'Invalid questions JSON' }, 400)
   }
 
-  const csvContent = generateCsvContent(questions)
+  const csvContent = generateCsvContent(questions, c.req.query('locale') ?? 'zh')
   return new Response(csvContent, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
@@ -567,13 +567,17 @@ app.post('/api/export/xlsx', async (c) => {
   }
   const parsed = await readJsonCapped(c.req.raw, MAX_JSON_EXPORT_BYTES)
   if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status)
-  const questions = parsed.value
+
+  // 兼容两种请求体:旧客户端发题目数组,新客户端发 { questions, locale }
+  const body = parsed.value as unknown
+  const questions = Array.isArray(body) ? body : (body as { questions?: unknown })?.questions
+  const locale = Array.isArray(body) ? 'zh' : ((body as { locale?: string })?.locale ?? 'zh')
 
   if (!Array.isArray(questions)) {
     return c.json({ error: 'Expected array of questions' }, 400)
   }
 
-  const xlsxData = generateXlsxBuffer(questions as Question[])
+  const xlsxData = generateXlsxBuffer(questions as Question[], locale)
   return new Response(xlsxData, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
