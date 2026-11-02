@@ -27,3 +27,4 @@ release.keystore
 .agents/
 skills-lock.json
 scripts/cf-seo/
+.workbuddy-ai/
