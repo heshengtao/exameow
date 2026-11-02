@@ -30,7 +30,10 @@
  * release at roughly 20 attachments while v1.7.5 ships 21 files.
  */
 
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
+import http from 'node:http';
+import https from 'node:https';
 import { basename, join } from 'node:path';
 
 const API = (process.env.GITCODE_API || 'https://api.gitcode.com/api/v5').replace(/\/+$/, '');
@@ -43,7 +46,8 @@ const GH_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
 const DRY_RUN = process.env.DRY_RUN === '1';
 
 const API_TIMEOUT_MS = 60_000;
-const UPLOAD_TIMEOUT_MS = 15 * 60_000;
+const UPLOAD_IDLE_TIMEOUT_MS = 120_000;
+const UPLOAD_ATTEMPTS = 3;
 const CREATE_ATTEMPTS = 10;
 const CREATE_RETRY_MS = 30_000;
 
@@ -252,6 +256,64 @@ function uploadHeaders(headers) {
   return out;
 }
 
+/**
+ * PUT the file with node:http(s) instead of fetch: undici aborts any request
+ * whose response headers take longer than 5 minutes, which happens whenever the
+ * upload to GitCode's object storage is slower than ~100 KiB/s. A socket idle
+ * timeout is the right guard for uploads that legitimately take a long time.
+ */
+function putFile(url, headers, file, size) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const transport = target.protocol === 'https:' ? https : http;
+    const request = transport.request(
+      {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port || (target.protocol === 'https:' ? 443 : 80),
+        path: `${target.pathname}${target.search}`,
+        method: 'PUT',
+        headers: { ...headers, 'Content-Length': String(size) },
+      },
+      (response) => {
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('error', reject);
+        response.on('end', () =>
+          resolve({ status: response.statusCode || 0, body: Buffer.concat(chunks).toString() }),
+        );
+      },
+    );
+
+    request.setTimeout(UPLOAD_IDLE_TIMEOUT_MS, () => {
+      request.destroy(new Error(`no network activity for ${UPLOAD_IDLE_TIMEOUT_MS / 1000}s`));
+    });
+    request.on('error', reject);
+
+    const stream = createReadStream(file);
+    stream.on('error', (error) => {
+      request.destroy();
+      reject(error);
+    });
+    stream.pipe(request);
+  });
+}
+
+async function putFileWithRetries(url, headers, file, size, name) {
+  for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await putFile(url, headers, file, size);
+      if (response.status >= 200 && response.status < 300) return response;
+      throw new Error(`HTTP ${response.status}: ${short(response.body)}`);
+    } catch (error) {
+      if (attempt === UPLOAD_ATTEMPTS) throw new Error(`upload ${name} failed: ${error.message}`);
+      console.warn(`[asset] ${name} attempt ${attempt} failed (${error.message}), retrying in 10s`);
+      await sleep(10_000);
+    }
+  }
+  throw new Error('unreachable');
+}
+
 async function uploadAsset(file, remoteAssets) {
   const name = basename(file);
   const info = await stat(file);
@@ -283,19 +345,13 @@ async function uploadAsset(file, remoteAssets) {
     throw new Error(`GitCode returned an invalid upload descriptor for ${name}`);
   }
 
-  const data = await readFile(file);
-  console.log(`[asset] uploading ${name} (${info.size} bytes) …`);
-  const res = await fetch(descriptor.url, {
-    method: 'PUT',
-    headers: uploadHeaders(descriptor.headers),
-    body: data,
-    signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`upload ${name} failed: HTTP ${res.status} ${short(text)}`);
-  }
-  console.log(`[asset] ${name} uploaded`);
+  const target = new URL(descriptor.url);
+  console.log(`[asset] uploading ${name} (${info.size} bytes) to ${target.host} …`);
+  const startedAt = Date.now();
+  await putFileWithRetries(descriptor.url, uploadHeaders(descriptor.headers), file, info.size, name);
+  const seconds = Math.max((Date.now() - startedAt) / 1000, 0.1);
+  const mib = info.size / 1024 / 1024;
+  console.log(`[asset] ${name} uploaded in ${seconds.toFixed(1)}s (${(mib / seconds).toFixed(2)} MiB/s)`);
   return 'uploaded';
 }
 

@@ -32,7 +32,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 240
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       GH_REPO: ${{ github.repository }}
