@@ -135,13 +135,11 @@ ls -d /Applications/Exameow.app "$HOME/Applications/Exameow.app" 2>/dev/null || 
 
 ### 4.2 打开下载页（最稳）
 
-GitHub 与 GitCode 内容相同，国内优先 GitCode：
+- macOS：`open https://github.com/heshengtao/exameow/releases/latest`
+- Windows：`start "" https://github.com/heshengtao/exameow/releases/latest`
+- Linux：`xdg-open https://github.com/heshengtao/exameow/releases/latest`
 
-- macOS：`open https://gitcode.com/heshengtao/exameow/releases/latest`
-- Windows：`start "" https://gitcode.com/heshengtao/exameow/releases/latest`
-- Linux：`xdg-open https://gitcode.com/heshengtao/exameow/releases/latest`
-
-海外网络或 GitCode 打不开时，换 GitHub：
+也可以直接把链接贴给用户：
 <https://github.com/heshengtao/exameow/releases/latest>
 
 ### 4.3 直接下载（用户同意后）
@@ -164,19 +162,7 @@ uname -m
 | Linux arm64 | `Exameow-v*-linux_arm64.AppImage` 或 `.deb` |
 | Android arm64 | `Exameow-v*-android_arm64.apk` |
 
-两个源文件名完全一致，只有域名不同：
-
-```text
-https://github.com/heshengtao/exameow/releases/download/<tag>/<资产名>
-https://gitcode.com/heshengtao/exameow/releases/download/<tag>/<资产名>
-```
-
-GitHub 是源站、永远最全；GitCode 是发版后异步同步的镜像，刚发版时可能 404。
-**两条都试**：国内先 GitCode、失败回退 GitHub；海外或不确定先 GitHub。
-探测用 `curl -sL -m 10 -r 0-0 -o /dev/null -w '%{http_code}'`，返回 200/206 才算存在
-（GitCode 对 HEAD 返回 401，别用 `-I`）。
-
-有 GitHub CLI（只走 GitHub）：
+有 GitHub CLI：
 
 ```bash
 mkdir -p "$HOME/Downloads"
@@ -185,21 +171,12 @@ gh release download --repo heshengtao/exameow \
   --dir "$HOME/Downloads"
 ```
 
-没有 `gh`：两条路自动回退（把 `tag` / `asset` 换成实际值）：
+没有 `gh`：先查最新版本，再用 `curl`：
 
 ```bash
-mkdir -p "$HOME/Downloads"
-tag="v1.7.5"
-asset="Exameow-${tag}-macos_arm64.dmg"
-for base in https://gitcode.com/heshengtao/exameow/releases/download \
-            https://github.com/heshengtao/exameow/releases/download; do
-  url="$base/$tag/$asset"
-  code=$(curl -sL -m 10 -r 0-0 -o /dev/null -w '%{http_code}' "$url" || true)
-  case "$code" in 200|206|302) curl -fL --retry 3 -o "$HOME/Downloads/$asset" "$url" && break ;; esac
-done
+curl -fL -o "$HOME/Downloads/Exameow.dmg" \
+  "https://github.com/heshengtao/exameow/releases/latest/download/<资产名>"
 ```
-
-两条都 404 时，多半是 tag 或资产名写错，回 Releases 页面核对，不要反复重试。
 
 下载后：
 
