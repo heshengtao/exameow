@@ -91,9 +91,11 @@ export const tauriApi = {
       )
     } catch (e: any) {
       signal?.throwIfAborted()
-      const detail = `[DIAG] filePath type=${fpType} val=${fpVal} safePath=${safePath} | ${e?.message || e}`
-      console.error(detail)
-      throw new Error(detail)
+      const message = (e?.message || String(e) || 'generate_exam failed').trim()
+      // Keep the file-path context in the console for debugging, but surface the
+      // real backend/API error to the UI — release builds cannot open devtools.
+      console.error(`[DIAG] filePath type=${fpType} val=${fpVal} safePath=${safePath} | ${message}`)
+      throw new Error(message)
     }
   },
 

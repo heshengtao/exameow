@@ -19,6 +19,31 @@ const ALL_TYPES: QuestionType[] = [
   'short_answer' as QuestionType,
 ]
 
+/**
+ * One batch-level generation failure, kept so the UI can show the *real* error
+ * instead of only "retrying…". Intranet / self-hosted gateways usually fail with
+ * a 4xx/5xx explained only in the response body, which used to live in a
+ * `console.warn` that release builds cannot see.
+ */
+export interface GenerationFailure {
+  batch: number
+  total: number
+  message: string
+}
+
+const MAX_FAILURES = 5
+const MAX_ERROR_CHARS = 4000
+
+function errorText(error: unknown): string {
+  if (error instanceof Error) return (error.message || '').trim()
+  if (typeof error === 'string') return error.trim()
+  try {
+    return (JSON.stringify(error) || '').trim()
+  } catch {
+    return String(error)
+  }
+}
+
 export const useExamStore = defineStore('exam', () => {
   const questionTypes = ref<QuestionType[]>([])
   const typeCounts = reactive<Record<string, number>>(
@@ -35,6 +60,8 @@ export const useExamStore = defineStore('exam', () => {
   const error = ref<string | null>(null)
   const extraPrompt = ref('')
   const summary = ref<{ requested: number; generated: number; skipped: number } | null>(null)
+  const failureDetails = ref<GenerationFailure[]>([])
+  const lastFailure = ref('')
   const progress = ref({ current: 0, total: 0, message: '', phase: 'parsing' as ProgressPhase })
   let abortController: AbortController | null = null
   const generated = computed(() => questions.value.length > 0)
@@ -78,6 +105,20 @@ export const useExamStore = defineStore('exam', () => {
     const totalBatches = batches.length
     for (const b of batches) b.batch_total = totalBatches
     return batches
+  }
+
+  /** Remember why a batch gave up, so the failure is visible in the UI (and copyable). */
+  function recordFailure(batch: ExamParams, cause: unknown) {
+    const message = errorText(cause).slice(0, MAX_ERROR_CHARS)
+    if (!message) return
+    lastFailure.value = message
+    const batchNo = batch.batch_index ?? 1
+    const total = batch.batch_total || 1
+    const duplicate = failureDetails.value.some(
+      f => f.message === message && f.batch === batchNo && f.total === total,
+    )
+    if (duplicate || failureDetails.value.length >= MAX_FAILURES) return
+    failureDetails.value.push({ batch: batchNo, total, message })
   }
 
   function loadCachedQuestions(): Question[] {
@@ -301,6 +342,8 @@ export const useExamStore = defineStore('exam', () => {
     progress.value = { current: 0, total: 0, message: i18n.t('genProgressParsing'), phase: 'parsing' }
     questions.value = []
     summary.value = null
+    failureDetails.value = []
+    lastFailure.value = ''
     sourceFileName.value = extractFileName(inputs)
     abortController = new AbortController()
     const signal = abortController.signal
@@ -365,14 +408,19 @@ export const useExamStore = defineStore('exam', () => {
           return tagQuestions(result.questions, batch.text ?? '', sourceFileName.value, subject.value, topicFilter.value, requestedDifficulty, batch.auto_chapter)
         }
         try {
-          return await exec()
+          const result = await exec()
+          lastFailure.value = ''
+          return result
         } catch (e: any) {
           if (e?.name === 'AbortError' || signal.aborted) throw e
+          lastFailure.value = errorText(e).slice(0, MAX_ERROR_CHARS)
           progress.value = {
             ...progress.value,
             message: i18n.t('genRetrying', { current: batch.batch_index ?? 0, total: batch.batch_total ?? 1 }),
           }
-          return await exec()
+          const retried = await exec()
+          lastFailure.value = ''
+          return retried
         }
       }
 
@@ -398,6 +446,7 @@ export const useExamStore = defineStore('exam', () => {
             return 0
           }
           if (depth >= 3 || expected <= 1 || textLen < 1500) {
+            recordFailure(batch, e)
             console.warn(`[Exameow] give up batch ${batch.batch_index}: ${e}`)
             return 0
           }
@@ -446,6 +495,7 @@ export const useExamStore = defineStore('exam', () => {
           generated += await tryGenerate(batch)
         } catch (e: any) {
           if (e?.name === 'AbortError' || signal.aborted) throw e
+          recordFailure(batch, e)
           console.warn(`[Exameow] batch ${batch.batch_index} unexpected failure:`, e)
         }
       }
@@ -482,6 +532,8 @@ export const useExamStore = defineStore('exam', () => {
     subject.value = ''
     extraPrompt.value = ''
     summary.value = null
+    failureDetails.value = []
+    lastFailure.value = ''
     try { localStorage.removeItem('exameow-questions'); localStorage.removeItem('exameow-sourcefile') } catch {}
   }
 
@@ -489,6 +541,6 @@ export const useExamStore = defineStore('exam', () => {
     questionTypes, typeCounts, totalCount,
     difficulty, language, topicFilter, autoChapter, subject, questions, generating, generated,
     sourceFileName, error, progress, getParams, generate, cancelGeneration, reset,
-    extraPrompt, summary,
+    extraPrompt, summary, failureDetails, lastFailure,
   }
 })

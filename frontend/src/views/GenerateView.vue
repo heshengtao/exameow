@@ -49,6 +49,44 @@ const progressPercent = computed(() => {
 
 const isBatched = computed(() => examStore.progress.total > 0)
 
+const detailsCopied = ref(false)
+const appVersion = import.meta.env.VITE_APP_VERSION || ''
+
+const inlineFailureReason = computed(() => {
+  const text = examStore.lastFailure.trim()
+  if (!text) return ''
+  return text.length > 400 ? `${text.slice(0, 400)}…` : text
+})
+
+const failureDump = computed(() =>
+  examStore.failureDetails
+    .map((f) => `[${f.batch}/${f.total}] ${f.message}`)
+    .join('\n\n'),
+)
+
+const hasFailures = computed(() => examStore.failureDetails.length > 0)
+
+async function copyFailureDetails() {
+  if (!hasFailures.value) return
+  const platform = isTauri ? 'Tauri' : import.meta.env.VITE_CLOUDFLARE === 'true' ? 'Cloudflare' : 'Web'
+  const config = configStore.getConfig()
+  const header = [
+    `Exameow v${appVersion} · ${platform}`,
+    `endpoint: ${config.endpoint || '(server env)'}`,
+    `model: ${config.model || '(empty)'}`,
+    `ua: ${navigator.userAgent}`,
+    '',
+    '',
+  ].join('\n')
+  try {
+    await navigator.clipboard.writeText(header + failureDump.value)
+    detailsCopied.value = true
+    setTimeout(() => { detailsCopied.value = false }, 2000)
+  } catch {
+    detailsCopied.value = false
+  }
+}
+
 async function handleGenerate() {
   const inputs = getFileInputs()
   if (inputs.length === 0) return
@@ -170,6 +208,13 @@ async function handleShare() {
         <div v-if="isBatched" class="mt-2 text-body-sm" style="color: rgb(var(--md-on-surface-variant))">
           {{ i18n.t('genProgressGeneratingBatch', { current: examStore.progress.current, total: examStore.progress.total }) }}
         </div>
+        <p
+          v-if="inlineFailureReason"
+          class="mt-2 text-body-sm break-all whitespace-pre-wrap"
+          style="color: rgb(var(--md-error))"
+        >
+          {{ i18n.t('genErrorReason') }}: {{ inlineFailureReason }}
+        </p>
         <button
           class="btn-outlined mt-3 text-sm !h-10"
           @click="examStore.cancelGeneration()"
@@ -182,7 +227,7 @@ async function handleShare() {
     <!-- Error -->
     <Transition name="scale">
       <div v-if="examStore.error && !examStore.generating" class="card-filled p-4 mb-6 border" :style="{ backgroundColor: 'rgba(var(--md-error) / 0.08)', borderColor: 'rgb(var(--md-error))' }">
-        <p class="text-body-md" style="color: rgb(var(--md-error))">{{ examStore.error }}</p>
+        <p class="text-body-md break-all whitespace-pre-wrap" style="color: rgb(var(--md-error))">{{ examStore.error }}</p>
       </div>
     </Transition>
 
@@ -193,10 +238,28 @@ async function handleShare() {
         class="card-filled p-4 mb-6 border"
         style="background-color: rgba(var(--md-error) / 0.06); border-color: rgb(var(--md-error))"
       >
-        <p class="text-body-md font-semibold mb-1" style="color: rgb(var(--md-error))">{{ i18n.t('genShortfallTitle') }}</p>
-        <p class="text-body-md" style="color: rgb(var(--md-on-surface-variant))">
-          {{ i18n.t('genShortfallBody', { generated: examStore.summary.generated, skipped: examStore.summary.skipped }) }}
+        <p class="text-body-md font-semibold mb-1" style="color: rgb(var(--md-error))">
+          {{ examStore.summary.generated === 0 ? i18n.t('genAllFailedTitle') : i18n.t('genShortfallTitle') }}
         </p>
+        <p class="text-body-md" style="color: rgb(var(--md-on-surface-variant))">
+          <template v-if="examStore.summary.generated === 0">{{ i18n.t('genAllFailedBody') }}</template>
+          <template v-else>{{ i18n.t('genShortfallBody', { generated: examStore.summary.generated, skipped: examStore.summary.skipped }) }}</template>
+        </p>
+        <details v-if="hasFailures" class="mt-3" :open="examStore.summary.generated === 0">
+          <summary class="cursor-pointer text-body-sm font-semibold select-none" style="color: rgb(var(--md-error))">
+            {{ i18n.t('genErrorDetailsTitle') }}
+          </summary>
+          <p class="mt-2 text-body-sm" style="color: rgb(var(--md-on-surface-variant))">
+            {{ i18n.t('genErrorDetailsHint') }}
+          </p>
+          <pre
+            class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl p-3 text-xs font-mono"
+            style="background-color: rgb(var(--md-surface-container-high)); color: rgb(var(--md-on-surface))"
+          >{{ failureDump }}</pre>
+          <button class="btn-tonal text-sm mt-2 !h-9" @click="copyFailureDetails">
+            {{ detailsCopied ? i18n.t('genDetailsCopied') : i18n.t('genCopyDetails') }}
+          </button>
+        </details>
       </div>
     </Transition>
 
