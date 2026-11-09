@@ -6,7 +6,7 @@ Architecture reference for AI agents working on **Exameow**. Read this before ex
 
 AI-powered exam question generator. Users upload study materials (PDF, DOCX, XLSX, PPTX, EPUB, ODT, TXT, CSV, HTML) and get exam questions generated via any OpenAI-compatible API. Includes a built-in practice/quiz mode with wrong-question tracking. Exports to XLSX/CSV.
 
-Version `1.7.6` (kept in sync across root `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `workers/package.json`).
+Version `1.7.7` (kept in sync across root `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `workers/package.json`).
 
 ## Release Rules
 
@@ -191,6 +191,6 @@ Defined in `packages/shared/src/types.ts` (TS) and `packages/core/src/exam/types
 - **AI-authored Markdown**: render every AI text surface (chat replies, stems, options, answers, analyses, search results) with `components/common/MarkdownText.vue` → `utils/markdown.ts` (`markdown-it` + KaTeX/mhchem + highlight.js + mark/sub/sup plugins, sanitized by DOMPurify). Math is replaced by placeholders before sanitizing and injected afterwards: DOMPurify's MathML hardening would strip KaTeX's `<semantics>/<annotation>`. `streaming` mode intentionally skips math and diagrams so partial TeX/Mermaid never flashes errors. Mermaid (`utils/mermaid.ts`) is lazy-loaded per diagram type and rendered after sanitizing; it must stay on `securityLevel: 'strict'`.
 - **Hash-based SPA routing** (`createWebHashHistory`); CF Worker + Axum both serve SPA fallback.
 - **Material You theme** in `frontend/tailwind.config.js` (full tonal palette + custom animations).
-- **Scratchpad**: `components/common/ScratchPad.vue` is a canvas overlay used by `PracticeView` (floating FAB) and `LearnView` (header button); drawings are keyed per question in module memory (not persisted).
+- **Scratchpad**: `components/common/ScratchPad.vue` is a canvas overlay used by `PracticeView` (floating FAB) and `LearnView` (composer chip); drawings are keyed per question in module memory (not persisted).
 - Docs: `README.md` (EN), `README_zh.md` (ZH). `frontend/README.md` is boilerplate.
 - CI releases on `v*` tags: Tauri (linux/windows/macOS, x86_64+aarch64) + Docker to Docker Hub (`<DOCKERHUB_USERNAME>/exameow`).
