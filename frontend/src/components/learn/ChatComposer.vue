@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { isMobileDevice } from '@/utils/platform'
-import { ArrowUpIcon, GlobeAltIcon, SparklesIcon, StopIcon } from '@heroicons/vue/24/outline'
+import { ArrowUpIcon, GlobeAltIcon, PencilSquareIcon, SparklesIcon, StopIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
   streaming: boolean
@@ -17,6 +17,7 @@ const emit = defineEmits<{
   (e: 'stop'): void
   (e: 'toggle-search'): void
   (e: 'toggle-thinking'): void
+  (e: 'open-scratch'): void
 }>()
 
 const i18n = useI18nStore()
@@ -99,6 +100,16 @@ function onKeydown(e: KeyboardEvent) {
           <GlobeAltIcon class="w-4 h-4" />
           <span>{{ i18n.t('learnWebSearch') }}</span>
         </button>
+        <button
+          type="button"
+          class="learn-composer__toggle"
+          :title="i18n.t('scratchpadOpen')"
+          :aria-label="i18n.t('scratchpadOpen')"
+          @click="emit('open-scratch')"
+        >
+          <PencilSquareIcon class="w-4 h-4" />
+          <span>{{ i18n.t('scratchpadTitle') }}</span>
+        </button>
       </div>
       <div class="learn-composer__end">
         <span class="learn-composer__hint">{{ i18n.t('learnComposerHint') }}</span>
@@ -172,13 +183,17 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+  row-gap: 6px;
 }
 
 .learn-composer__toggles {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  row-gap: 6px;
   min-width: 0;
 }
 
@@ -220,6 +235,22 @@ function onKeydown(e: KeyboardEvent) {
 .learn-composer__toggle:focus-visible {
   outline: 2px solid rgb(var(--md-primary));
   outline-offset: 2px;
+}
+
+/* Keep the three chips on one row on narrow phones. */
+@media (max-width: 420px) {
+  .learn-composer__toggle {
+    padding: 0 9px;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .learn-composer__toggle :deep(svg) {
+    width: 14px;
+    height: 14px;
+  }
+  .learn-composer__bar {
+    gap: 6px;
+  }
 }
 
 .learn-composer__end {

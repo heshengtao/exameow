@@ -15,6 +15,7 @@ import {
   SparklesIcon,
 } from '@heroicons/vue/24/outline'
 import SearchHitCard from '@/components/search/SearchHitCard.vue'
+import MarkdownText from '@/components/common/MarkdownText.vue'
 import SearchSettingsPanel from '@/components/search/SearchSettingsPanel.vue'
 
 const query = defineModel<string>('query', { default: '' })
@@ -204,11 +205,11 @@ const hasBanks = computed(() => practiceStore.banks.length > 0)
       <div v-else-if="aiResult" class="space-y-3">
         <div>
           <div class="text-label-lg mb-1" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('tableAnswer') }}</div>
-          <p class="text-body-lg whitespace-pre-wrap">{{ aiResult.answer }}</p>
+          <div class="text-body-lg"><MarkdownText :text="aiResult.answer" /></div>
         </div>
         <div>
           <div class="text-label-lg mb-1" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('tableAnalysis') }}</div>
-          <p class="text-body-md whitespace-pre-wrap" style="color: rgb(var(--md-on-surface-variant))">{{ aiResult.analysis }}</p>
+          <div class="text-body-md" style="color: rgb(var(--md-on-surface-variant))"><MarkdownText :text="aiResult.analysis" /></div>
         </div>
       </div>
     </div>

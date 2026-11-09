@@ -7,6 +7,7 @@ import { usePracticeStore } from '@/stores/practice'
 import { useLearnStore } from '@/stores/learn'
 import ChatBubble from '@/components/learn/ChatBubble.vue'
 import ChatComposer from '@/components/learn/ChatComposer.vue'
+import ScratchPad from '@/components/common/ScratchPad.vue'
 import { ArrowLeftIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon, GlobeAltIcon, QueueListIcon, SparklesIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -16,6 +17,12 @@ const practiceStore = usePracticeStore()
 const learn = useLearnStore()
 
 const listEl = ref<HTMLElement | null>(null)
+const scratchpad = ref<InstanceType<typeof ScratchPad> | null>(null)
+const scratchKey = computed(() => {
+  const question = learn.currentQuestion
+  const questionKey = question ? question.id.replace(/-s\d+$/, '') : learn.currentIndex
+  return `learn:${learn.bankId ?? 'none'}:${questionKey}`
+})
 const showLlmDialog = ref(false)
 const showSearchDialog = ref(false)
 const SEARCH_TIP_KEY = 'exameow-learn-search-tip-dismissed'
@@ -215,8 +222,11 @@ function dismissSearchTip() {
         @stop="learn.stop()"
         @toggle-search="toggleSearch"
         @toggle-thinking="toggleThinking"
+        @open-scratch="scratchpad?.open()"
       />
     </div>
+
+    <ScratchPad ref="scratchpad" :storage-key="scratchKey" />
 
     <Transition name="scale">
       <div v-if="showLlmDialog" class="scrim flex items-center justify-center p-4">

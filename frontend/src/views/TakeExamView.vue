@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import { fetchExam, submitExam, reportExam, RelayError, examMediaUrl } from '@/api/relay'
 import QuestionImages from '@/components/practice/QuestionImages.vue'
+import MarkdownText from '@/components/common/MarkdownText.vue'
 import { allMediaIds, mediaIds } from '@/utils/questionMedia'
 import { stripOptionLabel } from '@/utils/optionText'
 import { useJoinedStore } from '@/stores/joined'
@@ -397,7 +398,9 @@ onUnmounted(() => {
           >{{ typeLabel(currentQuestion.type) }}</span>
         </div>
 
-        <div class="text-body-lg mb-5" style="color: rgb(var(--md-on-surface))">{{ currentQuestion.stem }}</div>
+        <div class="text-body-lg mb-5" style="color: rgb(var(--md-on-surface))">
+          <MarkdownText :text="currentQuestion.stem" />
+        </div>
 
         <QuestionImages
           :ids="mediaIds(currentQuestion.media, 'stem')"
@@ -417,7 +420,7 @@ onUnmounted(() => {
               :style="badgeStyle(currentQuestion.id, optionLabels[oi]!, isMulti(currentQuestion.type))"
             >{{ optionLabels[oi] }}</div>
             <div class="flex-1 min-w-0">
-              <span class="text-sm" style="color: rgb(var(--md-on-surface))">{{ stripOptionLabel(opt) }}</span>
+              <MarkdownText inline :text="stripOptionLabel(opt)" class="text-sm" style="color: rgb(var(--md-on-surface))" />
               <QuestionImages
                 :ids="mediaIds(currentQuestion.media, 'option', oi)"
                 compact
@@ -506,7 +509,9 @@ onUnmounted(() => {
                 : { backgroundColor: 'rgb(var(--md-primary-container))', color: 'rgb(var(--md-on-primary-container))' }"
             >{{ i + 1 }}</span>
             <div class="flex-1 min-w-0">
-              <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">{{ g.question.stem }}</div>
+              <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">
+                <MarkdownText :text="g.question.stem" />
+              </div>
               <QuestionImages
                 :ids="allMediaIds(g.question.media)"
                 compact
@@ -517,8 +522,12 @@ onUnmounted(() => {
                 {{ g.userAnswer || i18n.t('takeUnanswered') }}
               </div>
               <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeCorrectAnswer') }}</div>
-              <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">{{ g.question.answer }}</div>
-              <div v-if="g.question.analysis" class="text-xs" style="color: rgb(var(--md-on-surface-variant))">{{ g.question.analysis }}</div>
+              <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">
+                <MarkdownText inline :text="g.question.answer" />
+              </div>
+              <div v-if="g.question.analysis" class="text-xs" style="color: rgb(var(--md-on-surface-variant))">
+                <MarkdownText :text="g.question.analysis" />
+              </div>
             </div>
           </div>
         </div>

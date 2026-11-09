@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
-import { renderMarkdown } from '@/utils/markdown'
+import MarkdownText from '@/components/common/MarkdownText.vue'
 import { stripOptionLabel } from '@/utils/optionText'
 import type { LearnMessage } from '@/stores/learn'
 import type { Question } from '@exameow/shared'
@@ -23,7 +23,6 @@ const isUser = computed(() => props.message.role === 'user')
 const isQuestion = computed(() => props.message.kind === 'question')
 const isSearch = computed(() => props.message.kind === 'search')
 const isTool = computed(() => props.message.kind === 'tool')
-const html = computed(() => renderMarkdown(props.message.content))
 const isThinking = computed(
   () => props.message.streaming === true && props.message.content.trim().length === 0,
 )
@@ -205,7 +204,7 @@ function badgeStyle(letter: string) {
 
         <div v-if="isUser" class="whitespace-pre-wrap">{{ message.content }}</div>
         <div v-else-if="isQuestion && question">
-          <div class="whitespace-pre-wrap">{{ question.stem }}</div>
+          <MarkdownText :text="question.stem" />
 
           <div v-if="isChoiceQuestion" class="mt-3 space-y-2">
             <button
@@ -222,10 +221,12 @@ function badgeStyle(letter: string) {
                 class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors duration-150"
                 :style="badgeStyle(optionLabels[idx]!)"
               >{{ optionLabels[idx] }}</span>
-              <span
+              <MarkdownText
+                inline
+                :text="stripOptionLabel(option)"
                 class="text-sm flex-1 break-words"
                 :style="{ color: 'rgb(var(--md-on-surface))' }"
-              >{{ stripOptionLabel(option) }}</span>
+              />
             </button>
 
             <button
@@ -247,7 +248,7 @@ function badgeStyle(letter: string) {
             </p>
           </div>
         </div>
-        <div v-else class="learn-markdown" v-html="html" />
+        <MarkdownText v-else :text="message.content" :streaming="message.streaming" />
       </div>
     </div>
   </div>

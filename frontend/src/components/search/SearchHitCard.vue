@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import type { SearchHit } from '@/utils/questionSearch'
+import MarkdownText from '@/components/common/MarkdownText.vue'
 import { ChevronDownIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{ hit: SearchHit }>()
@@ -62,13 +63,13 @@ function isCorrectOption(idx: number): boolean {
         }"
       >
         <span>{{ String.fromCharCode(65 + oi) }}.</span>
-        <span class="whitespace-pre-wrap">{{ opt }}</span>
+        <MarkdownText inline :text="opt" class="min-w-0" />
       </div>
     </div>
 
     <div class="text-body-md mb-1">
       <span class="text-label-lg mr-2" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('tableAnswer') }}</span>
-      <span class="font-semibold" style="color: rgb(var(--md-primary))">{{ hit.question.answer }}</span>
+      <MarkdownText inline :text="hit.question.answer" class="font-semibold" style="color: rgb(var(--md-primary))" />
     </div>
 
     <template v-if="hit.question.analysis">
@@ -83,9 +84,9 @@ function isCorrectOption(idx: number): boolean {
           :style="{ transform: showAnalysis ? 'rotate(180deg)' : 'rotate(0)' }"
         />
       </button>
-      <p v-if="showAnalysis" class="text-body-md mt-2 whitespace-pre-wrap" style="color: rgb(var(--md-on-surface-variant))">
-        {{ hit.question.analysis }}
-      </p>
+      <div v-if="showAnalysis" class="text-body-md mt-2" style="color: rgb(var(--md-on-surface-variant))">
+        <MarkdownText :text="hit.question.analysis" />
+      </div>
     </template>
   </div>
 </template>

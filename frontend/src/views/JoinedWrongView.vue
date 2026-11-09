@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import { useJoinedStore } from '@/stores/joined'
 import { ArrowLeftIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
+import MarkdownText from '@/components/common/MarkdownText.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -68,14 +69,20 @@ const typeLabel = (t: string): string => {
                 style="background-color: rgb(var(--md-secondary-container)); color: rgb(var(--md-on-secondary-container))"
               >{{ typeLabel(g.question.type) }}</span>
             </div>
-            <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">{{ g.question.stem }}</div>
+            <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">
+              <MarkdownText :text="g.question.stem" />
+            </div>
             <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeYourAnswer') }}</div>
             <div class="text-sm mb-2" style="color: rgb(var(--md-error))">
               {{ g.userAnswer || i18n.t('takeUnanswered') }}
             </div>
             <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeCorrectAnswer') }}</div>
-            <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">{{ g.question.answer }}</div>
-            <div v-if="g.question.analysis" class="text-xs" style="color: rgb(var(--md-on-surface-variant))">{{ g.question.analysis }}</div>
+            <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">
+              <MarkdownText inline :text="g.question.answer" />
+            </div>
+            <div v-if="g.question.analysis" class="text-xs" style="color: rgb(var(--md-on-surface-variant))">
+              <MarkdownText :text="g.question.analysis" />
+            </div>
           </div>
         </div>
       </div>

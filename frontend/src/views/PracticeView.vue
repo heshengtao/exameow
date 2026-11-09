@@ -26,6 +26,7 @@ import PracticeResult from '@/components/practice/PracticeResult.vue'
 import AnswerSheet from '@/components/practice/AnswerSheet.vue'
 import WrongQuestionsSortDialog from '@/components/practice/WrongQuestionsSortDialog.vue'
 import PracticeModeToggle from '@/components/practice/PracticeModeToggle.vue'
+import ScratchPad from '@/components/common/ScratchPad.vue'
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -37,6 +38,7 @@ import {
   ArrowPathRoundedSquareIcon,
   ExclamationTriangleIcon,
   ChatBubbleLeftRightIcon,
+  PencilSquareIcon,
 } from '@heroicons/vue/24/outline'
 
 const i18n = useI18nStore()
@@ -76,6 +78,15 @@ const wrongToast = ref<string | null>(null)
 const savedMainSession = ref<any>(null)
 const flashcardMode = ref<'exam' | 'flashcard'>('exam')
 const swipeContainer = ref<HTMLElement | null>(null)
+const scratchpad = ref<InstanceType<typeof ScratchPad> | null>(null)
+const showScratch = ref(false)
+const scratchKey = computed(() => {
+  const session = practiceStore.session
+  const current = practiceStore.currentQuestion
+  if (!session || !current) return 'practice:pending'
+  const questionKey = current.question.id ? current.question.id.replace(/-s\d+$/, '') : session.currentIndex
+  return `practice:${session.bankId}:${questionKey}`
+})
 
 let pendingDirection: 'next' | 'prev' | null = null
 
@@ -1008,6 +1019,28 @@ function handleBack() {
         @home="handleHome"
       />
     </template>
+
+    <!-- Scratch paper (per question) -->
+    <ScratchPad
+      v-if="isView('practice') && practiceStore.session && practiceStore.currentQuestion"
+      ref="scratchpad"
+      :storage-key="scratchKey"
+      @update:open="showScratch = $event"
+    />
+    <button
+      v-if="isView('practice') && practiceStore.session && !showScratch"
+      type="button"
+      class="fixed z-40 right-3 sm:right-6 bottom-[calc(80px+env(safe-area-inset-bottom))] sm:bottom-6 flex items-center justify-center w-12 h-12 rounded-2xl shadow-lg transition-transform active:scale-95"
+      :style="{
+        backgroundColor: 'rgb(var(--md-primary-container))',
+        color: 'rgb(var(--md-on-primary-container))',
+      }"
+      :title="i18n.t('scratchpadOpen')"
+      :aria-label="i18n.t('scratchpadOpen')"
+      @click="scratchpad?.open()"
+    >
+      <PencilSquareIcon class="w-5 h-5" />
+    </button>
 
     <!-- Import Dialog -->
     <Transition name="scale">

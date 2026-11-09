@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import type { Question, PracticeMode } from '@exameow/shared'
 import QuestionImages from '@/components/practice/QuestionImages.vue'
+import MarkdownText from '@/components/common/MarkdownText.vue'
 import { mediaIds } from '@/utils/questionMedia'
 import { stripOptionLabel } from '@/utils/optionText'
 import {
@@ -290,7 +291,7 @@ function getBadgeStyle(opt: string) {
 
     <!-- Stem -->
     <div class="text-body-lg mb-5" :style="{ color: 'rgb(var(--md-on-surface))' }">
-      {{ question.stem }}
+      <MarkdownText :text="question.stem" />
     </div>
 
     <QuestionImages :ids="mediaIds(question.media, 'stem')" />
@@ -323,9 +324,12 @@ function getBadgeStyle(opt: string) {
             class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
             :style="getBadgeStyle(opt.value)"
           >{{ opt.value }}</div>
-          <span class="text-sm font-medium flex-1" :style="{ color: 'rgb(var(--md-on-surface))' }">
-            {{ opt.label.replace(/^[A-Z]\.\s*/, '') }}
-          </span>
+          <MarkdownText
+            inline
+            :text="opt.label.replace(/^[A-Z]\.\s*/, '')"
+            class="text-sm font-medium flex-1"
+            :style="{ color: 'rgb(var(--md-on-surface))' }"
+          />
           <CheckCircleIcon
             v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.value)"
             class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
@@ -352,7 +356,12 @@ function getBadgeStyle(opt: string) {
             :style="getBadgeStyle(optionLabels[idx]!)"
           >{{ optionLabels[idx] }}</div>
           <div class="flex-1 min-w-0">
-            <span class="text-sm font-medium" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ stripOptionLabel(opt) }}</span>
+            <MarkdownText
+              inline
+              :text="stripOptionLabel(opt)"
+              class="text-sm font-medium"
+              :style="{ color: 'rgb(var(--md-on-surface))' }"
+            />
             <QuestionImages :ids="mediaIds(question.media, 'option', idx)" compact />
           </div>
           <CheckCircleIcon
@@ -477,10 +486,10 @@ function getBadgeStyle(opt: string) {
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
-          {{ question.answer }}
+          <MarkdownText inline :text="question.answer" />
         </div>
         <div v-if="question.analysis" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span>{{ question.analysis }}
+          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><MarkdownText :text="question.analysis" />
         </div>
       </div>
 
@@ -507,13 +516,13 @@ function getBadgeStyle(opt: string) {
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
-          {{ question.answer }}
+          <MarkdownText inline :text="question.answer" />
         </div>
         <div v-if="question.analysis" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span>{{ question.analysis }}
+          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><MarkdownText :text="question.analysis" />
         </div>
         <div v-if="aiFeedback" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceAiFeedback') }}：</span>{{ aiFeedback }}
+          <span class="text-label-sm">{{ i18n.t('practiceAiFeedback') }}：</span><MarkdownText :text="aiFeedback" />
         </div>
       </div>
 
@@ -539,10 +548,10 @@ function getBadgeStyle(opt: string) {
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
-          {{ question.answer }}
+          <MarkdownText inline :text="question.answer" />
         </div>
         <div v-if="question.analysis" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span>{{ question.analysis }}
+          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><MarkdownText :text="question.analysis" />
         </div>
       </div>
     </div>
@@ -557,7 +566,7 @@ function getBadgeStyle(opt: string) {
         {{ i18n.t('practiceReviewCorrectAnswer') }}
       </div>
       <div class="text-sm font-bold" :style="{ color: 'rgb(var(--md-primary))' }">
-        {{ question.answer }}
+        <MarkdownText inline :text="question.answer" />
       </div>
     </div>
 
@@ -565,7 +574,7 @@ function getBadgeStyle(opt: string) {
     <div v-if="showFlashcardPreview && isChoiceType && question.analysis" class="mt-3">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
-        {{ question.analysis }}
+        <MarkdownText :text="question.analysis" />
       </div>
     </div>
 
@@ -573,7 +582,7 @@ function getBadgeStyle(opt: string) {
     <div v-if="submitted && question.analysis && !showFlashcardPreview" class="mt-3">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
-        {{ question.analysis }}
+        <MarkdownText :text="question.analysis" />
       </div>
     </div>
 
@@ -616,8 +625,8 @@ function getBadgeStyle(opt: string) {
         <div v-if="aiExplaining" class="text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           {{ i18n.t('practiceAiExplaining') }}
         </div>
-        <div v-else-if="question.aiAnalysis" class="whitespace-pre-wrap" :style="{ color: 'rgb(var(--md-on-surface))' }">
-          {{ question.aiAnalysis }}
+        <div v-else-if="question.aiAnalysis" :style="{ color: 'rgb(var(--md-on-surface))' }">
+          <MarkdownText :text="question.aiAnalysis" />
         </div>
         <div
           v-if="aiExplainError"
