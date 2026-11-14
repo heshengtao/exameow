@@ -34,8 +34,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Pinned: Rust 1.100.0 changed Cargo's build-script layout
+      # (target/<profile>/build/<pkg>/<hash>/ instead of <pkg>-<hash>), and
+      # tauri-build 2.6.3 still derives the artifact dir with three .parent()
+      # calls. It then resolves to target/<profile>/build and the CLI sidecar
+      # copy hits Cargo's own build/exameow-cli directory -> "Is a directory"
+      # panic on Linux/macOS (Windows escapes it via the .exe suffix).
+      # Unpin once tauri-build publishes a fixed release.
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: aarch64-linux-android
 
