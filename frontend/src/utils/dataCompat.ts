@@ -1,6 +1,7 @@
 import { Difficulty, QuestionType } from '@exameow/shared'
 import type { PracticeSession, Question, QuestionBank, QuestionMedia } from '@exameow/shared'
 import { normalizeDifficultyLabel, normalizeQuestionTypeLabel } from '@/utils/questionLabels'
+import { canonicalTrueFalseAnswer } from '@/utils/trueFalseAnswer'
 
 type Dict = Record<string, unknown>
 
@@ -80,23 +81,66 @@ function normalizeOptions(value: unknown): string[] {
   return []
 }
 
-function normalizeChoiceAnswer(answer: string, type: QuestionType, optionCount: number): string {
+const OPTION_LETTER_PREFIX = /^[A-Ha-h]\s*[.、．:：)）]\s*/
+const ANSWER_TRAILING_NOISE = /[。．.,，;；、\s]+$/g
+
+/** Option text reduced to a comparable form ("A. 北京。" -> "北京"). */
+function cleanOptionText(value: string): string {
+  return value
+    .trim()
+    .replace(OPTION_LETTER_PREFIX, '')
+    .replace(ANSWER_TRAILING_NOISE, '')
+    .toLowerCase()
+}
+
+/**
+ * Maps an answer that was written as option text ("北京", "A. 北京", "北京、上海")
+ * back to option letters.
+ *
+ * Teachers very commonly fill the answer column with the option text instead of
+ * a letter, and a model that ignores the prompt does the same. Grading only
+ * understands letters, so such a question used to be silently ungradeable —
+ * every click counted as wrong. Folding it here (once, on the way in) keeps the
+ * grading path free of text matching. Ambiguous or unknown text is left as-is
+ * rather than guessed at.
+ */
+function lettersFromOptionText(answer: string, options: string[]): string {
+  const targets = answer
+    .split(/[、,，;；|]/)
+    .map(cleanOptionText)
+    .filter(Boolean)
+  if (targets.length === 0) return ''
+  const cleaned = options.map(cleanOptionText)
+  const letters: string[] = []
+  for (const target of targets) {
+    const hits: number[] = []
+    cleaned.forEach((option, index) => {
+      if (option && option === target) hits.push(index)
+    })
+    if (hits.length !== 1) return ''
+    letters.push(String.fromCharCode(65 + hits[0]!))
+  }
+  return [...new Set(letters)].sort().join('')
+}
+
+function normalizeChoiceAnswer(answer: string, type: QuestionType, options: string[]): string {
   if (type !== QuestionType.SingleChoice && type !== QuestionType.MultiChoice) return answer
   const text = answer.trim()
-  if (!text || optionCount === 0) return answer
+  if (!text || options.length === 0) return answer
 
   if (/^[A-Ha-h](?:[\s,，、;；|]*[A-Ha-h])*$/.test(text)) {
     return [...new Set(text.toUpperCase().replace(/[^A-H]/g, '').split(''))].join('')
   }
-  if (!/^[1-8](?:[\s,，、;；|]*[1-8])*$/.test(text)) return answer
-
-  const letters = [...new Set(text
-    .replace(/[^1-8]/g, '')
-    .split('')
-    .map((digit) => String.fromCharCode(64 + Number(digit))))]
-    .filter((letter) => letter.charCodeAt(0) - 65 < optionCount)
-    .sort()
-  return letters.length > 0 ? letters.join('') : answer
+  if (/^[1-8](?:[\s,，、;；|]*[1-8])*$/.test(text)) {
+    const letters = [...new Set(text
+      .replace(/[^1-8]/g, '')
+      .split('')
+      .map((digit) => String.fromCharCode(64 + Number(digit))))]
+      .filter((letter) => letter.charCodeAt(0) - 65 < options.length)
+      .sort()
+    if (letters.length > 0) return letters.join('')
+  }
+  return lettersFromOptionText(text, options) || answer
 }
 
 function normalizeDifficulty(value: unknown): Difficulty | undefined {
@@ -155,7 +199,13 @@ export function normalizeQuestion(raw: unknown, fallbackId: string): Question {
   const options = normalizeOptions(source.options)
   const rawAnswer = asString(source.answer).trim()
   let type = normalizeType(source.type, stem, options, rawAnswer)
-  let answer = normalizeChoiceAnswer(rawAnswer, type, options.length)
+  let answer = normalizeChoiceAnswer(rawAnswer, type, options)
+  // A 判断题 has two states; fold every producer's spelling ("对", "√", "正确",
+  // "T", "1" …) into the canonical 'True'/'False' exactly once, here. Grading
+  // and highlighting then compare values instead of guessing at text.
+  if (type === QuestionType.TrueFalse) {
+    answer = canonicalTrueFalseAnswer(rawAnswer)
+  }
   if (type === QuestionType.SingleChoice && /^[A-H]{2,}$/.test(answer)) {
     type = QuestionType.MultiChoice
   }

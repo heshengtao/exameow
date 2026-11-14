@@ -243,11 +243,79 @@ fn is_true_answer(a: &str) -> bool {
     const ALIASES: &[&str] = &["A", "√", "对", "正确", "TRUE", "T", "是", "YES", "Y", "1"];
     const NEGATIONS: &[char] = &['不', '非', '错', '没'];
     let t = a.trim();
+    // Canonical values first — that is what the app stores for new exams.
+    // Legacy exams (published before canonicalisation) fall through to aliases.
+    match t {
+        "True" => return true,
+        "False" => return false,
+        _ => {}
+    }
     let upper = t.to_uppercase();
     ALIASES.iter().any(|v| {
         upper == v.to_uppercase()
             || (v.chars().count() > 1 && t.contains(v) && !t.replacen(v, "", 1).chars().any(|c| NEGATIONS.contains(&c)))
     })
+}
+
+/// Full-width ASCII (U+FF01..U+FF5E) and the ideographic space → half-width.
+fn to_half_width(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            let code = c as u32;
+            if (0xFF01..=0xFF5E).contains(&code) {
+                char::from_u32(code - 0xFEE0).unwrap_or(c)
+            } else if code == 0x3000 {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect()
+}
+
+fn is_cjk(c: char) -> bool {
+    let code = c as u32;
+    (0x3400..=0x4DBF).contains(&code)
+        || (0x4E00..=0x9FFF).contains(&code)
+        || (0xF900..=0xFAFF).contains(&code)
+        || (0x3040..=0x30FF).contains(&code)
+        || (0xAC00..=0xD7AF).contains(&code)
+}
+
+/// Presentation-normalised fill-in answer: width, case, whitespace and trailing
+/// punctuation folded away. Mirrors `frontend/src/utils/fillBlankAnswer.ts` and
+/// `normalizeFillBlank` in `workers/src/relay.ts`.
+fn normalize_fill_blank(text: &str) -> String {
+    const TRAILING: &[char] = &[
+        '。', '．', '.', ',', '，', ';', '；', '、', ':', '：', '!', '！', '?', '？',
+    ];
+    let half = to_half_width(text);
+    let collapsed = half.split_whitespace().collect::<Vec<_>>().join(" ");
+    collapsed
+        .to_lowercase()
+        .trim_end_matches(TRAILING)
+        .trim()
+        .to_string()
+}
+
+/// "北京/Beijing" means either form is accepted; "km/h" and "2/3" are one answer,
+/// so a slash only splits when at least one side is CJK.
+fn fill_blank_matches(user: &str, answer: &str) -> bool {
+    let folded = normalize_fill_blank(user);
+    if folded.is_empty() {
+        return false;
+    }
+    let parts: Vec<&str> = answer
+        .split(['/', '／'])
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .collect();
+    let forms: Vec<String> = if parts.len() >= 2 && parts.iter().any(|part| part.chars().any(is_cjk)) {
+        parts.iter().map(|part| normalize_fill_blank(part)).collect()
+    } else {
+        vec![normalize_fill_blank(answer)]
+    };
+    forms.iter().any(|form| !form.is_empty() && *form == folded)
 }
 
 fn grade(q: &Question, user: Option<&str>) -> Option<bool> {
@@ -263,9 +331,7 @@ fn grade(q: &Question, user: Option<&str>) -> Option<bool> {
             Some(normalize_choice(u) == normalize_choice(&q.answer))
         }
         exameow_core::exam::QuestionType::TrueFalse => Some(is_true_answer(u) == is_true_answer(&q.answer)),
-        exameow_core::exam::QuestionType::FillBlank => {
-            Some(u.trim().to_lowercase() == q.answer.trim().to_lowercase())
-        }
+        exameow_core::exam::QuestionType::FillBlank => Some(fill_blank_matches(u, &q.answer)),
         exameow_core::exam::QuestionType::ShortAnswer => None,
     }
 }
@@ -765,4 +831,58 @@ pub fn load_admin_token() -> String {
         }
     }
     std::env::var("ADMIN_TOKEN").unwrap_or_else(|_| "pass".to_string())
+}
+
+#[cfg(test)]
+mod answer_matching_tests {
+    //! Must stay behaviourally identical to
+    //! `frontend/src/utils/fillBlankAnswer.ts` + `trueFalseAnswer.ts` and
+    //! `workers/src/relay.ts`, so a question grades the same on every backend.
+
+    use super::{fill_blank_matches, is_true_answer};
+
+    #[test]
+    fn true_false_canonical_values() {
+        assert!(is_true_answer("True"));
+        assert!(!is_true_answer("False"));
+        // The regression behind issue #17: "FALSE" contains "A".
+        assert!(!is_true_answer("FALSE"));
+        assert!(!is_true_answer("false"));
+    }
+
+    #[test]
+    fn true_false_legacy_spellings() {
+        for answer in ["A", "√", "对", "正确", "T", "是", "YES", "1"] {
+            assert!(is_true_answer(answer), "{answer} should read as true");
+        }
+        for answer in ["B", "×", "错", "错误", "不正确", "不对", "否", "NO", "0"] {
+            assert!(!is_true_answer(answer), "{answer} should read as false");
+        }
+    }
+
+    #[test]
+    fn fill_blank_ignores_presentation_noise() {
+        assert!(fill_blank_matches("北京", "北京"));
+        assert!(fill_blank_matches("北京。", "北京"));
+        assert!(fill_blank_matches("ＡＢＣ", "ABC"));
+        assert!(fill_blank_matches("an  apple", "an apple"));
+        assert!(fill_blank_matches("  Beijing ", "beijing"));
+    }
+
+    #[test]
+    fn fill_blank_accepts_author_alternatives_only_when_unambiguous() {
+        assert!(fill_blank_matches("北京", "北京/Beijing"));
+        assert!(fill_blank_matches("beijing", "北京/Beijing"));
+        // Not alternatives: a slash inside a single answer stays part of it.
+        assert!(!fill_blank_matches("km", "km/h"));
+        assert!(fill_blank_matches("km/h", "km/h"));
+        assert!(!fill_blank_matches("2", "2/3"));
+    }
+
+    #[test]
+    fn fill_blank_never_accepts_an_empty_answer() {
+        assert!(!fill_blank_matches("", "北京"));
+        assert!(!fill_blank_matches("   ", "北京"));
+        assert!(!fill_blank_matches("。", "北京"));
+    }
 }

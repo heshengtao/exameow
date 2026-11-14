@@ -195,8 +195,48 @@ function normalizeChoice(s: string): string {
   return s.trim().toUpperCase().replace(/[^A-H]/g, '').split('').sort().join('')
 }
 
+/** Full-width ASCII and the ideographic space → half-width. */
+function toHalfWidth(text: string): string {
+  return text
+    .replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+    .replace(/\u3000/g, ' ')
+}
+
+const TRAILING_PUNCTUATION = /[。．.,，;；、:：!！?？]+$/
+const CJK = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF]/
+
+/**
+ * Fill-in answers are typed, so identical answers arrive with trailing 。,
+ * full-width characters, doubled spaces or author-listed alternatives
+ * ("北京/Beijing"). Keep this identical to the app's
+ * `frontend/src/utils/fillBlankAnswer.ts` so a question grades the same online
+ * and offline.
+ */
+function normalizeFillBlank(text: string): string {
+  return toHalfWidth(text)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(TRAILING_PUNCTUATION, '')
+    .trim()
+}
+
+function matchesFillBlank(user: string, answer: string): boolean {
+  const folded = normalizeFillBlank(user)
+  if (!folded) return false
+  const parts = answer.split(/[/／]/).map(part => part.trim()).filter(Boolean)
+  const forms = parts.length >= 2 && parts.some(part => CJK.test(part))
+    ? parts.map(normalizeFillBlank)
+    : [normalizeFillBlank(answer)]
+  return forms.some(form => form !== '' && form === folded)
+}
+
 function isTrueAnswer(a: string): boolean {
   const t = a.trim()
+  // Canonical values first — that is what the app stores for new exams.
+  // Legacy exams (published before canonicalisation) fall through to aliases.
+  if (t === 'True') return true
+  if (t === 'False') return false
   return ['A', '√', '对', '正确', 'TRUE', 'T', '是', 'YES', 'Y', '1'].some(
     (v) =>
       t.toUpperCase() === v.toUpperCase() ||
@@ -204,7 +244,7 @@ function isTrueAnswer(a: string): boolean {
   )
 }
 
-function grade(q: Question, user: string | undefined): boolean | null {
+export function grade(q: Question, user: string | undefined): boolean | null {
   if (q.type === 'short_answer') return null
   if (!user || !user.trim()) return false
   switch (q.type) {
@@ -214,7 +254,7 @@ function grade(q: Question, user: string | undefined): boolean | null {
     case 'true_false':
       return isTrueAnswer(user) === isTrueAnswer(q.answer)
     case 'fill_blank':
-      return user.trim().toLowerCase() === q.answer.trim().toLowerCase()
+      return matchesFillBlank(user, q.answer)
     default:
       return false
   }

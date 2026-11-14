@@ -7,6 +7,7 @@ import QuestionImages from '@/components/practice/QuestionImages.vue'
 import MarkdownText from '@/components/common/MarkdownText.vue'
 import { mediaIds } from '@/utils/questionMedia'
 import { stripOptionLabel } from '@/utils/optionText'
+import { trueFalseLetter } from '@/utils/trueFalseAnswer'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -77,11 +78,9 @@ const optionLabels = 'ABCDEFGH'.split('')
 
 const correctAnswerSet = computed(() => {
   if (props.question.type === 'true_false') {
-    const a = props.question.answer.trim()
-    const isTrue = ['A', '√', '对', '正确', 'TRUE', 'T', '是', 'YES', 'Y', '1'].some(
-      v => a.toUpperCase() === v.toUpperCase() || a.includes(v)
-    )
-    return new Set<string>(isTrue ? ['A'] : ['B'])
+    // Must mirror the practice store's grading (`utils/trueFalseAnswer`),
+    // otherwise the highlight contradicts the score. `False` is not `A`.
+    return new Set<string>([trueFalseLetter(props.question.answer)])
   }
   return new Set(props.question.answer.trim().toUpperCase().replace(/[^A-H]/g, '').split(''))
 })

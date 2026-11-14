@@ -55,8 +55,8 @@ export function buildSystemPrompt(autoChapter = false): string {
    - "options": array of option strings (required for single_choice/multi_choice/true_false; empty array for others)
    - "answer": the correct answer
    - "analysis": brief explanation of the answer (can be empty string for fill_blank/short_answer)
-3. For single_choice: exactly 4 options, one correct.
-4. For multi_choice: exactly 4 options, at least one correct (list correct letters separated by comma in answer).
+3. For single_choice: exactly 4 options, one correct; the answer MUST be the option letter only (e.g. "B"), never the option text.
+4. For multi_choice: exactly 4 options, at least one correct; the answer MUST be the correct option letters (e.g. "A,C" or "AC"), never the option text.
 5. For true_false: options ["True", "False"], answer is "True" or "False".
 6. For fill_blank: answer is the exact word/phrase to fill in.
 7. For short_answer: answer is a concise reference answer.

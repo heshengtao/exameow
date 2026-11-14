@@ -116,7 +116,7 @@ exameow call export_questions --json '{ "questions": [...], "format": "csv" }'
 ```
 
 - CSV 不包含图片；需要图片用 XLSX。
-- 题目对象的最小字段：`type`、`stem`、`answer`；选项以 `A.` `B.` 开头。
+- 题目对象的最小字段：`type`、`stem`、`answer`；选项以 `A.` `B.` 开头。**`answer` 用规范值**：选择题写选项字母（`B`、`A,C`），判断题写 `True`/`False`，填空题写要填的词。判分只认规范值，不要写选项原文或 `对`/`√`。
 - 导出不会自动存库；要留存先 `create_bank`。
 
 ## 常见失败
